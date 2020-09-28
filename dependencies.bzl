@@ -2,16 +2,6 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 def nflx_spectatord_deps():
   http_archive(
-          name = "spectator_cfg",
-          build_file = "@nflx_spectatord//third_party:spectator_cfg.BUILD",
-          urls = ["https://stash.corp.netflix.com/rest/api/latest/projects/CLDMTA/repos/netflix-spectator-cppconf/archive?at=e2fa37ea6fed338a3fe7b12c7701ec086d4c5713&format=zip"],
-          sha256 = "08be5c03f7f90c7c8727a2ca395048b9651ca48620bd978db530414ff7b7d666",
-          type = "zip",
-      )
-
-    # https://github.com/tensorflow/tensorflow/blob/master/tensorflow/workspace.bzl.
-  http_archive(
-          # Needs build file updates to build with reverse fqdn.
           name = "curl",
           build_file = "@nflx_spectatord//third_party:curl.BUILD",
           strip_prefix = "curl-7.72.0",
@@ -19,7 +9,6 @@ def nflx_spectatord_deps():
           urls = [ "https://curl.haxx.se/download/curl-7.72.0.tar.gz", ],
           )
 
-  # https://github.com/grpc/grpc/blob/master/bazel/grpc_deps.bzl.
   http_archive(
           name = "com_github_c_ares_c_ares",
           build_file = "@nflx_spectatord//third_party/cares:cares.BUILD",
@@ -28,7 +17,6 @@ def nflx_spectatord_deps():
           url = "https://github.com/c-ares/c-ares/releases/download/cares-1_15_0/c-ares-1.15.0.tar.gz",
           )
 
-  # https://github.com/tensorflow/tensorflow/blob/master/tensorflow/workspace.bzl.
   http_archive(
           name = "boringssl",
           sha256 = "1188e29000013ed6517168600fc35a010d58c5d321846d6a6dfee74e4c788b45",
@@ -36,7 +24,6 @@ def nflx_spectatord_deps():
           urls = ["https://github.com/google/boringssl/archive/7f634429a04abc48e2eb041c81c5235816c96514.tar.gz"],
           )
 
-  # https://github.com/tensorflow/tensorflow/blob/master/tensorflow/workspace.bzl.
   http_archive(
           name = "net_zlib",
           build_file = "@nflx_spectatord//third_party:zlib.BUILD",
@@ -145,6 +132,15 @@ def nflx_spectatord_deps():
           build_file = "@nflx_spectatord//third_party:backward.BUILD",
           sha256 = "97ddc265cc42afadf870ccfa9b079382766eb9e46e8fc1994a61a92ff547c851",
           )
+
+  # netflix internal config
+  http_archive(
+          name = "nflx_spectator_cfg",
+          build_file = "@nflx_spectatord//third_party:spectator_cfg.BUILD",
+          urls = ["https://stash.corp.netflix.com/rest/api/latest/projects/CLDMTA/repos/netflix-spectator-cppconf/archive?at=e2fa37ea6fed338a3fe7b12c7701ec086d4c5713&format=zip"],
+          sha256 = "08be5c03f7f90c7c8727a2ca395048b9651ca48620bd978db530414ff7b7d666",
+          type = "zip",
+      )
 
   # C++ rules for Bazel.
   http_archive(

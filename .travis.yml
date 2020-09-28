@@ -1,10 +1,6 @@
 language: cpp
 dist: bionic
 
-compiler:
-  - gcc
-  - clang
-
 addons:
   apt:
     sources: 

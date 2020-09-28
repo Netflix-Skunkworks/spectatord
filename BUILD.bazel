@@ -1,5 +1,12 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
+config_setting(
+    name = "nflx_internal",
+    define_values = {
+        "nflx_internal": "1"
+        }
+    )
+
 memory_allocator = select({
     "@bazel_tools//src/conditions:linux_x86_64": "@com_google_tcmalloc//tcmalloc",
     "//conditions:default": "@bazel_tools//tools/cpp:malloc", 
@@ -47,6 +54,13 @@ cc_library(
         ],
     visibility = ["//visibility:public"])
 
+cc_library(
+    name = "dummy_cfg",
+    srcs = ["spectator/sample_config.cc"],
+    deps = [":spectator"],
+    visibility = ["//visibility:public"])
+
+
 cc_binary(
     name = "gen_perc_bucket_tags",
     srcs = ["tools/gen_perc_bucket_tags.cc"],
@@ -91,10 +105,11 @@ genrule(
 
 cc_test(
     name = "spectator_test",
-    srcs = glob(["spectator/*test.cc", "spectator/sample_config.cc",
+    srcs = glob(["spectator/*test.cc", 
                  "spectator/http_server.*", "spectator/test_utils.*"]),
     deps = [
         ":spectator",
+        ":dummy_cfg",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -200,11 +215,12 @@ cc_binary(
     includes = ["server"],
     deps = [
         ":spectatord",
-        "@spectator_cfg//:spectator_cfg",
         "@com_google_absl//absl/flags:parse",
         "@com_github_gabime_spdlog//:spdlog",
-        "@com_github_bombela_backward//:backward",
-    ],
+        "@com_github_bombela_backward//:backward",] + select({
+        ":nflx_internal": [ "@nflx_spectator_cfg//:spectator_cfg" ],
+        "//conditions:default": [":dummy_cfg"],
+        })
 )
 
 cc_binary(
