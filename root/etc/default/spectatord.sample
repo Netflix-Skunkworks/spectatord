@@ -1,0 +1,20 @@
+# spectatord will source /etc/default/spectatord 
+
+# Port number for the main protocol (udp)
+SPECTATORD_OPTIONS="--port=1234"
+
+# Port number for the statsd protocol (udp)
+SPECTATORD_OPTIONS="$SPECTATORD_OPTIONS --statsd_port=8125"
+
+# Time to live for gauges. After this time
+# gauges with no updates will stop reporting
+SPECTATORD_OPTIONS="$SPECTATORD_OPTIONS --meter_ttl=15m"
+
+# Path to use for the unix domain socket
+SPECTATORD_OPTIONS="$SPECTATORD_OPTIONS --socket_path=/tmp/spectatord.unix"
+
+# Common tags. Do not use unless you understand the consequences
+SPECTATORD_OPTIONS="$SPECTATORD_OPTIONS --common_tags=nf.app=$NETFLIX_APP,nf.cluster=$NETFLIX_CLUSTER,nf.stack=$NETFLIX_STACK,nf.region=$EC2_REGION"
+
+# Use verbose logging
+SPECTATORD_OPTIONS="$SPECTATORD_OPTIONS --verbose"

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+SERVICENAME=spectatord
+ENV_FILE=/etc/profile.d/netflix_environment.sh
+DFLT_FILE=/etc/default/spectatord
+
+if [[ -n "$TRACE" ]]; then
+  export PS4='${BASH_SOURCE}:${LINENO}: ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+  set -o xtrace
+fi
+set -o pipefail
+set -o errexit
+
+if [ -f $ENV_FILE ] ; then
+  . $ENV_FILE
+else
+  echo $ENV_FILE is not present. Cannot start spectatord without a proper environment
+  exit 1
+fi
+
+if [ -f $DFLT_FILE ] ; then
+  . $DFLT_FILE
+fi
+
+mkdir -p /run/spectatord
+exec /usr/local/bin/spectatord $SPECTATORD_OPTIONS

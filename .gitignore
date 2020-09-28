@@ -1,0 +1,9 @@
+bazel-*
+build-*
+.idea/
+.vscode/
+.clwb
+build
+spectatord
+compile_commands.json
+.newt-cache/
