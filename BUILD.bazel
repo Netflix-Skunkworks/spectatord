@@ -134,7 +134,7 @@ cc_library(
 cc_test(
     name = "spectatord_test",
     srcs = ["server/spectatord_test.cc", "server/proc_utils_test.cc"],
-    data = glob(["resources/*"]),
+    data = glob(["test-resources/*"]),
     deps = [
         ":spectatord",
         "@com_google_googletest//:gtest_main",
