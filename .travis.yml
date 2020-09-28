@@ -29,11 +29,7 @@ env:
     - LANG="en_US.UTF-8"
 
 script:
-  - bazel-3.5.0 \
-      --output_user_root=$HOME/.cache/bazel/$TRAVIS_COMPILER \
-      --batch \
-      build --config asan spectatord_test spectator_test spectatord_main \
-      --verbose_failures
+  - bazel-3.5.0 --output_user_root=$HOME/.cache/bazel/$TRAVIS_COMPILER --batch build --config asan spectatord_test spectator_test spectatord_main --verbose_failures
   - bazel-bin/spectator_test && bazel-bin/spectatord_test
 
 cache:
