@@ -1,10 +1,6 @@
 language: cpp
 dist: bionic
 
-compiler:
-  - gcc
-  - clang
-
 addons:
   apt:
     sources: 
@@ -35,3 +31,7 @@ env:
 script:
   - bazel-3.5.0 build --config asan spectator_test spectatord_test spectatord_main
   - bazel-bin/spectator_test && bazel-bin/spectatord_test
+
+cache:
+  directories:
+  - $HOME/.cache/bazel

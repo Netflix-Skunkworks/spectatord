@@ -1,6 +1,6 @@
 # Spectatord - A High Performance Metrics Daemon
 
-[![Build Status](https://travis-ci.com/Netflix-Skunkworks/atlas-system-agent.svg?branch=master)](https://travis-ci.com/Netflix-Skunkworks/atlas-system-agent)
+[![Build Status](https://travis-ci.com/Netflix-Skunkworks/spectatord.svg?branch=master)](https://travis-ci.com/Netflix-Skunkworks/spectatord)
 
 > :warning: Experimental
 
