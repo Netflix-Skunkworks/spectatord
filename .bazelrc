@@ -4,7 +4,6 @@ build --cxxopt='-std=c++17' --cxxopt='-Wall' --cxxopt='-fno-omit-frame-pointer'
 # To use it: bazel build --config asan
 build:asan --strip=never
 build:asan --copt -fsanitize=address
-build:asan --copt -DADDRESS_SANITIZER
 build:asan --copt -O1
 build:asan --copt -g
 build:asan --copt -fno-omit-frame-pointer
@@ -24,7 +23,8 @@ build:tsan --linkopt -fsanitize=thread
 # --config msan: Memory sanitizer
 build:msan --strip=never
 build:msan --copt -fsanitize=memory
-build:msan --copt -DADDRESS_SANITIZER
+build:msan --copt -fsanitize-memory-track-origins=2
+build:msan --copt -DOPENSSL_NO_ASM=1
 build:msan --copt -O1
 build:msan --copt -fno-omit-frame-pointer
 build:msan --linkopt -fsanitize=memory
