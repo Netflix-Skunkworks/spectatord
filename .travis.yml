@@ -13,6 +13,7 @@ addons:
       - bazel-3.5.0
       - clang-11
       - binutils-dev
+      - libiberty-dev
 
 matrix:
   include:
