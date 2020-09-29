@@ -209,7 +209,8 @@ cc_binary(
         }),
     malloc = memory_allocator,
     linkopts = select({
-        "@bazel_tools//src/conditions:linux_x86_64": ["-lbfd", "-ldl"],
+        "@bazel_tools//src/conditions:linux_x86_64": [
+            "/usr/lib/x86_64-linux-gnu/libbfd.a", "/usr/lib/x86_64-linux-gnu/libiberty.a", "-ldl"],
         "//conditions:default": [],
         }),
     includes = ["server"],
