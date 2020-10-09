@@ -9,7 +9,7 @@ using namespace spectator;
 
 template <class T>
 std::unique_ptr<T> getTimer(Registry* r) {
-  auto id = r->CreateId("t", Tags{});
+  auto id = Id::Of("t");
   return std::make_unique<T>(r, id, absl::ZeroDuration(), absl::Seconds(100));
 }
 
@@ -21,7 +21,7 @@ class PercentileTimerTest : public ::testing::Test {
   PercentileTimerTest()
       : r{GetConfiguration(), DefaultLogger()},
         timer{getTimer<T>(&r)},
-        restricted_timer{&r, r.CreateId("t2", Tags{}), absl::Milliseconds(5),
+        restricted_timer{&r, Id::Of("t2"), absl::Milliseconds(5),
                          absl::Seconds(2)} {}
   Registry r;
   std::unique_ptr<T> timer;

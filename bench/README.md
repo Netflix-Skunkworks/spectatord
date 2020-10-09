@@ -1,5 +1,4 @@
-# Benchmarks
-
+#Benchmarks
 
 ## Benchmarking different table implementations to keep meters in the registry
 

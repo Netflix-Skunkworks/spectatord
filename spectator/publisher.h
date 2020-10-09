@@ -25,8 +25,7 @@ namespace detail {
 template <typename R>
 std::shared_ptr<Counter> get_counter(R* registry, Tags tags) {
   static constexpr auto kSpectatorMeasurements = "spectator.measurements";
-  return registry->GetCounter(
-      registry->CreateId(kSpectatorMeasurements, std::move(tags)));
+  return registry->GetCounter(kSpectatorMeasurements, std::move(tags));
 }
 }  // namespace detail
 

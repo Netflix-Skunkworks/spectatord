@@ -6,6 +6,7 @@
 namespace {
 using spectator::DefaultLogger;
 using spectator::GetConfiguration;
+using spectator::Id;
 using spectator::Registry;
 using spectator::Tags;
 
@@ -156,8 +157,7 @@ TEST(Registry, OnMeasurements) {
   auto found = false;
   auto cb = [&](const std::vector<spectator::Measurement>& ms) {
     called = true;
-    auto id =
-        r.CreateId("some.counter", spectator::Tags{{"statistic", "count"}});
+    auto id = Id::Of("some.counter", {{"statistic", "count"}});
     auto expected = spectator::Measurement{id, 1.0};
     auto it = std::find(ms.begin(), ms.end(), expected);
     found = it != ms.end();

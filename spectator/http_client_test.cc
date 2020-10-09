@@ -20,6 +20,7 @@ using spectator::gzip_uncompress;
 using spectator::HttpClient;
 using spectator::HttpClientConfig;
 using spectator::HttpResponse;
+using spectator::Id;
 using spectator::intern_str;
 using spectator::Registry;
 using spectator::Tags;
@@ -264,7 +265,7 @@ TEST(HttpTest, Get) {
       {"ipc.result", "success"}, {"owner", "spectator-cpp"},
       {"ipc.status", "success"}, {"ipc.attempt.final", "true"},
       {"http.method", "GET"},    {"ipc.endpoint", "/get"}};
-  auto timer_id = registry.CreateId("ipc.client.call", timer_tags);
+  auto timer_id = Id::Of("ipc.client.call", std::move(timer_tags));
   auto timer = registry.GetTimer(timer_id);
   EXPECT_EQ(timer->Count(), 1);
 }
@@ -301,12 +302,12 @@ TEST(HttpTest, Get503) {
       {"ipc.result", "success"}, {"owner", "spectator-cpp"},
       {"ipc.status", "success"}, {"ipc.attempt.final", "true"},
       {"http.method", "GET"},    {"ipc.endpoint", "/get503"}};
-  auto err_id = registry.CreateId("ipc.client.call", err_timer_tags);
+  auto err_id = Id::Of("ipc.client.call", std::move(err_timer_tags));
   auto err_timer = registry.GetTimer(err_id);
   EXPECT_EQ(err_timer->Count(), 1);
 
-  auto success_id = registry.CreateId("ipc.client.call", success_timer_tags);
-  auto success_timer = registry.GetTimer(success_id);
+  auto success_timer =
+      registry.GetTimer("ipc.client.call", std::move(success_timer_tags));
   EXPECT_EQ(success_timer->Count(), 1);
 }
 
@@ -338,7 +339,7 @@ void test_method_header(const std::string& method) {
       {"ipc.result", "success"}, {"owner", "spectator-cpp"},
       {"ipc.status", "success"}, {"ipc.attempt.final", "true"},
       {"http.method", method},   {"ipc.endpoint", "/getheader"}};
-  auto timer_id = registry.CreateId("ipc.client.call", timer_tags);
+  auto timer_id = Id::Of("ipc.client.call", std::move(timer_tags));
   auto timer = registry.GetTimer(timer_id);
   EXPECT_EQ(timer->Count(), 1);
 }

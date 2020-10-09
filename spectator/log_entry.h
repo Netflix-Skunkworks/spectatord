@@ -12,11 +12,10 @@ class LogEntry {
            const std::string& url)
       : registry_{registry},
         start_{absl::Now()},
-        id_{registry_->CreateId("ipc.client.call",
-                                Tags{{"owner", "spectator-cpp"},
-                                     {"ipc.endpoint", PathFromUrl(url)},
-                                     {"http.method", method},
-                                     {"http.status", "-1"}})} {}
+        id_{Id::Of("ipc.client.call", {{"owner", "spectator-cpp"},
+                                       {"ipc.endpoint", PathFromUrl(url)},
+                                       {"http.method", method},
+                                       {"http.status", "-1"}})} {}
 
   [[nodiscard]] absl::Time start() const { return start_; }
 

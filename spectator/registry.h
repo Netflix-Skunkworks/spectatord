@@ -201,8 +201,6 @@ class Registry {
 
   void OnMeasurements(measurements_callback fn) noexcept;
 
-  Id CreateId(std::string_view name, Tags tags) const noexcept;
-
   std::shared_ptr<Counter> GetCounter(Id id) noexcept;
   std::shared_ptr<Counter> GetCounter(std::string_view name,
                                       Tags tags = {}) noexcept;

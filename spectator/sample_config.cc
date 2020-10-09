@@ -1,6 +1,5 @@
 #include "config.h"
 
-
 namespace spectator {
 
 // used in tests
@@ -11,6 +10,5 @@ std::unique_ptr<Config> GetConfiguration() {
 }  // namespace spectator
 
 std::unique_ptr<spectator::Config> GetSpectatorConfig() {
-  return spectator::GetConfiguration(); 
+  return spectator::GetConfiguration();
 }
-
