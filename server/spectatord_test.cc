@@ -189,7 +189,7 @@ TEST(Spectatord, Statsd_SampledTimer) {
 
 TEST(Spectatord, ParseOneTag) {
   auto logger = Logger();
-  char_ptr line{strdup("my.name:#foo=bar:42.0")};
+  char_ptr line{strdup("my.name,foo=bar:42.0")};
   std::string err_msg;
   auto measurement = *(get_measurement(line.get(), &err_msg));
   logger->info("Got {} = {}", measurement.id, measurement.value);
@@ -201,7 +201,7 @@ TEST(Spectatord, ParseOneTag) {
 
 TEST(Spectatord, ParseMultipleTags) {
   auto logger = Logger();
-  char_ptr line{strdup("n:#foo=bar,k=v1,k2=v2:2")};
+  char_ptr line{strdup("n,foo=bar,k=v1,k2=v2:2")};
   std::string err_msg;
   auto measurement = *get_measurement(line.get(), &err_msg);
   logger->info("Got {} = {}", measurement.id, measurement.value);

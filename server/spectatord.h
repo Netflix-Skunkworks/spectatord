@@ -55,7 +55,7 @@ struct measurement {
   double value;
 };
 
-std::optional<measurement> get_measurement(const char* measurement_str,
+std::optional<measurement> get_measurement(std::string_view measurement_str,
                                            std::string* err_msg);
 
 }  // namespace spectatord

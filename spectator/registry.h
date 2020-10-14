@@ -10,6 +10,7 @@
 #include "monotonic_counter.h"
 #include "publisher.h"
 #include "timer.h"
+#include "spectator/monotonic_sampled.h"
 #include <condition_variable>
 #include <mutex>
 #include <spdlog/spdlog.h>
@@ -103,6 +104,7 @@ struct all_meters {
   meter_map<Gauge> gauges_;
   meter_map<MaxGauge> max_gauges_;
   meter_map<MonotonicCounter> mono_counters_;
+  meter_map<MonotonicSampled> mono_sampled_;
   meter_map<Timer> timers_;
 
   size_t size() const {
@@ -165,6 +167,11 @@ struct all_meters {
         std::make_shared<MonotonicCounter>(std::move(id)));
   }
 
+  auto insert_mono_sampled(Id id) {
+    return mono_sampled_.insert(
+        std::make_shared<MonotonicSampled>(std::move(id)));
+  }
+
   auto insert_dist_sum(Id id) {
     return dist_sums_.insert(
         std::make_shared<DistributionSummary>(std::move(id)));
@@ -202,6 +209,10 @@ class Registry {
 
   std::shared_ptr<MonotonicCounter> GetMonotonicCounter(Id id) noexcept;
   std::shared_ptr<MonotonicCounter> GetMonotonicCounter(
+      std::string_view name, Tags tags = {}) noexcept;
+
+  std::shared_ptr<MonotonicSampled> GetMonotonicSampled(Id id) noexcept;
+  std::shared_ptr<MonotonicSampled> GetMonotonicSampled(
       std::string_view name, Tags tags = {}) noexcept;
 
   std::shared_ptr<DistributionSummary> GetDistributionSummary(Id id) noexcept;

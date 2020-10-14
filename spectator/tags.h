@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <array>
 #include <memory>
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <ostream>
 
 namespace spectator {
@@ -199,17 +201,19 @@ class Tags {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tags& tags) {
-  bool key = true;
-  os << '[';
-  for (const auto& tag : tags) {
-    if (key) {
-      key = false;
-    } else {
-      os << ", ";
-    }
-    os << tag.key.Get() << "->" << tag.value.Get();
-  }
-  os << ']';
-  return os;
+  return os << fmt::format("{}", tags);
 }
 }  // namespace spectator
+
+template <>
+struct fmt::formatter<spectator::Tag> {
+  constexpr auto parse(format_parse_context& ctx) -> decltype(ctx.begin()) {
+    return ctx.begin();
+  }
+
+  // formatter for Ids
+  template <typename FormatContext>
+  auto format(const spectator::Tag& tag, FormatContext& context) {
+    return fmt::format_to(context.out(), "{}->{}", tag.key, tag.value);
+  }
+};
