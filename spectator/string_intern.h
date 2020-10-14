@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <string>
+#include <fmt/format.h>
 
 namespace spectator {
 
@@ -46,3 +47,12 @@ struct hash<spectator::StrRef> {
   }
 };
 }  // namespace std
+
+template <>
+struct fmt::formatter<spectator::StrRef> : fmt::formatter<std::string_view> {
+  template <typename FormatContext>
+  auto format(const spectator::StrRef& s, FormatContext& context) {
+    std::string_view str_view{s.Get(), s.Length()};
+    return fmt::formatter<std::string_view>::format(str_view, context);
+  }
+};

@@ -17,6 +17,10 @@ class Id {
   Id(std::string_view name, Tags tags) noexcept
       : name_(intern_str(name)), tags_(std::move(tags)), hash_(0U) {}
 
+  static Id Of(std::string_view name, Tags tags = {}) {
+    return Id(name, std::move(tags));
+  }
+
   bool operator==(const Id& rhs) const noexcept;
 
   StrRef Name() const noexcept;
@@ -38,7 +42,9 @@ class Id {
     return baseId.WithStat(stat);
   }
 
-  friend std::ostream& operator<<(std::ostream& os, const Id& id);
+  friend std::ostream& operator<<(std::ostream& os, const Id& id) {
+    return os << fmt::format("{}", id);
+  }
 
   friend struct std::hash<Id>;
 
@@ -85,4 +91,18 @@ struct equal_to<shared_ptr<spectator::Id>> {
     return *lhs == *rhs;
   }
 };
+
 }  // namespace std
+
+template <>
+struct fmt::formatter<spectator::Id> {
+  constexpr auto parse(format_parse_context& ctx) -> decltype(ctx.begin()) {
+    return ctx.begin();
+  }
+
+  // formatter for Ids
+  template <typename FormatContext>
+  auto format(const spectator::Id& id, FormatContext& context) {
+    return fmt::format_to(context.out(), "Id({}, {})", id.Name(), id.GetTags());
+  }
+};

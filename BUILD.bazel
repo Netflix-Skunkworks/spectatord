@@ -17,7 +17,7 @@ cc_library(
     srcs = ["spectator/common_refs.cc", "spectator/compressed_buffer.cc",
             "spectator/counter.cc", "spectator/dist_summary.cc", "spectator/gauge.cc", "spectator/gzip.cc",
             "spectator/http_client.cc", "spectator/id.cc", "spectator/logger.cc", "spectator/max_gauge.cc",
-            "spectator/monotonic_counter.cc",
+            "spectator/monotonic_counter.cc", "spectator/monotonic_sampled.cc",
             "spectator/percentile_buckets.cc", "spectator/registry.cc",
             "spectator/smile.cc", "spectator/strings.cc", "spectator/string_pool.cc",
             "spectator/timer.cc"],
@@ -28,7 +28,7 @@ cc_library(
             "spectator/gzip.h", "spectator/http_client.h", "spectator/id.h",
             "spectator/log_entry.h", "spectator/logger.h",
             "spectator/max_gauge.h", "spectator/measurement.h",
-            "spectator/meter.h", "spectator/monotonic_counter.h",
+            "spectator/meter.h", "spectator/monotonic_counter.h", "spectator/monotonic_sampled.h",
             "spectator/percentile_buckets.h",
             "spectator/percentile_distribution_summary.h", "spectator/percentile_timer.h",
             "spectator/publisher.h", "spectator/registry.h",
@@ -106,11 +106,12 @@ genrule(
 cc_test(
     name = "spectator_test",
     srcs = glob(["spectator/*test.cc", 
-                 "spectator/http_server.*", "spectator/test_utils.*"]),
+                 "spectator/http_server.*", "spectator/test_utils.*", "bin/test_main.cc"]),
     deps = [
         ":spectator",
         ":dummy_cfg",
-        "@com_google_googletest//:gtest_main",
+        "@com_github_bombela_backward//:backward",
+        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -148,11 +149,12 @@ cc_library(
 
 cc_test(
     name = "spectatord_test",
-    srcs = ["server/spectatord_test.cc", "server/proc_utils_test.cc"],
+    srcs = ["bin/test_main.cc", "server/spectatord_test.cc", "server/proc_utils_test.cc"],
     data = glob(["test-resources/*"]),
     deps = [
         ":spectatord",
-        "@com_google_googletest//:gtest_main",
+        "@com_github_bombela_backward//:backward",
+        "@com_google_googletest//:gtest",
     ],
 )
 

@@ -32,9 +32,4 @@ Id Id::WithTags(Tags&& extra_tags) const {
   return Id(Name(), std::move(tags));
 }
 
-std::ostream& operator<<(std::ostream& os, const Id& id) {
-  os << "Id(" << id.Name().Get() << ", " << id.GetTags() << ")";
-  return os;
-}
-
 }  // namespace spectator

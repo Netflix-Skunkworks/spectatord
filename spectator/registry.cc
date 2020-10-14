@@ -80,6 +80,16 @@ std::shared_ptr<MonotonicCounter> Registry::GetMonotonicCounter(
   return GetMonotonicCounter(CreateId(name, std::move(tags)));
 }
 
+std::shared_ptr<MonotonicSampled> Registry::GetMonotonicSampled(
+    Id id) noexcept {
+  return all_meters_.insert_mono_sampled(std::move(id));
+}
+
+std::shared_ptr<MonotonicSampled> Registry::GetMonotonicSampled(
+    std::string_view name, Tags tags) noexcept {
+  return GetMonotonicSampled(Id::Of(name, std::move(tags)));
+}
+
 std::shared_ptr<Timer> Registry::GetTimer(Id id) noexcept {
   return all_meters_.insert_timer(std::move(id));
 }

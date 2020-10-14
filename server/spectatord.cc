@@ -8,7 +8,6 @@
 #include "udp_server.h"
 
 #include <asio.hpp>
-#include <fmt/ostream.h>
 
 namespace spectatord {
 
@@ -217,41 +216,40 @@ std::optional<std::string> Server::parse_statsd_line(const char* buffer) {
   return {};
 }
 
-std::optional<measurement> get_measurement(const char* measurement_str,
+std::optional<measurement> get_measurement(std::string_view measurement_str,
                                            std::string* err_msg) {
-  // get name (tags are specified with :# but are optional)
-  const char* p = std::strchr(measurement_str, ':');
-  if (p == nullptr || p == measurement_str) {
+  // get name (tags are specified with , but are optional)
+  auto pos = measurement_str.find_first_of(",:");
+  if (pos == std::string_view::npos || pos == 0) {
     *err_msg = "Missing name";
     return {};
   }
-  std::string_view name{measurement_str,
-                        static_cast<size_t>(p - measurement_str)};
+  auto name = measurement_str.substr(0, pos);
   spectator::Tags tags{};
 
-  ++p;
   // optionally get tags
-  if (*p == '#') {
-    while (*p != ':') {
-      ++p;
-      const char* k = std::strchr(p, '=');
-      if (k == nullptr) break;
-      std::string_view key{p, static_cast<size_t>(k - p)};
-      ++k;
-      p = std::strpbrk(k, ",:");
-      if (p == nullptr) {
+  if (measurement_str[pos] == ',') {
+    while (measurement_str[pos] != ':') {
+      ++pos;
+      auto k_pos = measurement_str.find('=', pos);
+      if (k_pos == std::string_view::npos) break;
+      auto key = measurement_str.substr(pos, k_pos - pos);
+      ++k_pos;
+      auto v_pos = measurement_str.find_first_of(",:", k_pos);
+      if (v_pos == std::string_view::npos) {
         *err_msg = "Missing value";
         return {};
       }
-      std::string_view val{k, static_cast<size_t>(p - k)};
+      auto val = measurement_str.substr(k_pos, v_pos - k_pos);
       tags.add(key, val);
+      pos = v_pos;
     }
-    ++p;
   }
-
+  ++pos;
+  auto value_str = measurement_str.begin() + pos;
   char* last_char = nullptr;
-  auto value = std::strtod(p, &last_char);
-  if (last_char == p) {
+  auto value = std::strtod(value_str, &last_char);
+  if (last_char == value_str) {
     // unable to parse a double
     *err_msg = "Unable to parse value for measurement";
     return {};
@@ -371,8 +369,8 @@ void Server::upkeep() {
     pool_alloc_size->Set(pool_stats.alloc_size);
     pool_entries->Set(pool_stats.table_size);
     logger_->debug("Str Pool: Hits {} Misses {} Size {} Alloc {}",
-                  pool_stats.hits, pool_stats.misses, pool_stats.table_size,
-                  pool_stats.alloc_size);
+                   pool_stats.hits, pool_stats.misses, pool_stats.table_size,
+                   pool_stats.alloc_size);
 
     auto elapsed = clock::now() - start;
     auto millis = duration_cast<milliseconds>(elapsed);
@@ -432,21 +430,28 @@ std::optional<std::string> Server::parse_line(const char* buffer) {
   }
 
   auto type = *p++;
-  auto ttl = absl::ZeroDuration();
-  if (type == 'g' && *p == ',') {
+  auto extra = int64_t{0};
+  if (*p == ',') {
     ++p;
     char* end_ttl = nullptr;
-    auto ttl_secs = strtoul(p, &end_ttl, 10);
-    if (ttl_secs <= 0) {
-      return "Invalid ttl specified for gauge at index 3";
+    extra = strtoll(p, &end_ttl, 10);
+    if (extra <= 0) {
+      auto idx = p - buffer;
+      if (type == 'g') {
+        return fmt::format("Invalid ttl specified for gauge at index {}", idx);
+      } else if (type == 'X') {
+        return fmt::format(
+            "Invalid timestamp specified for monotonic sampled source at index "
+            "{}",
+            idx);
+      }
     }
     p = end_ttl;
-    ttl = absl::Seconds(ttl_secs);
   }
-  if (*p++ != ':') {
-    return "Expecting separator ':' at index 3";
+  if (*p != ':') {
+    return fmt::format("Expecting separator ':' at index {}", p - buffer);
   }
-
+  ++p;
   std::string err_msg;
   auto measurement = get_measurement(p, &err_msg);
   if (!measurement) {
@@ -476,8 +481,9 @@ std::optional<std::string> Server::parse_line(const char* buffer) {
       break;
     case 'g':
       // gauge
-      if (ttl != absl::ZeroDuration()) {
-        registry_->GetGauge(measurement->id, ttl)->Set(measurement->value);
+      if (extra > 0) {
+        registry_->GetGauge(measurement->id, absl::Seconds(extra))
+            ->Set(measurement->value);
       } else {
         // this preserves the previous Ttl, otherwise we would override it
         // with the default value if we use the previous constructor
@@ -500,6 +506,14 @@ std::optional<std::string> Server::parse_line(const char* buffer) {
     case 'D':
       perc_ds_.get_or_create(registry_, measurement->id)
           ->Record(static_cast<int64_t>(measurement->value));
+      break;
+    case 'X':
+      if (extra > 0) {
+        // extra is milliseconds since the epoch
+        auto nanos = extra * 1000 * 1000;
+        registry_->GetMonotonicSampled(measurement->id)
+            ->Set(measurement->value, nanos);
+      }
       break;
     default:
       return fmt::format("Unknown type: {}", type);

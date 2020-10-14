@@ -7,7 +7,7 @@ namespace {
 using spectator::refs;
 
 spectator::MonotonicCounter getMonotonicCounter(std::string_view name) {
-  return spectator::MonotonicCounter(spectator::Id(name, spectator::Tags{}));
+  return spectator::MonotonicCounter(spectator::Id::Of(name));
 }
 
 TEST(MonotonicCounter, Init) {

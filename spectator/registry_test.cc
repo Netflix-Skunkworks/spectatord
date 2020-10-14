@@ -96,7 +96,7 @@ TEST(Registry, MeasurementTest) {
   auto m = ms.front();
   // test to string
   auto str = fmt::format("{}", m);
-  EXPECT_EQ(str, "Measurement{Id(c, [statistic->count]),1}");
+  EXPECT_EQ(str, "Measurement{Id(c, {statistic->count}),1}");
 
   // test equals
   c->Increment();
