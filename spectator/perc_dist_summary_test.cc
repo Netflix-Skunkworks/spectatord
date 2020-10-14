@@ -9,8 +9,7 @@ using namespace spectator;
 
 template <class T>
 std::unique_ptr<T> getDS(Registry* r) {
-  auto id = r->CreateId("ds", Tags{});
-  return std::make_unique<T>(r, id, 0, 1000 * 1000);
+  return std::make_unique<T>(r, Id::Of("ds"), 0, 1000 * 1000);
 }
 
 using Implementations = testing::Types<PercentileDistributionSummary>;
@@ -21,7 +20,7 @@ class PercentileDistributionSummaryTest : public ::testing::Test {
   PercentileDistributionSummaryTest()
       : r{GetConfiguration(), DefaultLogger()},
         ds{getDS<T>(&r)},
-        restricted_ds{&r, r.CreateId("ds2", Tags{}), 5, 2000} {}
+        restricted_ds{&r, Id::Of("ds2"), 5, 2000} {}
 
   Registry r;
   std::unique_ptr<T> ds;

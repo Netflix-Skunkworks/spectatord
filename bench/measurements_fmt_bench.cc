@@ -21,13 +21,12 @@ bench_get_measurement_new        3951 ns         3947 ns       176396
 */
 
 #include <benchmark/benchmark.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
 #include "spectatord.h"
+using spectator::Id;
 using spectatord::measurement;
 
-std::optional<measurement> get_measurement_new(
-    const spectator::Registry* registry, const char* measurement_str,
-    std::string* err_msg) {
+std::optional<measurement> get_measurement_new(const char* measurement_str,
+                                               std::string* err_msg) {
   // get name (tags are specified with :# but are optional)
   const char* p = std::strchr(measurement_str, ':');
   if (p == nullptr || p == measurement_str) {
@@ -72,13 +71,11 @@ std::optional<measurement> get_measurement_new(
     }
   }
 
-  auto id = registry->CreateId(std::move(name), std::move(tags));
-  return measurement{std::move(id), value};
+  return measurement{(Id::Of(name, std::move(tags))), value};
 }
 
-std::optional<measurement> get_measurement_orig(
-    const spectator::Registry* registry, const char* measurement_str,
-    std::string* err_msg) {
+std::optional<measurement> get_measurement_orig(const char* measurement_str,
+                                                std::string* err_msg) {
   // get name (tags are specified with , but are optional)
   const char* p = std::strpbrk(measurement_str, ",:");
   if (p == nullptr || p == measurement_str) {
@@ -119,8 +116,7 @@ std::optional<measurement> get_measurement_orig(
     }
   }
 
-  auto id = registry->CreateId(std::move(name), std::move(tags));
-  return measurement{std::move(id), value};
+  return measurement{Id::Of(name, std::move(tags)), value};
 }
 
 std::vector<std::string> get_measurements_orig() {
@@ -155,30 +151,24 @@ static auto orig = get_measurements_orig();
 static auto new_ms = get_measurements_new();
 
 static void bench_get_measurement_orig(benchmark::State& state) {
-  auto logger = spdlog::get("bench");
-  spectator::Registry registry(std::make_unique<spectator::Config>(), logger);
   for (auto _ : state) {
     std::string err;
     for (const auto& m : orig) {
-      benchmark::DoNotOptimize(
-          get_measurement_orig(&registry, m.c_str(), &err));
+      benchmark::DoNotOptimize(get_measurement_orig(m.c_str(), &err));
     }
   }
 }
 
 static void bench_get_measurement_new(benchmark::State& state) {
-  auto logger = spdlog::get("bench");
-  spectator::Registry registry(std::make_unique<spectator::Config>(), logger);
   static auto ms = get_measurements_new();
   for (auto _ : state) {
     std::string err;
     for (const auto& m : new_ms) {
-      benchmark::DoNotOptimize(get_measurement_new(&registry, m.c_str(), &err));
+      benchmark::DoNotOptimize(get_measurement_new(m.c_str(), &err));
     }
   }
 }
 
-auto logger = spdlog::stdout_color_mt("bench");
 BENCHMARK(bench_get_measurement_orig);
 BENCHMARK(bench_get_measurement_new);
 BENCHMARK_MAIN();

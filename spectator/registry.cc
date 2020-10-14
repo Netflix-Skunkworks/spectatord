@@ -23,17 +23,13 @@ const Config& Registry::GetConfig() const noexcept { return *config_; }
 
 Registry::logger_ptr Registry::GetLogger() const noexcept { return logger_; }
 
-Id Registry::CreateId(std::string_view name, Tags tags) const noexcept {
-  return Id(intern_str(name), std::move(tags));
-}
-
 std::shared_ptr<Counter> Registry::GetCounter(Id id) noexcept {
   return all_meters_.insert_counter(std::move(id));
 }
 
 std::shared_ptr<Counter> Registry::GetCounter(std::string_view name,
                                               Tags tags) noexcept {
-  return GetCounter(CreateId(name, std::move(tags)));
+  return GetCounter(Id::Of(name, std::move(tags)));
 }
 
 std::shared_ptr<DistributionSummary> Registry::GetDistributionSummary(
@@ -43,7 +39,7 @@ std::shared_ptr<DistributionSummary> Registry::GetDistributionSummary(
 
 std::shared_ptr<DistributionSummary> Registry::GetDistributionSummary(
     std::string_view name, Tags tags) noexcept {
-  return GetDistributionSummary(CreateId(name, std::move(tags)));
+  return GetDistributionSummary(Id::Of(name, std::move(tags)));
 }
 
 std::shared_ptr<Gauge> Registry::GetGauge(Id id) noexcept {
@@ -58,7 +54,7 @@ std::shared_ptr<Gauge> Registry::GetGauge(Id id, absl::Duration ttl) noexcept {
 
 std::shared_ptr<Gauge> Registry::GetGauge(std::string_view name,
                                           Tags tags) noexcept {
-  return GetGauge(CreateId(name, std::move(tags)));
+  return GetGauge(Id::Of(name, std::move(tags)));
 }
 
 std::shared_ptr<MaxGauge> Registry::GetMaxGauge(Id id) noexcept {
@@ -67,7 +63,7 @@ std::shared_ptr<MaxGauge> Registry::GetMaxGauge(Id id) noexcept {
 
 std::shared_ptr<MaxGauge> Registry::GetMaxGauge(std::string_view name,
                                                 Tags tags) noexcept {
-  return GetMaxGauge(CreateId(name, std::move(tags)));
+  return GetMaxGauge(Id::Of(name, std::move(tags)));
 }
 
 std::shared_ptr<MonotonicCounter> Registry::GetMonotonicCounter(
@@ -77,7 +73,7 @@ std::shared_ptr<MonotonicCounter> Registry::GetMonotonicCounter(
 
 std::shared_ptr<MonotonicCounter> Registry::GetMonotonicCounter(
     std::string_view name, Tags tags) noexcept {
-  return GetMonotonicCounter(CreateId(name, std::move(tags)));
+  return GetMonotonicCounter(Id::Of(name, std::move(tags)));
 }
 
 std::shared_ptr<MonotonicSampled> Registry::GetMonotonicSampled(
@@ -96,7 +92,7 @@ std::shared_ptr<Timer> Registry::GetTimer(Id id) noexcept {
 
 std::shared_ptr<Timer> Registry::GetTimer(std::string_view name,
                                           Tags tags) noexcept {
-  return GetTimer(CreateId(name, std::move(tags)));
+  return GetTimer(Id::Of(name, std::move(tags)));
 }
 
 void Registry::Start() noexcept {

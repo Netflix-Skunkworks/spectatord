@@ -23,11 +23,11 @@ bench_get_measurement_strview       2488 ns         2488 ns       284401
 */
 
 #include <benchmark/benchmark.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <iostream>
 #include "spectatord.h"
 
+using spectator::Id;
 using spectatord::measurement;
+
 std::optional<measurement> get_measurement_ptr(
     const spectator::Registry* registry, const char* measurement_str,
     std::string* err_msg) {
@@ -81,7 +81,7 @@ std::optional<measurement> get_measurement_ptr(
     }
   }
 
-  auto id = registry->CreateId(std::move(name), std::move(tags));
+  auto id = Id::Of(name, std::move(tags));
   return measurement{std::move(id), value};
 }
 
@@ -129,7 +129,7 @@ std::optional<measurement> get_measurement_strchr(
     }
   }
 
-  auto id = registry->CreateId(std::move(name), std::move(tags));
+  auto id = Id::Of(std::move(name), std::move(tags));
   return measurement{std::move(id), value};
 }
 
@@ -179,7 +179,7 @@ std::optional<measurement> get_measurement_strview(
     }
   }
 
-  auto id = registry->CreateId(name, std::move(tags));
+  auto id = Id::Of(name, std::move(tags));
   return measurement{std::move(id), value};
 }
 
@@ -226,7 +226,6 @@ static void bench_get_measurement_strview(benchmark::State& state) {
   bench_get_measurement_fun(state, get_measurement_strview);
 }
 
-auto logger = spdlog::stdout_color_mt("bench");
 BENCHMARK(bench_get_measurement_ptr);
 BENCHMARK(bench_get_measurement_strchr);
 BENCHMARK(bench_get_measurement_strview);
