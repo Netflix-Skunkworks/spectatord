@@ -72,6 +72,7 @@ ABSL_FLAG(bool, debug, false,
           "Debug spectatord. All values will be sent to a dev aggregator and "
           "dropped.");
 ABSL_FLAG(bool, verbose, false, "Use verbose logging");
+ABSL_FLAG(bool, enable_statsd, false, "Enable statsd support");
 ABSL_FLAG(absl::Duration, meter_ttl, absl::Minutes(15),
           "Meter ttl: expire meters after this period of inactivity");
 ABSL_FLAG(std::string, socket_path, "/run/spectatord/spectatord.unix",
@@ -129,8 +130,10 @@ int main(int argc, char** argv) {
   }
   spectator::Registry registry{std::move(cfg), std::move(spectator_logger)};
   registry.Start();
-  spectatord::Server server{absl::GetFlag(FLAGS_port).port,
-                            absl::GetFlag(FLAGS_statsd_port).port,
+  auto statsd_enabled = absl::GetFlag(FLAGS_enable_statsd);
+  auto statsd_port =
+      statsd_enabled ? absl::GetFlag(FLAGS_statsd_port).port : -1;
+  spectatord::Server server{absl::GetFlag(FLAGS_port).port, statsd_port,
                             absl::GetFlag(FLAGS_socket_path), &registry};
   server.Start();
   return 0;

@@ -131,6 +131,11 @@ void Registry::remove_expired_meters() noexcept {
 
 void Registry::expirer() noexcept {
   auto& frequency = config_->expiration_frequency;
+  if (frequency == absl::ZeroDuration()) {
+    logger_->info("Will not expire meters");
+    return;
+  }
+
   logger_->debug("Starting metrics expiration. Meter ttl={}s running every {}s",
                  meter_ttl_ / 1e9, absl::ToDoubleSeconds(frequency));
 

@@ -278,6 +278,7 @@ static auto create_perc_ds(spectator::Registry* registry, spectator::Id id) {
   return std::make_unique<spectator::PercentileDistributionSummary>(
       registry, std::move(id), min_ds, max_ds);
 }
+
 Server::Server(int port_number, int statsd_port_number, std::string socket_path,
                spectator::Registry* registry)
     : port_number_{port_number},
@@ -289,6 +290,24 @@ Server::Server(int port_number, int statsd_port_number, std::string socket_path,
       logger_{Logger()},
       perc_timers_{create_perc_timer},
       perc_ds_{create_perc_ds} {}
+
+static void prepare_socket_path(const std::string& socket_path) {
+  ::unlink(socket_path.c_str());
+
+  // TODO: Migrate to std::filesystem after we verify it works on all
+  // our platforms
+  auto last = socket_path.rfind('/');
+  if (last != std::string::npos) {
+    auto dir = socket_path.substr(0, last);
+    // create dir with the default umask
+    Logger()->info("Creating dir: {}", dir);
+    ::mkdir(dir.c_str(), 0777);
+  }
+
+  // We don't want to restrict the permissions on the socket path
+  // so any user can send metrics
+  umask(0);
+}
 
 void Server::Start() {
   auto logger = Logger();
@@ -312,14 +331,20 @@ void Server::Start() {
   logger->info("Starting spectatord server on port {}", port_number_);
   udp_server.Start();
 
-  auto statsd_parser = [this](char* buffer) {
-    return this->parse_statsd(buffer);
-  };
-  UdpServer statsd_server{io_context, statsd_port_number_, statsd_parser};
-  logger->info("Starting statsd server on port {}", statsd_port_number_);
-  statsd_server.Start();
+  std::unique_ptr<UdpServer> statsd_server;
+  if (statsd_port_number_ > 0) {
+    auto statsd_parser = [this](char* buffer) {
+      return this->parse_statsd(buffer);
+    };
+    statsd_server = std::make_unique<UdpServer>(io_context, statsd_port_number_,
+                                                statsd_parser);
+    logger->info("Starting statsd server on port {}", statsd_port_number_);
+    statsd_server->Start();
+  } else {
+    logger->info("statsd support is not enabled");
+  }
 
-  ::unlink(socket_path_.c_str());
+  prepare_socket_path(socket_path_);
   LocalServer dgram_local{io_context, socket_path_, parser};
   dgram_local.Start();
   logger->info("Starting local server (dgram) on socket {}", socket_path_);
