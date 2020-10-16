@@ -25,6 +25,7 @@ int max_buffer_size(const char* proc_file) {
     char buf[4096];
     int n = read(fd, buf, sizeof buf);
     if (n > 0) {
+      buf[n] = '\0';
       if (!absl::SimpleAtoi(buf, &result)) {
         // unable to parse
         result = kDefault;
