@@ -300,7 +300,7 @@ static void prepare_socket_path(const std::string& socket_path) {
   if (last != std::string::npos) {
     auto dir = socket_path.substr(0, last);
     // create dir with the default umask
-    Logger()->info("Creating dir: {}", dir);
+    Logger()->debug("Creating dir: {}", dir);
     ::mkdir(dir.c_str(), 0777);
   }
 
