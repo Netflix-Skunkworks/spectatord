@@ -258,8 +258,8 @@ TEST(Spectatord, ParseCounter) {
   spectator::Registry registry{GetConfiguration(), logger};
   test_server server{&registry};
 
-  char_ptr line1{strdup("1:c:counter.name:10")};
-  char_ptr line2{strdup("1:c:counter.name:10")};
+  char_ptr line1{strdup("c:counter.name:10")};
+  char_ptr line2{strdup("c:counter.name:10")};
   server.parse_msg(line1.get());
   server.parse_msg(line2.get());
 
@@ -274,7 +274,7 @@ TEST(Spectatord, ParseMultiline) {
   test_server server{&registry};
 
   char_ptr line{
-      strdup("1:c:counter.name:10\n1:c:counter.name:20\n1:c:counter.name:12")};
+      strdup("c:counter.name:10\nc:counter.name:20\nc:counter.name:12")};
   server.parse_msg(line.get());
 
   auto map = server.measurements();
@@ -287,8 +287,8 @@ TEST(Spectatord, ParseTimer) {
   spectator::Registry registry{GetConfiguration(), logger};
   test_server server{&registry};
 
-  char_ptr line1{strdup("1:t:timer.name:.001")};
-  char_ptr line2{strdup("1:t:timer.name:.001")};
+  char_ptr line1{strdup("t:timer.name:.001")};
+  char_ptr line2{strdup("t:timer.name:.001")};
   server.parse_msg(line1.get());
   server.parse_msg(line2.get());
 
@@ -304,7 +304,7 @@ TEST(Spectatord, ParseGauge) {
   spectator::Registry registry{GetConfiguration(), logger};
   test_server server{&registry};
 
-  char_ptr line{strdup("1:g:gauge.name:1.234")};
+  char_ptr line{strdup("g:gauge.name:1.234")};
   server.parse_msg(line.get());
 
   auto map = server.measurements();
@@ -319,7 +319,7 @@ TEST(Spectatord, ParseGaugeTtl) {
   spectator::Registry registry{std::move(cfg), logger};
   test_server server{&registry};
 
-  char_ptr line{strdup("1:g,5:gauge.name:1.234")};
+  char_ptr line{strdup("g,5:gauge.name:1.234")};
   server.parse_msg(line.get());
 
   auto map = server.measurements();
@@ -329,12 +329,12 @@ TEST(Spectatord, ParseGaugeTtl) {
   // honors the Ttl
   EXPECT_EQ(registry.GetGauge("gauge.name")->GetTtl(), absl::Seconds(5));
 
-  char_ptr line2{strdup("1:g,15:gauge.name:1.234")};
+  char_ptr line2{strdup("g,15:gauge.name:1.234")};
   server.parse_msg(line2.get());
   // overrides the Ttl
   EXPECT_EQ(registry.GetGauge("gauge.name")->GetTtl(), absl::Seconds(15));
 
-  char_ptr line3{strdup("1:g:gauge.name:1.234")};
+  char_ptr line3{strdup("g:gauge.name:1.234")};
   server.parse_msg(line3.get());
   // preserves the previous Ttl
   EXPECT_EQ(registry.GetGauge("gauge.name")->GetTtl(), absl::Seconds(15));
@@ -345,10 +345,10 @@ TEST(Spectatord, ParseDistSummary) {
   spectator::Registry registry{GetConfiguration(), logger};
   test_server server{&registry};
 
-  char_ptr line{strdup("1:d:dist.summary:1")};
+  char_ptr line{strdup("d:dist.summary:1")};
   server.parse_msg(line.get());
 
-  char_ptr line2{strdup("1:d:dist.summary:2")};
+  char_ptr line2{strdup("d:dist.summary:2")};
   server.parse_msg(line2.get());
 
   auto map = server.measurements();
