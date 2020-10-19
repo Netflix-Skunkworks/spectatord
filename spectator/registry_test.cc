@@ -4,35 +4,35 @@
 #include <gtest/gtest.h>
 
 namespace {
-using spectator::DefaultLogger;
 using spectator::GetConfiguration;
 using spectator::Id;
 using spectator::Registry;
 using spectator::Tags;
+using spectatord::Logger;
 
 TEST(Registry, Counter) {
-  Registry r{GetConfiguration(), DefaultLogger()};
+  Registry r{GetConfiguration(), spectatord::Logger()};
   auto c = r.GetCounter("foo");
   c->Increment();
   EXPECT_EQ(c->Count(), 1);
 }
 
 TEST(Registry, CounterGet) {
-  Registry r{GetConfiguration(), DefaultLogger()};
+  Registry r{GetConfiguration(), spectatord::Logger()};
   auto c = r.GetCounter("foo");
   c->Increment();
   EXPECT_EQ(r.GetCounter("foo")->Count(), 1);
 }
 
 TEST(Registry, DistSummary) {
-  Registry r{GetConfiguration(), DefaultLogger()};
+  Registry r{GetConfiguration(), spectatord::Logger()};
   auto ds = r.GetDistributionSummary("ds");
   ds->Record(100);
   EXPECT_EQ(r.GetDistributionSummary("ds")->TotalAmount(), 100);
 }
 
 TEST(Registry, Gauge) {
-  Registry r{GetConfiguration(), DefaultLogger()};
+  Registry r{GetConfiguration(), spectatord::Logger()};
   auto g = r.GetGauge("g");
   auto g2 = r.GetGauge("g", Tags{{"id", "2"}});
   g->Set(100);
@@ -42,7 +42,7 @@ TEST(Registry, Gauge) {
 }
 
 TEST(Registry, MaxGauge) {
-  Registry r{GetConfiguration(), DefaultLogger()};
+  Registry r{GetConfiguration(), spectatord::Logger()};
   auto g = r.GetMaxGauge("g");
   auto g2 = r.GetMaxGauge("g", Tags{{"id", "2"}});
   g->Update(100);
@@ -52,7 +52,7 @@ TEST(Registry, MaxGauge) {
 }
 
 TEST(Registry, MonotonicCounter) {
-  Registry r{GetConfiguration(), DefaultLogger()};
+  Registry r{GetConfiguration(), spectatord::Logger()};
   auto c = r.GetMonotonicCounter("m");
   auto c2 = r.GetMonotonicCounter("m", Tags{{"id", "2"}});
   spectator::Measurements ms;
@@ -67,7 +67,7 @@ TEST(Registry, MonotonicCounter) {
 }
 
 TEST(Registry, Timer) {
-  Registry r{GetConfiguration(), DefaultLogger()};
+  Registry r{GetConfiguration(), spectatord::Logger()};
   auto t = r.GetTimer("t");
   auto t2 = r.GetTimer("t", Tags{{"id", "2"}});
   t->Record(std::chrono::microseconds(1));
@@ -77,7 +77,7 @@ TEST(Registry, Timer) {
 }
 
 TEST(Registry, Meters) {
-  Registry r{GetConfiguration(), DefaultLogger()};
+  Registry r{GetConfiguration(), spectatord::Logger()};
   auto t = r.GetTimer("t");
   auto c = r.GetCounter("c");
   r.GetTimer("t")->Count();
@@ -89,7 +89,7 @@ TEST(Registry, Meters) {
 }
 
 TEST(Registry, MeasurementTest) {
-  Registry r{GetConfiguration(), DefaultLogger()};
+  Registry r{GetConfiguration(), spectatord::Logger()};
   auto c = r.GetCounter("c");
   c->Increment();
   spectator::Measurements ms;
@@ -109,7 +109,7 @@ TEST(Registry, MeasurementTest) {
 
 struct ExpRegistry : public Registry {
   explicit ExpRegistry(std::unique_ptr<spectator::Config> cfg)
-      : Registry(std::move(cfg), DefaultLogger()) {}
+      : Registry(std::move(cfg), spectatord::Logger()) {}
 
   void expire() { remove_expired_meters(); }
 };
@@ -139,7 +139,7 @@ TEST(Registry, Expiration) {
 }
 
 TEST(Registry, Size) {
-  Registry r{GetConfiguration(), DefaultLogger()};
+  Registry r{GetConfiguration(), spectatord::Logger()};
   auto base_number = r.Size();
 
   r.GetCounter("foo");
@@ -152,7 +152,7 @@ TEST(Registry, Size) {
 }
 
 TEST(Registry, OnMeasurements) {
-  Registry r{GetConfiguration(), DefaultLogger()};
+  Registry r{GetConfiguration(), spectatord::Logger()};
   auto called = false;
   auto found = false;
   auto cb = [&](const std::vector<spectator::Measurement>& ms) {
@@ -170,7 +170,7 @@ TEST(Registry, OnMeasurements) {
 }
 
 TEST(Registry, DistSummary_Size) {
-  Registry r{GetConfiguration(), DefaultLogger()};
+  Registry r{GetConfiguration(), spectatord::Logger()};
   r.GetTimer("foo")->Record(std::chrono::seconds{42});
   r.GetCounter("bar")->Increment();
   // we have 4 measurements from the timer + 1 from the counter

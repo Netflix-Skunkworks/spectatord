@@ -13,10 +13,17 @@ memory_allocator = select({
     })
 
 cc_library(
+    name = "util",
+    srcs = ["util/logger.cc"],
+    hdrs = ["util/files.h", "util/logger.h", ],
+    deps = ["@com_github_gabime_spdlog//:spdlog", ],
+)
+
+cc_library(
     name = "spectator",
     srcs = ["spectator/common_refs.cc", "spectator/compressed_buffer.cc",
             "spectator/counter.cc", "spectator/dist_summary.cc", "spectator/gauge.cc", "spectator/gzip.cc",
-            "spectator/http_client.cc", "spectator/id.cc", "spectator/logger.cc", "spectator/max_gauge.cc",
+            "spectator/http_client.cc", "spectator/id.cc", "spectator/max_gauge.cc",
             "spectator/monotonic_counter.cc", "spectator/monotonic_sampled.cc",
             "spectator/percentile_buckets.cc", "spectator/registry.cc",
             "spectator/smile.cc", "spectator/strings.cc", "spectator/string_pool.cc",
@@ -24,9 +31,9 @@ cc_library(
     hdrs = ["spectator/atomicnumber.h", "spectator/common_refs.h", "spectator/compressed_buffer.h",
             "spectator/config.h", "spectator/counter.h",
             "spectator/dist_stats.h",
-            "spectator/dist_summary.h", "spectator/file_watcher.h", "spectator/gauge.h",
+            "spectator/dist_summary.h", "spectator/gauge.h",
             "spectator/gzip.h", "spectator/http_client.h", "spectator/id.h",
-            "spectator/log_entry.h", "spectator/logger.h",
+            "spectator/log_entry.h",
             "spectator/max_gauge.h", "spectator/measurement.h",
             "spectator/meter.h", "spectator/monotonic_counter.h", "spectator/monotonic_sampled.h",
             "spectator/percentile_buckets.h",
@@ -39,12 +46,12 @@ cc_library(
             "percentile_bucket_tags.inc", "percentile_bucket_values.inc", "valid_chars.inc",
             "spectator/detail/perc_policy.h"],
     deps = [
+        ":util",
         "@asio//:asio",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_github_fmtlib_fmt//:fmtlib",
-        "@com_github_gabime_spdlog//:spdlog",
         "@com_github_tessil_hopscotch_map//:hopscotch_map",
         "@com_github_skarupke_flat_hash_map//:flat_hash_map",
         "@com_github_tencent_rapidjson//:rapidjson",
@@ -132,9 +139,9 @@ cc_test(
 
 cc_library(
     name = "spectatord",
-    srcs = ["server/spectatord.cc", "server/logger.cc",
+    srcs = ["server/spectatord.cc", "util/logger.cc",
             "server/local_server.cc", "server/udp_server.cc", "server/proc_utils.cc"],
-    hdrs = ["server/files.h", "server/expiring_cache.h", "server/spectatord.h", "server/logger.h",
+    hdrs = ["util/files.h", "server/expiring_cache.h", "server/spectatord.h", "util/logger.h",
             "server/udp_server.h", "server/local_server.h",
             "server/handler.h", "server/local.h", "server/proc_utils.h"],
     deps = [

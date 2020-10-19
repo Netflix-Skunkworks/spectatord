@@ -1,6 +1,6 @@
 #include <fmt/ostream.h>
 #include "local.h"
-#include "logger.h"
+#include "util/logger.h"
 #include "spectatord.h"
 
 #include "gtest/gtest.h"

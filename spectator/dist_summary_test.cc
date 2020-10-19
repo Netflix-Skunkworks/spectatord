@@ -1,5 +1,5 @@
-#include "../spectator/dist_summary.h"
-#include "../spectator/common_refs.h"
+#include "dist_summary.h"
+#include "common_refs.h"
 #include <gtest/gtest.h>
 #include <unordered_map>
 
@@ -7,7 +7,7 @@ namespace {
 using spectator::DistributionSummary;
 
 DistributionSummary getDS() {
-  return DistributionSummary(spectator::Id("ds", spectator::Tags{}));
+  return DistributionSummary(spectator::Id::Of("ds"));
 }
 
 TEST(DistributionSummary, Record) {

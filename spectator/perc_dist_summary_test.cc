@@ -1,8 +1,8 @@
-#include <fmt/ostream.h>
-#include "../spectator/percentile_distribution_summary.h"
-#include <gtest/gtest.h>
+#include "percentile_distribution_summary.h"
 #include "percentile_bucket_tags.inc"
 #include "test_utils.h"
+#include <fmt/ostream.h>
+#include <gtest/gtest.h>
 
 namespace {
 using namespace spectator;
@@ -18,7 +18,7 @@ template <class T>
 class PercentileDistributionSummaryTest : public ::testing::Test {
  protected:
   PercentileDistributionSummaryTest()
-      : r{GetConfiguration(), DefaultLogger()},
+      : r{GetConfiguration(), spectatord::Logger()},
         ds{getDS<T>(&r)},
         restricted_ds{&r, Id::Of("ds2"), 5, 2000} {}
 
