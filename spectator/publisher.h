@@ -5,7 +5,7 @@
 #include "config.h"
 #include "counter.h"
 #include "http_client.h"
-#include "logger.h"
+#include "util/logger.h"
 #include "measurement.h"
 #include "smile.h"
 
@@ -310,6 +310,13 @@ class Publisher {
       return;
     }
 
+    if (logger->should_log(spdlog::level::trace)) {
+      logger->trace("Sending {} measurements to {}", measurements.size(),
+                    registry_->GetConfig().uri);
+      for (const auto& m : measurements) {
+        logger->trace("{}", m);
+      }
+    }
     auto from = measurements.begin();
     auto end = measurements.end();
     std::vector<std::pair<int, HttpResponse>> responses;

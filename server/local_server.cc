@@ -1,5 +1,5 @@
 #include "local_server.h"
-#include "logger.h"
+#include "util/logger.h"
 #include "proc_utils.h"
 
 namespace spectatord {

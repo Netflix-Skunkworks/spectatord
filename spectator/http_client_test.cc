@@ -14,7 +14,6 @@
 namespace {
 
 using spectator::Config;
-using spectator::DefaultLogger;
 using spectator::GetConfiguration;
 using spectator::gzip_uncompress;
 using spectator::HttpClient;
@@ -25,6 +24,7 @@ using spectator::intern_str;
 using spectator::Registry;
 using spectator::Tags;
 using spectator::Timer;
+using spectatord::Logger;
 
 const Timer* find_timer(Registry* registry, const std::string& name,
                         const std::string& status_code) {
@@ -45,7 +45,7 @@ const Timer* find_timer(Registry* registry, const std::string& name,
 class TestRegistry : public Registry {
  public:
   explicit TestRegistry(std::unique_ptr<Config> config)
-      : Registry(std::move(config), DefaultLogger()) {}
+      : Registry(std::move(config), spectatord::Logger()) {}
 };
 
 HttpClientConfig get_cfg(int read_to, int connect_to) {
@@ -59,7 +59,7 @@ TEST(HttpTest, Post) {
 
   auto port = server.get_port();
   ASSERT_TRUE(port > 0) << "Port = " << port;
-  auto logger = DefaultLogger();
+  auto logger = spectatord::Logger();
   logger->info("Server started on port {}", port);
 
   TestRegistry registry{GetConfiguration()};
@@ -112,7 +112,7 @@ TEST(HttpTest, PostUncompressed) {
 
   auto port = server.get_port();
   ASSERT_TRUE(port > 0) << "Port = " << port;
-  auto logger = DefaultLogger();
+  auto logger = spectatord::Logger();
   logger->info("Server started on port {}", port);
 
   TestRegistry registry{GetConfiguration()};
@@ -214,7 +214,7 @@ TEST(HttpTest, PostHeaders) {
 
   auto port = server.get_port();
   ASSERT_TRUE(port > 0) << "Port = " << port;
-  auto logger = DefaultLogger();
+  auto logger = spectatord::Logger();
   logger->info("Server started on port {}", port);
 
   TestRegistry registry{GetConfiguration()};
@@ -248,7 +248,7 @@ TEST(HttpTest, Get) {
 
   auto port = server.get_port();
   ASSERT_TRUE(port > 0) << "Port = " << port;
-  auto logger = DefaultLogger();
+  auto logger = spectatord::Logger();
   logger->info("Server started on port {}", port);
 
   auto response = client.Get(fmt::format("http://localhost:{}/get", port));
@@ -280,7 +280,7 @@ TEST(HttpTest, Get503) {
 
   auto port = server.get_port();
   ASSERT_TRUE(port > 0) << "Port = " << port;
-  auto logger = DefaultLogger();
+  auto logger = spectatord::Logger();
   logger->info("Server started on port {}", port);
 
   auto response = client.Get(fmt::format("http://localhost:{}/get503", port));
@@ -321,7 +321,7 @@ void test_method_header(const std::string& method) {
 
   auto port = server.get_port();
   ASSERT_TRUE(port > 0) << "Port = " << port;
-  auto logger = DefaultLogger();
+  auto logger = spectatord::Logger();
   logger->info("Server started on port {}", port);
   std::vector<std::string> headers{"X-Spectator: foo", "X-Other-Header: bar"};
 

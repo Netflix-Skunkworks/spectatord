@@ -19,7 +19,7 @@ template <class T>
 class PercentileTimerTest : public ::testing::Test {
  protected:
   PercentileTimerTest()
-      : r{GetConfiguration(), DefaultLogger()},
+      : r{GetConfiguration(), spectatord::Logger()},
         timer{getTimer<T>(&r)},
         restricted_timer{&r, Id::Of("t2"), absl::Milliseconds(5),
                          absl::Seconds(2)} {}

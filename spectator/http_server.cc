@@ -1,6 +1,8 @@
 #include "http_server.h"
-#include "../spectator/gzip.h"
-#include "../spectator/logger.h"
+#include "absl/strings/ascii.h"
+#include "spectator/gzip.h"
+#include "util/logger.h"
+
 #include <fmt/format.h>
 #include <fstream>
 #include <gtest/gtest.h>
@@ -8,8 +10,8 @@
 #include <sys/socket.h>
 #include <thread>
 
-using spectator::DefaultLogger;
 using spectator::gzip_compress;
+using spectatord::Logger;
 
 http_server::http_server() noexcept {
   path_response_["/foo"] =
@@ -74,14 +76,14 @@ void http_server::start() noexcept {
   ASSERT_TRUE(getsockname(sockfd, (sockaddr*)&serv_addr, &serv_len) >= 0);
   port_ = ntohs(serv_addr.sin_port);
 
-  DefaultLogger()->info("Http server started");
+  Logger()->info("Http server started");
   accept_ = std::thread{&http_server::accept_loop, this};
 }
 
 static std::string to_lower(const std::string& s) {
   std::string copy{s};
   for (auto i = 0u; i < s.length(); ++i) {
-    copy[i] = static_cast<char>(std::tolower(s[i]));
+    copy[i] = static_cast<char>(absl::ascii_tolower(s[i]));
   }
   return copy;
 }
@@ -137,7 +139,7 @@ static void do_write(int socket, const std::string& response) {
 void http_server::accept_request(int client) {
   using namespace std;
 
-  auto logger = DefaultLogger();
+  auto logger = Logger();
   char buf[65536];
   get_line(client, buf, sizeof buf);
 
@@ -254,15 +256,15 @@ void http_server::accept_loop() {
     struct sockaddr_in cli_addr;
     socklen_t cli_len = sizeof(cli_addr);
     if (accept_sleep_.count() > 0 && slept_number < sleep_number_) {
-      DefaultLogger()->debug("Sleeping before accept {} < {}", slept_number,
-                             sleep_number_.load());
+      Logger()->debug("Sleeping before accept {} < {}", slept_number,
+                      sleep_number_.load());
       std::this_thread::sleep_for(accept_sleep_);
       slept_number++;
     }
     tv.tv_sec = 0;
     tv.tv_usec = 10 * 1000l;
     if (select(sockfd_ + 1, &fds, nullptr, nullptr, &tv) > 0) {
-      DefaultLogger()->debug("Http server accepting client connection");
+      Logger()->debug("Http server accepting client connection");
       int client_socket = accept(sockfd_, (sockaddr*)&cli_addr, &cli_len);
       if (client_socket >= 0) {
         accept_request(client_socket);

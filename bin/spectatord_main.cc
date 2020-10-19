@@ -1,6 +1,6 @@
 #include "backward.hpp"
 #include "local.h"
-#include "logger.h"
+#include "util/logger.h"
 #include "spectatord.h"
 #include "spectator/registry.h"
 #include <cstdlib>
@@ -103,8 +103,8 @@ int main(int argc, char** argv) {
   cfg->meter_ttl = absl::GetFlag(FLAGS_meter_ttl);
   auto spectator_logger = GetLogger("spectator");
   if (absl::GetFlag(FLAGS_verbose)) {
-    logger->set_level(spdlog::level::debug);
-    spectator_logger->set_level(spdlog::level::debug);
+    logger->set_level(spdlog::level::trace);
+    spectator_logger->set_level(spdlog::level::trace);
   } else {
     logger->set_level(spdlog::level::info);
     spectator_logger->set_level(spdlog::level::info);
