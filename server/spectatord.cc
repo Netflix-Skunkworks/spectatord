@@ -444,15 +444,6 @@ std::optional<std::string> Server::parse_line(const char* buffer) {
   static int_fast64_t parsed_count = 0;
 
   const char* p = buffer;
-  auto version = *p++;
-  if (version != '1') {
-    return fmt::format("Unknown version: {} - ignoring message {}", version,
-                       buffer);
-  }
-
-  if (*p++ != ':') {
-    return "Expecting separator ':' at index 1";
-  }
 
   auto type = *p++;
   auto extra = int64_t{0};
