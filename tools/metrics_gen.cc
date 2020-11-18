@@ -149,34 +149,34 @@ metrics_t gen_metrics(const char* prefix, int num, int distinct,
   for (auto i = 0; i < num / 10; ++i) {
     auto n = i % distinct;
     raw.emplace_back(fmt::format(
-        "1:c:spectatord_test.counter:#id={}{},foo=some-foo:42.0\n", prefix, n));
+        "c:spectatord_test.counter,id={}{},foo=some-foo:42.0\n", prefix, n));
     raw.emplace_back(
-        fmt::format("1:C:spectatord_test.monocounter:#id={}{},foo=some-foo,bar="
+        fmt::format("1:C:spectatord_test.monocounter,id={}{},foo=some-foo,bar="
                     "some-bar:{}\n",
                     prefix, n, i));
     raw.emplace_back(fmt::format(
-        "1:t:spectatord_test.timer:#id={}{},foo=some-foo:0.5\n", prefix, n));
+        "t:spectatord_test.timer,id={}{},foo=some-foo:0.5\n", prefix, n));
     raw.emplace_back(fmt::format(
-        "1:d:spectatord_test.ds:#id={}{},foo=some-foo:42\n", prefix, n));
+        "d:spectatord_test.ds,id={}{},foo=some-foo:42\n", prefix, n));
     raw.emplace_back(fmt::format(
-        "1:m:spectatord_test.max:#id={}{},foo=some-foo:{}\n", prefix, n, i));
+        "m:spectatord_test.max,id={}{},foo=some-foo:{}\n", prefix, n, i));
     raw.emplace_back(
-        fmt::format("1:D:spectatord_test.percDs:#id={}{},tag1=some-tag-string,"
+        fmt::format("D:spectatord_test.percDs,id={}{},tag1=some-tag-string,"
                     "tag2=some-value:{}\n",
                     prefix, n, n % 5));
     raw.emplace_back(
-        fmt::format("1:T:spectatord_test.percTimer:#id={}{},invalid=some-"
+        fmt::format("T:spectatord_test.percTimer,id={}{},invalid=some-"
                     "invalid-string:{}\n",
                     prefix, n, n % 5));
     raw.emplace_back(fmt::format(
-        "1:c:spectatord_test.ctr:#id={}{},nf.invalid=some-invalid-string:{}\n",
+        "c:spectatord_test.ctr,id={}{},nf.invalid=some-invalid-string:{}\n",
         prefix, n, i % 5));
     raw.emplace_back(
-        fmt::format("1:c:spectatord_test.ctr2:#id={}{},foo=bar,bar=baz:{}\n",
+        fmt::format("c:spectatord_test.ctr2,id={}{},foo=bar,bar=baz:{}\n",
                     prefix, n, i % 5));
-    raw.emplace_back(fmt::format(
-        "1:g,30:spectatord_test.gauge:#id={}{},foo=bar,bar=baz:{}\n", prefix, n,
-        i % 5));
+    raw.emplace_back(
+        fmt::format("g,30:spectatord_test.gauge,id={}{},foo=bar,bar=baz:{}\n",
+                    prefix, n, i % 5));
   }
   return batch(raw, batch_size);
 }

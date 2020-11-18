@@ -142,6 +142,13 @@ class CurlHandle {
     curl_easy_setopt(handle_, CURLOPT_HEADERFUNCTION, curl_capture_headers_fun);
   }
 
+  void trace_requests() {
+    // we log to stdout - might need to make it configurable
+    // in the future. For now let's keep it simple
+    curl_easy_setopt(handle_, CURLOPT_STDERR, stdout);
+    curl_easy_setopt(handle_, CURLOPT_VERBOSE, 1L);
+  }
+
  private:
   CURL* handle_;
   std::shared_ptr<CurlHeaders> headers_;
@@ -212,6 +219,9 @@ HttpResponse HttpClient::perform(const char* method, const std::string& url,
     curl.capture_headers();
   }
 
+  if (config_.trace_requests) {
+    curl.trace_requests();
+  }
   auto curl_res = curl.perform();
   auto http_code = 400;
 

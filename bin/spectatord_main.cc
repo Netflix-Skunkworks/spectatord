@@ -72,6 +72,7 @@ ABSL_FLAG(bool, debug, false,
           "Debug spectatord. All values will be sent to a dev aggregator and "
           "dropped.");
 ABSL_FLAG(bool, verbose, false, "Use verbose logging");
+ABSL_FLAG(bool, trace, false, "Trace http requests");
 ABSL_FLAG(bool, enable_statsd, false, "Enable statsd support");
 ABSL_FLAG(absl::Duration, meter_ttl, absl::Minutes(15),
           "Meter ttl: expire meters after this period of inactivity");
@@ -99,7 +100,9 @@ int main(int argc, char** argv) {
     cfg->uri =
         "http://atlas-aggr-dev.us-east-1.ieptest.netflix.net/api/v4/update";
   }
-
+  if (absl::GetFlag(FLAGS_trace)) {
+    cfg->trace_http = true;
+  }
   cfg->meter_ttl = absl::GetFlag(FLAGS_meter_ttl);
   auto spectator_logger = GetLogger("spectator");
   if (absl::GetFlag(FLAGS_verbose)) {
