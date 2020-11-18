@@ -20,7 +20,7 @@ struct HttpClientConfig {
   bool compress;
   bool read_headers;
   bool read_body;
-  bool trace_requests;
+  bool verbose_requests;
 };
 
 using HttpHeaders = std::unordered_map<std::string, std::string>;

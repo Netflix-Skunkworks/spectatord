@@ -26,6 +26,7 @@ env:
     - LANG="en_US.UTF-8"
 
 script:
+  - tools/generate_version.sh > spectator/version.h
   - bazel-3.5.0 --output_user_root=$HOME/.cache/bazel --batch build --config asan spectatord_test spectator_test spectatord_main --verbose_failures
   - bazel-bin/spectator_test && bazel-bin/spectatord_test
 

@@ -1,6 +1,7 @@
 #include "http_client.h"
 #include "gzip.h"
 #include "log_entry.h"
+#include "version.h"
 
 #include <algorithm>
 #include <utility>
@@ -27,7 +28,6 @@ class CurlHeaders {
 
 namespace {
 
-constexpr const char* const kUserAgent = "spectator-cpp/1.0";
 size_t curl_ignore_output_fun(char* /*unused*/, size_t size, size_t nmemb,
                               void* /*unused*/) {
   return size * nmemb;
@@ -59,7 +59,8 @@ size_t curl_capture_headers_fun(char* contents, size_t size, size_t nmemb,
 class CurlHandle {
  public:
   CurlHandle() noexcept : handle_{curl_easy_init()} {
-    curl_easy_setopt(handle_, CURLOPT_USERAGENT, kUserAgent);
+    auto user_agent = fmt::format("spectatord/{}", VERSION);
+    curl_easy_setopt(handle_, CURLOPT_USERAGENT, user_agent.c_str());
   }
 
   CurlHandle(const CurlHandle&) = delete;
@@ -219,7 +220,7 @@ HttpResponse HttpClient::perform(const char* method, const std::string& url,
     curl.capture_headers();
   }
 
-  if (config_.trace_requests) {
+  if (config_.verbose_requests) {
     curl.trace_requests();
   }
   auto curl_res = curl.perform();
