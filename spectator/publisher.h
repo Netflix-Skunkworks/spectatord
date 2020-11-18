@@ -251,7 +251,7 @@ class Publisher {
       connect_timeout = absl::Seconds(2);
     }
     return HttpClientConfig{connect_timeout, read_timeout, true,
-                            false,           true,         cfg.trace_http};
+                            false,           true,         cfg.verbose_http};
   }
 
   std::pair<size_t, size_t> handle_aggr_response(

@@ -3,48 +3,79 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 config_setting(
     name = "nflx_internal",
     define_values = {
-        "nflx_internal": "1"
-        }
-    )
+        "nflx_internal": "1",
+    },
+)
 
 memory_allocator = select({
     "@bazel_tools//src/conditions:linux_x86_64": "@com_google_tcmalloc//tcmalloc",
-    "//conditions:default": "@bazel_tools//tools/cpp:malloc", 
-    })
+    "//conditions:default": "@bazel_tools//tools/cpp:malloc",
+})
 
 cc_library(
     name = "util",
     srcs = ["util/logger.cc"],
-    hdrs = ["util/files.h", "util/logger.h", ],
-    deps = ["@com_github_gabime_spdlog//:spdlog", ],
+    hdrs = ["util/files.h", "util/logger.h"],
+    deps = ["@com_github_gabime_spdlog//:spdlog"],
 )
 
 cc_library(
     name = "spectator",
-    srcs = ["spectator/common_refs.cc", "spectator/compressed_buffer.cc",
-            "spectator/counter.cc", "spectator/dist_summary.cc", "spectator/gauge.cc", "spectator/gzip.cc",
-            "spectator/http_client.cc", "spectator/id.cc", "spectator/max_gauge.cc",
-            "spectator/monotonic_counter.cc", "spectator/monotonic_sampled.cc",
-            "spectator/percentile_buckets.cc", "spectator/registry.cc",
-            "spectator/smile.cc", "spectator/strings.cc", "spectator/string_pool.cc",
-            "spectator/timer.cc"],
-    hdrs = ["spectator/atomicnumber.h", "spectator/common_refs.h", "spectator/compressed_buffer.h",
-            "spectator/config.h", "spectator/counter.h",
-            "spectator/dist_stats.h",
-            "spectator/dist_summary.h", "spectator/gauge.h",
-            "spectator/gzip.h", "spectator/http_client.h", "spectator/id.h",
-            "spectator/log_entry.h",
-            "spectator/max_gauge.h", "spectator/measurement.h",
-            "spectator/meter.h", "spectator/monotonic_counter.h", "spectator/monotonic_sampled.h",
-            "spectator/percentile_buckets.h",
-            "spectator/percentile_distribution_summary.h", "spectator/percentile_timer.h",
-            "spectator/publisher.h", "spectator/registry.h",
-            "spectator/smile.h",
-            "spectator/strings.h", "spectator/string_intern.h", "spectator/string_pool.h",
-            "spectator/tags.h",
-            "spectator/timer.h", "spectator/util.h",
-            "percentile_bucket_tags.inc", "percentile_bucket_values.inc", "valid_chars.inc",
-            "spectator/detail/perc_policy.h"],
+    srcs = [
+        "spectator/common_refs.cc",
+        "spectator/compressed_buffer.cc",
+        "spectator/counter.cc",
+        "spectator/dist_summary.cc",
+        "spectator/gauge.cc",
+        "spectator/gzip.cc",
+        "spectator/http_client.cc",
+        "spectator/id.cc",
+        "spectator/max_gauge.cc",
+        "spectator/monotonic_counter.cc",
+        "spectator/monotonic_sampled.cc",
+        "spectator/percentile_buckets.cc",
+        "spectator/registry.cc",
+        "spectator/smile.cc",
+        "spectator/strings.cc",
+        "spectator/string_pool.cc",
+        "spectator/timer.cc",
+    ],
+    hdrs = [
+        "spectator/atomicnumber.h",
+        "spectator/common_refs.h",
+        "spectator/compressed_buffer.h",
+        "spectator/config.h",
+        "spectator/counter.h",
+        "spectator/dist_stats.h",
+        "spectator/dist_summary.h",
+        "spectator/gauge.h",
+        "spectator/gzip.h",
+        "spectator/http_client.h",
+        "spectator/id.h",
+        "spectator/log_entry.h",
+        "spectator/max_gauge.h",
+        "spectator/measurement.h",
+        "spectator/meter.h",
+        "spectator/monotonic_counter.h",
+        "spectator/monotonic_sampled.h",
+        "spectator/percentile_buckets.h",
+        "spectator/percentile_distribution_summary.h",
+        "spectator/percentile_timer.h",
+        "spectator/publisher.h",
+        "spectator/registry.h",
+        "spectator/smile.h",
+        "spectator/strings.h",
+        "spectator/string_intern.h",
+        "spectator/string_pool.h",
+        "spectator/tags.h",
+        "spectator/timer.h",
+        "spectator/util.h",
+        "spectator/version.h",
+        "percentile_bucket_tags.inc",
+        "percentile_bucket_values.inc",
+        "valid_chars.inc",
+        "spectator/detail/perc_policy.h",
+    ],
     deps = [
         ":util",
         "@asio//:asio",
@@ -58,15 +89,16 @@ cc_library(
         "@curl",
         "@com_github_cyan4973_xxhash//:xxhash",
         "@net_zlib//:zlib",
-        ],
-    visibility = ["//visibility:public"])
+    ],
+    visibility = ["//visibility:public"],
+)
 
 cc_library(
     name = "dummy_cfg",
     srcs = ["spectator/sample_config.cc"],
     deps = [":spectator"],
-    visibility = ["//visibility:public"])
-
+    visibility = ["//visibility:public"],
+)
 
 cc_binary(
     name = "gen_perc_bucket_tags",
@@ -112,8 +144,12 @@ genrule(
 
 cc_test(
     name = "spectator_test",
-    srcs = glob(["spectator/*test.cc", 
-                 "spectator/http_server.*", "spectator/test_utils.*", "bin/test_main.cc"]),
+    srcs = glob([
+        "spectator/*test.cc",
+        "spectator/http_server.*",
+        "spectator/test_utils.*",
+        "bin/test_main.cc",
+    ]),
     deps = [
         ":spectator",
         ":dummy_cfg",
@@ -124,26 +160,39 @@ cc_test(
 
 cc_test(
     name = "to_valid_chars",
-    srcs = ["bench/to_valid_bench.cc",],
-    deps = [ "@com_google_benchmark//:benchmark", ]
+    srcs = ["bench/to_valid_bench.cc"],
+    deps = ["@com_google_benchmark//:benchmark"],
 )
 
 cc_test(
     name = "tags_bench",
-    srcs = ["bench/bench_tags.cc",],
+    srcs = ["bench/bench_tags.cc"],
     deps = [
         ":spectator",
         "@com_google_benchmark//:benchmark",
-      ]
-    )
+    ],
+)
 
 cc_library(
     name = "spectatord",
-    srcs = ["server/spectatord.cc", "util/logger.cc",
-            "server/local_server.cc", "server/udp_server.cc", "server/proc_utils.cc"],
-    hdrs = ["util/files.h", "server/expiring_cache.h", "server/spectatord.h", "util/logger.h",
-            "server/udp_server.h", "server/local_server.h",
-            "server/handler.h", "server/local.h", "server/proc_utils.h"],
+    srcs = [
+        "server/spectatord.cc",
+        "util/logger.cc",
+        "server/local_server.cc",
+        "server/udp_server.cc",
+        "server/proc_utils.cc",
+    ],
+    hdrs = [
+        "util/files.h",
+        "server/expiring_cache.h",
+        "server/spectatord.h",
+        "util/logger.h",
+        "server/udp_server.h",
+        "server/local_server.h",
+        "server/handler.h",
+        "server/local.h",
+        "server/proc_utils.h",
+    ],
     deps = [
         ":spectator",
         "@asio//:asio",
@@ -215,22 +264,26 @@ cc_binary(
     local_defines = select({
         "@bazel_tools//src/conditions:linux_x86_64": ["BACKWARD_HAS_BFD=1"],
         "//conditions:default": [],
-        }),
+    }),
     malloc = memory_allocator,
     linkopts = select({
         "@bazel_tools//src/conditions:linux_x86_64": [
-            "/usr/lib/x86_64-linux-gnu/libbfd.a", "/usr/lib/x86_64-linux-gnu/libiberty.a", "-ldl"],
+            "/usr/lib/x86_64-linux-gnu/libbfd.a",
+            "/usr/lib/x86_64-linux-gnu/libiberty.a",
+            "-ldl",
+        ],
         "//conditions:default": [],
-        }),
+    }),
     includes = ["server"],
     deps = [
         ":spectatord",
         "@com_google_absl//absl/flags:parse",
         "@com_github_gabime_spdlog//:spdlog",
-        "@com_github_bombela_backward//:backward",] + select({
-        ":nflx_internal": [ "@nflx_spectator_cfg//:spectator_cfg" ],
+        "@com_github_bombela_backward//:backward",
+    ] + select({
+        ":nflx_internal": ["@nflx_spectator_cfg//:spectator_cfg"],
         "//conditions:default": [":dummy_cfg"],
-        })
+    }),
 )
 
 cc_binary(
