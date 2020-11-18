@@ -35,6 +35,7 @@ class Config {
   absl::Duration expiration_frequency;
   absl::Duration meter_ttl;
   std::string uri;
+  bool trace_http = false;
 
   // sub-classes can override this method implementing custom logic
   // that can disable publishing under certain conditions
