@@ -11,7 +11,7 @@ void Counter::Measure(Measurements* results) const noexcept {
   if (count > 0) {
     if (!count_id_) {
       count_id_ =
-          std::make_unique<Id>(Id::WithDefaultStat(MeterId(), refs().count()));
+          std::make_unique<Id>(MeterId().WithDefaultStat(refs().count()));
     }
     results->emplace_back(*count_id_, count);
   }

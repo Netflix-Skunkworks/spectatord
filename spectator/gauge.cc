@@ -35,8 +35,7 @@ void Gauge::Measure(Measurements* results, int64_t now) const noexcept {
     return;
   }
   if (!gauge_id_) {
-    gauge_id_ =
-        std::make_unique<Id>(Id::WithDefaultStat(MeterId(), refs().gauge()));
+    gauge_id_ = std::make_unique<Id>(MeterId().WithDefaultStat(refs().gauge()));
   }
   results->emplace_back(*gauge_id_, value);
 }

@@ -35,11 +35,11 @@ class Id {
 
   Id WithStat(StrRef stat) const { return WithTag(refs().statistic(), stat); };
 
-  static Id WithDefaultStat(Id baseId, StrRef stat) {
-    if (baseId.GetTags().has(refs().statistic())) {
-      return baseId;
+  Id WithDefaultStat(StrRef stat) const {
+    if (tags_.has(refs().statistic())) {
+      return *this;
     }
-    return baseId.WithStat(stat);
+    return WithStat(stat);
   }
 
   friend std::ostream& operator<<(std::ostream& os, const Id& id) {

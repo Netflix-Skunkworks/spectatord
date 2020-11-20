@@ -127,14 +127,14 @@ class Tags {
     const auto* it = std::lower_bound(
         begin(), end(), key,
         [](const Tag& tag, const StrRef& k) { return tag.key < k; });
-    return it != end();
+    return it != end() && it->key == key;
   }
 
   [[nodiscard]] StrRef at(const StrRef& key) const {
     const auto* it = std::lower_bound(
         begin(), end(), key,
         [](const Tag& tag, const StrRef& k) { return tag.key < k; });
-    if (it == end()) {
+    if (it == end() || it->key != key) {
       return {};
     }
     return it->value;
