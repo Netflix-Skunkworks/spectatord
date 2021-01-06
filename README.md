@@ -31,10 +31,10 @@ $ echo "X,1543160298100:monotonic.Source:43" | nc -w0 -uU /run/spectatord/specta
 The message sent to the server has the following format:
 
 ```
-metric-type:name,tags:value@timestamp
+metric-type:name,tags:value
 ```
 
-where `tags` and `@timestamp` are optional.
+where the `,tags` portion is optional.
 
 Multiple lines might be send in the same packet separated by newlines (`\n`).
 
