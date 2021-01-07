@@ -12,12 +12,12 @@
 #include "absl/time/time.h"
 #include <fmt/ranges.h>
 
-std::unique_ptr<spectator::Config> GetSpectatorConfig();
+auto GetSpectatorConfig() -> std::unique_ptr<spectator::Config>;
 
 using spectatord::GetLogger;
 using spectatord::Logger;
 
-int get_port_number(spdlog::logger* logger, const char* str) {
+auto get_port_number(spdlog::logger* logger, const char* str) -> int {
   int n;
   if (!absl::SimpleAtoi(str, &n) || n < 0 || n > 65535) {
     logger->warn(
@@ -27,7 +27,7 @@ int get_port_number(spdlog::logger* logger, const char* str) {
   return n;
 }
 
-void usage(int exit_code, const char* progname, spdlog::logger* logger) {
+auto usage(int exit_code, const char* progname, spdlog::logger* logger) {
   logger->info("Usage: {} [options]", progname);
   logger->info("\t-p <port-number>\tPort number to use. Default 1234");
   logger->info("\t-s <port-number>\tStatsd Port number to use. Default 8125");
@@ -48,7 +48,7 @@ struct PortNumber {
 };
 
 // Returns a textual flag value corresponding to the PortNumber `p`.
-std::string AbslUnparseFlag(PortNumber p) {
+auto AbslUnparseFlag(PortNumber p) -> std::string {
   // Delegate to the usual unparsing for int.
   return absl::UnparseFlag(p.port);
 }
@@ -56,7 +56,8 @@ std::string AbslUnparseFlag(PortNumber p) {
 // Parses a PortNumber from the command line flag value `text`.
 // Returns true and sets `*p` on success; returns false and sets `*error`
 // on failure.
-bool AbslParseFlag(absl::string_view text, PortNumber* p, std::string* error) {
+auto AbslParseFlag(absl::string_view text, PortNumber* p, std::string* error)
+    -> bool {
   // Convert from text to int using the int-flag parser.
   if (!absl::ParseFlag(text, &p->port, error)) {
     return false;
@@ -88,7 +89,7 @@ ABSL_FLAG(PortNumber, port, PortNumber(1234), "Port number for our daemon");
 ABSL_FLAG(PortNumber, statsd_port, PortNumber(8125),
           "Port number for statsd compatibility");
 
-int main(int argc, char** argv) {
+auto main(int argc, char** argv) -> int {
   auto logger = Logger();
   backward::SignalHandling sh;
 
@@ -141,4 +142,3 @@ int main(int argc, char** argv) {
                             absl::GetFlag(FLAGS_socket_path), &registry};
   server.Start();
   return 0;
-}

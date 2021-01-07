@@ -3,12 +3,12 @@
 namespace spectator {
 
 // used in tests
-std::unique_ptr<Config> GetConfiguration() {
+auto GetConfiguration() -> std::unique_ptr<Config> {
   return std::make_unique<Config>();
 }
 
 }  // namespace spectator
 
-std::unique_ptr<spectator::Config> GetSpectatorConfig() {
+auto GetSpectatorConfig() -> std::unique_ptr<spectator::Config> {
   return spectator::GetConfiguration();
 }

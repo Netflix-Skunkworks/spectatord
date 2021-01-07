@@ -4,7 +4,7 @@
 
 namespace {
 using spectator::Gauge;
-Gauge getGauge(std::string_view name) {
+auto getGauge(std::string_view name) -> Gauge {
   return Gauge(spectator::Id(name, spectator::Tags{}), absl::Minutes(1));
 }
 

@@ -4,6 +4,6 @@
 
 namespace spectator {
 
-std::string PathFromUrl(std::string_view url) noexcept;
+auto PathFromUrl(std::string_view url) noexcept -> std::string;
 
 }  // namespace spectator

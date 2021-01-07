@@ -13,8 +13,8 @@ class Config {
   Config() = default;
   Config(const Config&) = default;
   Config(Config&&) = default;
-  Config& operator=(Config&&) = default;
-  Config& operator=(const Config&) = default;
+  auto operator=(Config &&) -> Config& = default;
+  auto operator=(const Config&) -> Config& = default;
 
   Config(std::map<std::string, std::string> c_tags, int read_to_ms,
          int connect_to_ms, int batch_sz, int freq_ms, int exp_freq_ms,
@@ -39,10 +39,10 @@ class Config {
 
   // sub-classes can override this method implementing custom logic
   // that can disable publishing under certain conditions
-  [[nodiscard]] virtual bool is_enabled() const { return true; }
+  [[nodiscard]] virtual auto is_enabled() const -> bool { return true; }
 };
 
 // Get a new spectator configuration.
-std::unique_ptr<Config> GetConfiguration();
+auto GetConfiguration() -> std::unique_ptr<Config>;
 
 }  // namespace spectator

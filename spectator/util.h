@@ -3,7 +3,7 @@
 namespace spectator {
 
 template <typename T>
-T restrict(T amount, T min, T max) {
+auto restrict(T amount, T min, T max) -> T {
   auto r = amount;
   if (r > max) {
     r = max;

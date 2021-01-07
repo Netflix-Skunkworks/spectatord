@@ -7,7 +7,7 @@
 
 namespace spectatord {
 static constexpr int kDefault = 16 * 1024 * 1024;
-int max_buffer_size(const char* proc_file) {
+auto max_buffer_size(const char* proc_file) -> int {
   static int result = 0;
   static const char* last_proc_file = nullptr;
 
@@ -36,7 +36,7 @@ int max_buffer_size(const char* proc_file) {
   return result;
 }
 
-std::optional<udp_info_t> udp_info(int port, const char* proc_file) {
+auto udp_info(int port, const char* proc_file) -> std::optional<udp_info_t> {
   StdIoFile udp{proc_file};
   if (udp == nullptr) return {};
 

@@ -6,7 +6,7 @@ namespace spectator {
 
 /// Atomically add a delta to an atomic double
 /// equivalent to fetch_add for integer types
-inline void add_double(std::atomic<double>* n, double delta) {
+inline auto add_double(std::atomic<double>* n, double delta) -> void {
   double current;
   do {
     current = n->load(std::memory_order_relaxed);
@@ -16,7 +16,7 @@ inline void add_double(std::atomic<double>* n, double delta) {
 
 /// Atomically set the max value of an atomic number
 template <typename T>
-inline void update_max(std::atomic<T>* n, T value) {
+inline auto update_max(std::atomic<T>* n, T value) -> void {
   T current;
   do {
     current = n->load(std::memory_order_relaxed);

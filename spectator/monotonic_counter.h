@@ -10,7 +10,7 @@ class MonotonicCounter : public Meter {
   void Measure(Measurements* results) const noexcept;
 
   void Set(double amount) noexcept;
-  double Delta() const noexcept;
+  auto Delta() const noexcept -> double;
 
  private:
   mutable std::unique_ptr<Id> count_id_;

@@ -13,7 +13,7 @@ class MaxGauge : public Meter {
 
   // synonym for Update for consistency with the Gauge interface
   void Set(double value) noexcept { Update(value); }
-  double Get() const noexcept;
+  auto Get() const noexcept -> double;
 
  private:
   mutable std::unique_ptr<Id> max_id_;

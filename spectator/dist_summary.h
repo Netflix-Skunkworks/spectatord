@@ -8,10 +8,10 @@ namespace spectator {
 class DistributionSummary : public Meter {
  public:
   explicit DistributionSummary(Id id) noexcept;
-  void Measure(Measurements* results) const noexcept;
-  void Record(double amount) noexcept;
-  int64_t Count() const noexcept;
-  double TotalAmount() const noexcept;
+  auto Measure(Measurements* results) const noexcept -> void;
+  auto Record(double amount) noexcept -> void;
+  [[nodiscard]] auto Count() const noexcept -> int64_t;
+  [[nodiscard]] auto TotalAmount() const noexcept -> double;
 
  private:
   mutable std::unique_ptr<DistStats> st;

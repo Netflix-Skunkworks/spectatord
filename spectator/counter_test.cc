@@ -7,7 +7,7 @@ using spectator::Measurement;
 using spectator::Measurements;
 using spectator::refs;
 
-spectator::Counter getCounter(std::string_view name) {
+auto getCounter(std::string_view name) -> spectator::Counter {
   return spectator::Counter(spectator::Id(name, spectator::Tags{}));
 }
 

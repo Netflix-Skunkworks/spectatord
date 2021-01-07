@@ -18,7 +18,7 @@ class SmilePayload {
   void Append(size_t n);
   void Append(double value);
   void Append(std::string_view s);
-  CompressedResult Result() {
+  auto Result() -> CompressedResult {
     write_end_array();
     return buffer_.Result();
   }

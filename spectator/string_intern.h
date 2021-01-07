@@ -18,12 +18,14 @@ struct StringPoolStats {
 class StrRef {
  public:
   StrRef() = default;
-  bool operator==(const StrRef& rhs) const { return data == rhs.data; }
-  bool operator!=(const StrRef& rhs) const { return data != rhs.data; }
-  [[nodiscard]] const char* Get() const { return data; }
-  [[nodiscard]] size_t Length() const { return std::strlen(data); }
+  auto operator==(const StrRef& rhs) const -> bool { return data == rhs.data; }
+  auto operator!=(const StrRef& rhs) const -> bool { return data != rhs.data; }
+  [[nodiscard]] auto Get() const -> const char* { return data; }
+  [[nodiscard]] auto Length() const -> size_t { return std::strlen(data); }
 
-  bool operator<(StrRef rhs) const { return strcmp(data, rhs.Get()) < 0; }
+  auto operator<(StrRef rhs) const -> bool {
+    return strcmp(data, rhs.Get()) < 0;
+  }
 
  private:
   explicit StrRef(const char* s) : data{s} {}
@@ -32,17 +34,17 @@ class StrRef {
   friend std::hash<StrRef>;
 };
 
-StrRef intern_str(const char* string);
-StrRef intern_str(const std::string& string);
-StrRef intern_str(std::string_view string);
-StringPoolStats string_pool_stats();
+auto intern_str(const char* string) -> StrRef;
+auto intern_str(const std::string& string) -> StrRef;
+auto intern_str(std::string_view string) -> StrRef;
+auto string_pool_stats() -> StringPoolStats;
 
 }  // namespace spectator
 
 namespace std {
 template <>
 struct hash<spectator::StrRef> {
-  size_t operator()(const spectator::StrRef& ref) const {
+  auto operator()(const spectator::StrRef& ref) const -> size_t {
     return hash<const char*>{}(ref.data);
   }
 };

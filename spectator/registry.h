@@ -21,14 +21,15 @@ namespace spectator {
 namespace detail {
 
 template <typename T>
-inline bool is_meter_expired(int64_t now, const T& m, int64_t meter_ttl) {
+inline auto is_meter_expired(int64_t now, const T& m, int64_t meter_ttl)
+    -> bool {
   auto updated_ago = now - m.Updated();
   return updated_ago > meter_ttl;
 }
 
 template <>
-inline bool is_meter_expired<Gauge>(int64_t now, const Gauge& m,
-                                    int64_t /* meter_ttl */) {
+inline auto is_meter_expired<Gauge>(int64_t now, const Gauge& m,
+                                    int64_t /* meter_ttl */) -> bool {
   return m.HasExpired(now);
 }
 
@@ -44,7 +45,7 @@ struct meter_map {
   }
 
   // only insert if it doesn't exist, otherwise return the existing meter
-  std::shared_ptr<M> insert(std::shared_ptr<M> meter) {
+  auto insert(std::shared_ptr<M> meter) -> std::shared_ptr<M> {
     absl::MutexLock lock(&meters_mutex_);
     const auto& id = meter->MeterId();
     auto insert_result = meters_.emplace(id, std::move(meter));
@@ -63,7 +64,7 @@ struct meter_map {
     }
   }
 
-  std::pair<int, int> remove_expired(int64_t meter_ttl) noexcept {
+  auto remove_expired(int64_t meter_ttl) noexcept -> std::pair<int, int> {
     auto now = absl::GetCurrentTimeNanos();
     auto expired = 0;
     auto total = 0;
@@ -85,7 +86,7 @@ struct meter_map {
     return {expired, total};
   }
 
-  std::vector<const M*> get_values() const {
+  auto get_values() const -> std::vector<const M*> {
     std::vector<const M*> res;
     {
       absl::MutexLock lock{&meters_mutex_};
@@ -107,12 +108,12 @@ struct all_meters {
   meter_map<MonotonicSampled> mono_sampled_;
   meter_map<Timer> timers_;
 
-  size_t size() const {
+  auto size() const -> size_t {
     return counters_.size() + dist_sums_.size() + gauges_.size() +
            max_gauges_.size() + mono_counters_.size() + timers_.size();
   }
 
-  std::vector<Measurement> measure(int64_t meter_ttl) const {
+  auto measure(int64_t meter_ttl) const -> std::vector<Measurement> {
     std::vector<Measurement> res;
     res.reserve(size() * 2);
     counters_.measure(&res, meter_ttl);
@@ -124,7 +125,7 @@ struct all_meters {
     return res;
   }
 
-  std::pair<int, int> remove_expired(int64_t meter_ttl) {
+  auto remove_expired(int64_t meter_ttl) -> std::pair<int, int> {
     int total_expired = 0;
     int total_count = 0;
     int expired = 0;
@@ -193,67 +194,68 @@ class Registry {
   Registry(std::unique_ptr<Config> config, logger_ptr logger) noexcept;
   Registry(const Registry&) = delete;
   Registry(Registry&&) = delete;
-  Registry& operator=(const Registry&) = delete;
-  Registry& operator=(Registry&&) = delete;
+  auto operator=(const Registry&) -> Registry& = delete;
+  auto operator=(Registry &&) -> Registry& = delete;
   ~Registry() noexcept { Stop(); }
-  const Config& GetConfig() const noexcept;
-  logger_ptr GetLogger() const noexcept;
+  auto GetConfig() const noexcept -> const Config&;
+  auto GetLogger() const noexcept -> logger_ptr;
 
   void OnMeasurements(measurements_callback fn) noexcept;
 
-  std::shared_ptr<Counter> GetCounter(Id id) noexcept;
-  std::shared_ptr<Counter> GetCounter(std::string_view name,
-                                      Tags tags = {}) noexcept;
+  auto GetCounter(Id id) noexcept -> std::shared_ptr<Counter>;
+  auto GetCounter(std::string_view name, Tags tags = {}) noexcept
+      -> std::shared_ptr<Counter>;
 
-  std::shared_ptr<MonotonicCounter> GetMonotonicCounter(Id id) noexcept;
-  std::shared_ptr<MonotonicCounter> GetMonotonicCounter(
-      std::string_view name, Tags tags = {}) noexcept;
+  auto GetMonotonicCounter(Id id) noexcept -> std::shared_ptr<MonotonicCounter>;
+  auto GetMonotonicCounter(std::string_view name, Tags tags = {}) noexcept
+      -> std::shared_ptr<MonotonicCounter>;
 
-  std::shared_ptr<MonotonicSampled> GetMonotonicSampled(Id id) noexcept;
-  std::shared_ptr<MonotonicSampled> GetMonotonicSampled(
-      std::string_view name, Tags tags = {}) noexcept;
+  auto GetMonotonicSampled(Id id) noexcept -> std::shared_ptr<MonotonicSampled>;
+  auto GetMonotonicSampled(std::string_view name, Tags tags = {}) noexcept
+      -> std::shared_ptr<MonotonicSampled>;
 
-  std::shared_ptr<DistributionSummary> GetDistributionSummary(Id id) noexcept;
-  std::shared_ptr<DistributionSummary> GetDistributionSummary(
-      std::string_view name, Tags tags = {}) noexcept;
+  auto GetDistributionSummary(Id id) noexcept
+      -> std::shared_ptr<DistributionSummary>;
+  auto GetDistributionSummary(std::string_view name, Tags tags = {}) noexcept
+      -> std::shared_ptr<DistributionSummary>;
 
-  std::shared_ptr<Gauge> GetGauge(Id id) noexcept;
-  std::shared_ptr<Gauge> GetGauge(Id id, absl::Duration ttl) noexcept;
-  std::shared_ptr<Gauge> GetGauge(std::string_view name,
-                                  Tags tags = {}) noexcept;
+  auto GetGauge(Id id) noexcept -> std::shared_ptr<Gauge>;
+  auto GetGauge(Id id, absl::Duration ttl) noexcept -> std::shared_ptr<Gauge>;
+  auto GetGauge(std::string_view name, Tags tags = {}) noexcept
+      -> std::shared_ptr<Gauge>;
 
-  std::shared_ptr<MaxGauge> GetMaxGauge(Id id) noexcept;
-  std::shared_ptr<MaxGauge> GetMaxGauge(std::string_view name,
-                                        Tags tags = {}) noexcept;
+  auto GetMaxGauge(Id id) noexcept -> std::shared_ptr<MaxGauge>;
+  auto GetMaxGauge(std::string_view name, Tags tags = {}) noexcept
+      -> std::shared_ptr<MaxGauge>;
 
-  std::shared_ptr<Timer> GetTimer(Id id) noexcept;
-  std::shared_ptr<Timer> GetTimer(std::string_view name,
-                                  Tags tags = {}) noexcept;
+  auto GetTimer(Id id) noexcept -> std::shared_ptr<Timer>;
+  auto GetTimer(std::string_view name, Tags tags = {}) noexcept
+      -> std::shared_ptr<Timer>;
 
-  std::vector<Measurement> Measurements() const noexcept;
+  auto Measurements() const noexcept -> std::vector<Measurement>;
 
-  std::size_t Size() const noexcept { return all_meters_.size(); }
+  auto Size() const noexcept -> std::size_t { return all_meters_.size(); }
 
   void Start() noexcept;
   void Stop() noexcept;
 
   // for debugging / testing
-  std::vector<const Timer*> Timers() const {
+  auto Timers() const -> std::vector<const Timer*> {
     return all_meters_.timers_.get_values();
   }
-  std::vector<const Counter*> Counters() const {
+  auto Counters() const -> std::vector<const Counter*> {
     return all_meters_.counters_.get_values();
   }
-  std::vector<const MonotonicCounter*> MonotonicCounters() const {
+  auto MonotonicCounters() const -> std::vector<const MonotonicCounter*> {
     return all_meters_.mono_counters_.get_values();
   }
-  std::vector<const Gauge*> Gauges() const {
+  auto Gauges() const -> std::vector<const Gauge*> {
     return all_meters_.gauges_.get_values();
   }
-  std::vector<const MaxGauge*> MaxGauges() const {
+  auto MaxGauges() const -> std::vector<const MaxGauge*> {
     return all_meters_.max_gauges_.get_values();
   }
-  std::vector<const DistributionSummary*> DistSummaries() const {
+  auto DistSummaries() const -> std::vector<const DistributionSummary*> {
     return all_meters_.dist_sums_.get_values();
   }
 

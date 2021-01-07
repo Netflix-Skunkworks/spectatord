@@ -44,11 +44,11 @@ void Timer::Record(std::chrono::nanoseconds amount) noexcept {
   Record(absl::FromChrono(amount));
 }
 
-int64_t Timer::Count() const noexcept {
+auto Timer::Count() const noexcept -> int64_t {
   return count_.load(std::memory_order_relaxed);
 }
 
-int64_t Timer::TotalTime() const noexcept {
+auto Timer::TotalTime() const noexcept -> int64_t {
   return total_.load(std::memory_order_relaxed);
 }
 

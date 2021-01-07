@@ -34,10 +34,12 @@ class percentile_distribution_summary {
     c->Increment();
   }
 
-  const Id& MeterId() const noexcept { return id_; }
-  int64_t Count() const noexcept { return dist_summary_->Count(); }
-  double TotalAmount() const noexcept { return dist_summary_->TotalAmount(); }
-  double Percentile(double p) const noexcept {
+  auto MeterId() const noexcept -> const Id& { return id_; }
+  auto Count() const noexcept -> int64_t { return dist_summary_->Count(); }
+  auto TotalAmount() const noexcept -> double {
+    return dist_summary_->TotalAmount();
+  }
+  auto Percentile(double p) const noexcept -> double {
     std::array<int64_t, PercentileBucketsLength()> counts{};
     for (size_t i = 0; i < PercentileBucketsLength(); ++i) {
       auto& c = counters_.at(i);
