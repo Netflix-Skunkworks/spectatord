@@ -142,3 +142,4 @@ auto main(int argc, char** argv) -> int {
                             absl::GetFlag(FLAGS_socket_path), &registry};
   server.Start();
   return 0;
+}
