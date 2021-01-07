@@ -20,7 +20,7 @@ void MaxGauge::Measure(Measurements* results) const noexcept {
   results->emplace_back(*max_id_, value);
 }
 
-double MaxGauge::Get() const noexcept {
+auto MaxGauge::Get() const noexcept -> double {
   auto v = value_.load(std::memory_order_relaxed);
   if (v != kMinValue) {
     return v;

@@ -34,10 +34,10 @@ class percentile_timer {
     Record(absl::FromChrono(amount));
   }
 
-  const Id& MeterId() const noexcept { return id_; }
-  int64_t Count() const noexcept { return timer_->Count(); }
-  int64_t TotalTime() const noexcept { return timer_->TotalTime(); }
-  double Percentile(double p) const noexcept {
+  auto MeterId() const noexcept -> const Id& { return id_; }
+  auto Count() const noexcept -> int64_t { return timer_->Count(); }
+  auto TotalTime() const noexcept -> int64_t { return timer_->TotalTime(); }
+  auto Percentile(double p) const noexcept -> double {
     std::array<int64_t, PercentileBucketsLength()> counts{};
     for (size_t i = 0; i < PercentileBucketsLength(); ++i) {
       auto& c = counters_.at(i);

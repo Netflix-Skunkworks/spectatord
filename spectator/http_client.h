@@ -39,23 +39,25 @@ class HttpClient {
 
   HttpClient(Registry* registry, HttpClientConfig config);
 
-  HttpResponse Post(const std::string& url, const char* content_type,
-                    const void* payload, size_t size) const;
+  auto Post(const std::string& url, const char* content_type,
+            const void* payload, size_t size) const -> HttpResponse;
 
-  HttpResponse Post(const std::string& url, const char* content_type,
-                    const CompressedResult& payload) const;
+  auto Post(const std::string& url, const char* content_type,
+            const CompressedResult& payload) const -> HttpResponse;
 
-  HttpResponse Post(const std::string& url, const char* content_type,
-                    const std::string& payload) const {
+  auto Post(const std::string& url, const char* content_type,
+            const std::string& payload) const -> HttpResponse {
     return Post(url, content_type, payload.c_str(), payload.length());
   };
 
-  [[nodiscard]] HttpResponse Get(const std::string& url) const;
-  [[nodiscard]] HttpResponse Get(const std::string& url,
-                                 const std::vector<std::string>& headers) const;
+  [[nodiscard]] auto Get(const std::string& url) const -> HttpResponse;
+  [[nodiscard]] auto Get(const std::string& url,
+                         const std::vector<std::string>& headers) const
+      -> HttpResponse;
 
-  [[nodiscard]] HttpResponse Put(const std::string& url,
-                                 const std::vector<std::string>& headers) const;
+  [[nodiscard]] auto Put(const std::string& url,
+                         const std::vector<std::string>& headers) const
+      -> HttpResponse;
 
   static void GlobalInit() noexcept;
   static void GlobalShutdown() noexcept;
@@ -64,13 +66,13 @@ class HttpClient {
   Registry* registry_;
   HttpClientConfig config_;
 
-  HttpResponse perform(const char* method, const std::string& url,
-                       std::shared_ptr<CurlHeaders> headers,
-                       const void* payload, size_t size,
-                       int attempt_number) const;
+  auto perform(const char* method, const std::string& url,
+               std::shared_ptr<CurlHeaders> headers, const void* payload,
+               size_t size, int attempt_number) const -> HttpResponse;
 
-  HttpResponse method_header(const char* method, const std::string& url,
-                             const std::vector<std::string>& headers) const;
+  auto method_header(const char* method, const std::string& url,
+                     const std::vector<std::string>& headers) const
+      -> HttpResponse;
 };
 
 }  // namespace spectator

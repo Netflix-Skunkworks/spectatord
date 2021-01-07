@@ -80,7 +80,7 @@ void http_server::start() noexcept {
   accept_ = std::thread{&http_server::accept_loop, this};
 }
 
-static std::string to_lower(const std::string& s) {
+static auto to_lower(const std::string& s) -> std::string {
   std::string copy{s};
   for (auto i = 0u; i < s.length(); ++i) {
     copy[i] = static_cast<char>(absl::ascii_tolower(s[i]));
@@ -88,7 +88,8 @@ static std::string to_lower(const std::string& s) {
   return copy;
 }
 
-std::string http_server::Request::get_header(const std::string& name) const {
+auto http_server::Request::get_header(const std::string& name) const
+    -> std::string {
   auto lower = to_lower(name);
   auto it = headers_.find(lower);
   if (it == headers_.end()) {
@@ -97,7 +98,8 @@ std::string http_server::Request::get_header(const std::string& name) const {
   return it->second;
 }
 
-const std::vector<http_server::Request>& http_server::get_requests() const {
+auto http_server::get_requests() const
+    -> const std::vector<http_server::Request>& {
   absl::MutexLock lock{&requests_mutex_};
   return requests_;
 };

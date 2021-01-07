@@ -13,8 +13,8 @@ class http_server {
   http_server() noexcept;
   http_server(const http_server&) = delete;
   http_server(http_server&&) = delete;
-  http_server& operator=(const http_server&) = delete;
-  http_server& operator=(http_server&&) = delete;
+  auto operator=(const http_server&) -> http_server& = delete;
+  auto operator=(http_server &&) -> http_server& = delete;
 
   ~http_server();
 
@@ -35,11 +35,11 @@ class http_server {
     accept_.join();
   }
 
-  int get_port() const { return port_; };
+  auto get_port() const -> int { return port_; };
 
   class Request {
    public:
-    Request() : size_(0), body_(nullptr) {}
+    Request() : body_(nullptr) {}
     Request(std::string method, std::string path,
             std::map<std::string, std::string> headers, size_t size,
             std::unique_ptr<char[]>&& body)
@@ -49,21 +49,21 @@ class http_server {
           size_(size),
           body_(std::move(body)) {}
 
-    size_t size() const { return size_; }
-    const char* body() const { return body_.get(); }
-    std::string get_header(const std::string& name) const;
-    std::string method() const { return method_; }
-    std::string path() const { return path_; }
+    [[nodiscard]] auto size() const -> size_t { return size_; }
+    [[nodiscard]] auto body() const -> const char* { return body_.get(); }
+    [[nodiscard]] auto get_header(const std::string& name) const -> std::string;
+    [[nodiscard]] auto method() const -> std::string { return method_; }
+    [[nodiscard]] auto path() const -> std::string { return path_; }
 
    private:
     std::string method_;
     std::string path_;
     std::map<std::string, std::string> headers_{};
-    size_t size_;
+    size_t size_{0};
     std::unique_ptr<char[]> body_{};
   };
 
-  const std::vector<Request>& get_requests() const;
+  auto get_requests() const -> const std::vector<Request>&;
 
  private:
   std::atomic<int> sockfd_{-1};

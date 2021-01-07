@@ -17,7 +17,7 @@ class LogEntry {
                                        {"http.method", method},
                                        {"http.status", "-1"}})} {}
 
-  [[nodiscard]] absl::Time start() const { return start_; }
+  [[nodiscard]] auto start() const -> absl::Time { return start_; }
 
   void log() {
     PercentileTimer timer{registry_, std::move(id_), absl::Milliseconds(1),
@@ -52,7 +52,7 @@ class LogEntry {
   absl::Time start_;
   Id id_;
 
-  static StrRef attempt(int attempt_number) {
+  static auto attempt(int attempt_number) -> StrRef {
     static auto initial = intern_str("initial");
     static auto second = intern_str("second");
     static auto third_up = intern_str("third_up");

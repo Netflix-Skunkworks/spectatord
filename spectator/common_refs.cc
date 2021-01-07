@@ -2,7 +2,7 @@
 
 namespace spectator {
 
-Refs& refs() {
+auto refs() -> Refs& {
   static auto* the_refs = new Refs();
   return *the_refs;
 }

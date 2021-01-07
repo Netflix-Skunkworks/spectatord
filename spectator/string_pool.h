@@ -13,13 +13,13 @@ struct String {
 };
 
 struct StringHasher {
-  size_t operator()(const String& str) const {
+  auto operator()(const String& str) const -> size_t {
     return XXH3_64bits(str.s, str.len);
   }
 };
 
 struct StringComparer {
-  bool operator()(const String& s1, const String& s2) const {
+  auto operator()(const String& s1, const String& s2) const -> bool {
     if (s1.len != s2.len) return false;
     return std::memcmp(s1.s, s2.s, s1.len) == 0;
   }
@@ -33,15 +33,15 @@ class StringPool {
   StringPool() = default;
   ~StringPool();
   StringPool(const StringPool&) = delete;
-  StringPool& operator=(const StringPool&) = delete;
+  auto operator=(const StringPool&) -> StringPool& = delete;
 
-  StrRef Intern(const char* string) noexcept {
+  auto Intern(const char* string) noexcept -> StrRef {
     return Intern(string, std::strlen(string));
   };
 
-  StrRef Intern(const char* string, size_t len) noexcept;
+  auto Intern(const char* string, size_t len) noexcept -> StrRef;
 
-  StringPoolStats Stats() noexcept {
+  auto Stats() noexcept -> StringPoolStats {
     absl::MutexLock lock(&table_mutex_);
     return stats_;
   }

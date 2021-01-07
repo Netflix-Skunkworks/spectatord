@@ -28,7 +28,7 @@ void Counter::Add(double delta) noexcept {
   add_double(&count_, delta);
 }
 
-double Counter::Count() const noexcept {
+auto Counter::Count() const noexcept -> double {
   return count_.load(std::memory_order_relaxed);
 }
 

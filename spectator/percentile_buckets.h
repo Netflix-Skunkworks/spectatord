@@ -7,11 +7,11 @@
 
 namespace spectator {
 
-int64_t PercentileBucket(int64_t v);
-size_t PercentileBucketIndexOf(int64_t v);
-constexpr size_t PercentileBucketsLength() { return 276; }
-double Percentile(const std::array<int64_t, PercentileBucketsLength()>& counts,
-                  double p);
+auto PercentileBucket(int64_t v) -> int64_t;
+auto PercentileBucketIndexOf(int64_t v) -> size_t;
+constexpr auto PercentileBucketsLength() -> size_t { return 276; }
+auto Percentile(const std::array<int64_t, PercentileBucketsLength()>& counts,
+                double p) -> double;
 ///
 /// Compute a set of percentiles based on the counts for the buckets.
 ///

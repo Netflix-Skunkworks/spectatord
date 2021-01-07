@@ -33,8 +33,8 @@ TEST(DistributionSummary, Record) {
   EXPECT_EQ(ds.TotalAmount(), 201);
 }
 
-void expect_dist_summary(const DistributionSummary& ds, int64_t count,
-                         int64_t total, double total_sq, int64_t max) {
+auto expect_dist_summary(const DistributionSummary& ds, int64_t count,
+                         int64_t total, double total_sq, int64_t max) -> void {
   using spectator::refs;
   spectator::Measurements ms;
   ds.Measure(&ms);

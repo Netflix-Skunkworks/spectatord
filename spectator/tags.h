@@ -21,7 +21,7 @@ class Tags {
   static constexpr size_type kSmallTags = 8;
   size_type size_ = 0;
 
-  using entries_t = Tag[kSmallTags];
+  using entries_t = std::array<Tag, kSmallTags>;
   // when this is a small tag set it uses
   // entries_ otherwise we store the capacity_
   union {
@@ -53,9 +53,9 @@ class Tags {
     std::copy(o.begin(), o.end(), begin());
   }
 
-  Tags& operator=(const Tags&) = delete;
+  auto operator=(const Tags&) -> Tags& = delete;
 
-  Tags& operator=(Tags&& o) noexcept {
+  auto operator=(Tags&& o) noexcept -> Tags& {
     size_ = o.size_;
     if (is_large()) {
       begin_ = o.begin_;
@@ -66,6 +66,7 @@ class Tags {
     }
     return *this;
   }
+
   ~Tags() noexcept {
     if (is_large()) {
       free(begin_);
@@ -79,19 +80,19 @@ class Tags {
     }
   }
 
-  [[nodiscard]] bool is_large() const { return size_ > kSmallTags; }
+  [[nodiscard]] auto is_large() const -> bool { return size_ > kSmallTags; }
 
-  void add(const char* k, const char* v) {
+  auto add(const char* k, const char* v) -> void {
     insert(intern_str(k), intern_str(v));
   }
 
-  void add(std::string_view k, std::string_view v) {
+  auto add(std::string_view k, std::string_view v) -> void {
     insert(intern_str(k), intern_str(v));
   }
 
-  void add(StrRef k, StrRef v) { insert(k, v); }
+  auto add(StrRef k, StrRef v) -> void { insert(k, v); }
 
-  [[nodiscard]] size_t hash() const {
+  [[nodiscard]] auto hash() const -> size_t {
     size_t h = 0U;
     const auto* it = begin();
     while (it != end()) {
@@ -102,7 +103,7 @@ class Tags {
     return h;
   }
 
-  void add_all(const Tags& source) {
+  auto add_all(const Tags& source) -> void {
     const auto* it = source.begin();
     while (it != source.end()) {
       const auto& entry = *it++;
@@ -110,7 +111,7 @@ class Tags {
     }
   }
 
-  bool operator==(const Tags& that) const {
+  auto operator==(const Tags& that) const -> bool {
     if (size_ != that.size_) {
       return false;
     }
@@ -123,14 +124,14 @@ class Tags {
     return memcmp(mine, theirs, sizeof(Tag) * size()) == 0;
   }
 
-  [[nodiscard]] bool has(const StrRef& key) const {
+  [[nodiscard]] auto has(const StrRef& key) const -> bool {
     const auto* it = std::lower_bound(
         begin(), end(), key,
         [](const Tag& tag, const StrRef& k) { return tag.key < k; });
     return it != end() && it->key == key;
   }
 
-  [[nodiscard]] StrRef at(const StrRef& key) const {
+  [[nodiscard]] auto at(const StrRef& key) const -> StrRef {
     const auto* it = std::lower_bound(
         begin(), end(), key,
         [](const Tag& tag, const StrRef& k) { return tag.key < k; });
@@ -140,20 +141,20 @@ class Tags {
     return it->value;
   }
 
-  [[nodiscard]] size_type size() const { return size_; }
+  [[nodiscard]] auto size() const -> size_type { return size_; }
 
-  [[nodiscard]] bool empty() const { return size_ == 0; }
+  [[nodiscard]] auto empty() const -> bool { return size_ == 0; }
 
-  [[nodiscard]] const_iterator begin() const { return begin_; }
+  [[nodiscard]] auto begin() const -> const_iterator { return begin_; }
 
-  [[nodiscard]] const_iterator end() const { return begin_ + size_; }
+  [[nodiscard]] auto end() const -> const_iterator { return begin_ + size_; }
 
-  [[nodiscard]] iterator begin() { return begin_; }
+  [[nodiscard]] auto begin() -> iterator { return begin_; }
 
-  [[nodiscard]] iterator end() { return begin_ + size_; }
+  [[nodiscard]] auto end() -> iterator { return begin_ + size_; }
 
  private:
-  void insert(StrRef k, StrRef v) {
+  auto insert(StrRef k, StrRef v) -> void {
     auto* it = std::lower_bound(
         begin(), end(), k,
         [](const Tag& tag, const StrRef& k) { return tag.key < k; });
@@ -180,11 +181,11 @@ class Tags {
     ++size_;
   }
 
-  [[nodiscard]] size_type capacity() const {
+  [[nodiscard]] auto capacity() const -> size_type {
     return is_large() ? U.capacity_ : kSmallTags;
   }
 
-  void reallocate() {
+  auto reallocate() -> void {
     // grow the allocated memory by 4 since the number of tags is usually
     // small
     auto c = capacity();
@@ -200,7 +201,7 @@ class Tags {
   }
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Tags& tags) {
+inline auto operator<<(std::ostream& os, const Tags& tags) -> std::ostream& {
   return os << fmt::format("{}", tags);
 }
 }  // namespace spectator

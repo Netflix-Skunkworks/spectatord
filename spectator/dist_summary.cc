@@ -7,7 +7,8 @@ namespace spectator {
 DistributionSummary::DistributionSummary(Id id) noexcept
     : Meter(std::move(id)), count_(0), total_(0), totalSq_(0.0), max_(0) {}
 
-void DistributionSummary::Measure(Measurements* results) const noexcept {
+auto DistributionSummary::Measure(Measurements* results) const noexcept
+    -> void {
   auto cnt = count_.exchange(0, std::memory_order_relaxed);
   if (cnt == 0) {
     return;
@@ -26,7 +27,7 @@ void DistributionSummary::Measure(Measurements* results) const noexcept {
   results->emplace_back(st->max, mx);
 }
 
-void DistributionSummary::Record(double amount) noexcept {
+auto DistributionSummary::Record(double amount) noexcept -> void {
   Update();
 
   if (amount >= 0) {
@@ -37,11 +38,11 @@ void DistributionSummary::Record(double amount) noexcept {
   }
 }
 
-int64_t DistributionSummary::Count() const noexcept {
+auto DistributionSummary::Count() const noexcept -> int64_t {
   return count_.load(std::memory_order_relaxed);
 }
 
-double DistributionSummary::TotalAmount() const noexcept {
+auto DistributionSummary::TotalAmount() const noexcept -> double {
   return total_.load(std::memory_order_relaxed);
 }
 

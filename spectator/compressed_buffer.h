@@ -19,33 +19,33 @@ class CompressedBuffer {
                             size_t out_size = kDefaultOutSize);
   CompressedBuffer(const CompressedBuffer&) = delete;
   CompressedBuffer(CompressedBuffer&&) = default;
-  CompressedBuffer& operator=(const CompressedBuffer&) = delete;
-  CompressedBuffer& operator=(CompressedBuffer&&) = delete;
+  auto operator=(const CompressedBuffer&) -> CompressedBuffer& = delete;
+  auto operator=(CompressedBuffer &&) -> CompressedBuffer& = delete;
 
   ~CompressedBuffer();
 
-  void Init();
+  auto Init() -> void;
 
-  void Append(std::string_view s) {
+  auto Append(std::string_view s) -> void {
     assert(init_);
     std::copy(s.begin(), s.end(), std::back_inserter(cur_));
     maybe_compress();
   }
 
-  void Append(uint8_t b) {
+  auto Append(uint8_t b) -> void {
     assert(init_);
     cur_.push_back(b);
     maybe_compress();
   }
 
-  void Append(uint8_t b1, uint8_t b2) {
+  auto Append(uint8_t b1, uint8_t b2) -> void {
     assert(init_);
     cur_.push_back(b1);
     cur_.push_back(b2);
     maybe_compress();
   }
 
-  void Append(uint8_t b1, uint8_t b2, uint8_t b3) {
+  auto Append(uint8_t b1, uint8_t b2, uint8_t b3) -> void {
     assert(init_);
     cur_.push_back(b1);
     cur_.push_back(b2);
@@ -53,7 +53,7 @@ class CompressedBuffer {
     maybe_compress();
   }
 
-  void Append(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4) {
+  auto Append(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4) -> void {
     assert(init_);
     cur_.push_back(b1);
     cur_.push_back(b2);
@@ -62,7 +62,8 @@ class CompressedBuffer {
     maybe_compress();
   }
 
-  void Append(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5) {
+  auto Append(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5)
+      -> void {
     assert(init_);
     cur_.push_back(b1);
     cur_.push_back(b2);
@@ -72,7 +73,7 @@ class CompressedBuffer {
     maybe_compress();
   }
 
-  void Append(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5,
+  auto Append(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5,
               uint8_t b6) {
     assert(init_);
     cur_.push_back(b1);
@@ -84,7 +85,7 @@ class CompressedBuffer {
     maybe_compress();
   }
 
-  CompressedResult Result();
+  auto Result() -> CompressedResult;
 
  private:
   bool init_{false};
@@ -94,9 +95,9 @@ class CompressedBuffer {
   int dest_index_{0};
   z_stream stream;
 
-  void compress(int flush);
+  auto compress(int flush) -> void;
 
-  void maybe_compress();
+  auto maybe_compress() -> void;
 };
 
 }  // namespace spectator

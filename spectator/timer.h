@@ -14,8 +14,8 @@ class Timer : public Meter {
 
   void Record(std::chrono::nanoseconds amount) noexcept;
   void Record(absl::Duration amount) noexcept;
-  int64_t Count() const noexcept;
-  int64_t TotalTime() const noexcept;
+  auto Count() const noexcept -> int64_t;
+  auto TotalTime() const noexcept -> int64_t;
 
  private:
   mutable std::unique_ptr<DistStats> st;

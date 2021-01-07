@@ -5,7 +5,7 @@ namespace spectator {
 
 #include "valid_chars.inc"
 
-StrRef StringPool::Intern(const char* string, size_t len) noexcept {
+auto StringPool::Intern(const char* string, size_t len) noexcept -> StrRef {
   absl::MutexLock lock(&table_mutex_);
   String s{string, len};
   auto it = table_.find(s);
@@ -42,21 +42,23 @@ StringPool::~StringPool() {
   }
 }
 
-StringPool& the_str_pool() noexcept {
+auto the_str_pool() noexcept -> StringPool& {
   static auto* the_pool = new StringPool();
   return *the_pool;
 }
 
-StrRef intern_str(const char* string) { return the_str_pool().Intern(string); }
+auto intern_str(const char* string) -> StrRef {
+  return the_str_pool().Intern(string);
+}
 
-StrRef intern_str(const std::string& string) {
+auto intern_str(const std::string& string) -> StrRef {
   return the_str_pool().Intern(string.c_str(), string.length());
 }
 
-StrRef intern_str(std::string_view string) {
+auto intern_str(std::string_view string) -> StrRef {
   return the_str_pool().Intern(string.data(), string.length());
 }
 
-StringPoolStats string_pool_stats() { return the_str_pool().Stats(); }
+auto string_pool_stats() -> StringPoolStats { return the_str_pool().Stats(); }
 
 }  // namespace spectator

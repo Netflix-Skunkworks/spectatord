@@ -6,7 +6,9 @@
 namespace {
 using spectator::Timer;
 
-Timer getTimer() { return Timer(spectator::Id("t", spectator::Tags{})); }
+auto getTimer() -> Timer {
+  return Timer(spectator::Id("t", spectator::Tags{}));
+}
 
 TEST(Timer, Record) {
   auto t = getTimer();

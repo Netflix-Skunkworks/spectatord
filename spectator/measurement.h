@@ -19,12 +19,13 @@ class Measurement {
   const Id& id;
   double value;
 
-  bool operator==(const Measurement& other) const {
+  auto operator==(const Measurement& other) const -> bool {
     return std::abs(value - other.value) < 1e-9 && id == other.id;
   }
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Measurement& m) {
+inline auto operator<<(std::ostream& os, const Measurement& m)
+    -> std::ostream& {
   os << "Measurement{" << m.id << "," << m.value << "}";
   return os;
 }

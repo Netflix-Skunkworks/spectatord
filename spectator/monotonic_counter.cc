@@ -13,7 +13,7 @@ void MonotonicCounter::Set(double amount) noexcept {
   value_.store(amount, std::memory_order_relaxed);
 }
 
-double MonotonicCounter::Delta() const noexcept {
+auto MonotonicCounter::Delta() const noexcept -> double {
   return value_.load(std::memory_order_relaxed) -
          prev_value_.load(std::memory_order_relaxed);
 }

@@ -14,10 +14,10 @@ struct lazy_policy {
   static void init(Registry* /* r */, const Id& /* id */,
                    counters_t* /* counters */,
                    const std::string* /* perc_tags */) {}
-  static std::shared_ptr<Counter> get_counter(Registry* r, const Id& id,
+  static auto get_counter(Registry* r, const Id& id,
                                               counters_t* counters,
                                               size_t index,
-                                              const std::string* perc_tags) {
+                                              const std::string* perc_tags) -> std::shared_ptr<Counter> {
     using spectator::refs;
     auto& c = counters->at(index);
     if (!c) {

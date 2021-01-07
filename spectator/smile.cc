@@ -1,7 +1,7 @@
 #include "smile.h"
 namespace spectator {
 
-inline size_t zigzagEncode(size_t input) { return input << 1U; }
+inline auto zigzagEncode(size_t input) -> size_t { return input << 1U; }
 
 // Small ints are 4-bit (-16 to +15) integer constants
 static constexpr uint8_t kTokenPrefixSmallInt = 0xC0;

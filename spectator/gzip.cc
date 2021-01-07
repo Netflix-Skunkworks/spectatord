@@ -8,8 +8,8 @@
 
 namespace spectator {
 
-int gzip_compress(void* dest, size_t* destLen, const void* source,
-                  size_t sourceLen) {
+auto gzip_compress(void* dest, size_t* destLen, const void* source,
+                   size_t sourceLen) -> int {
   // no initialization due to gcc 4.8 bug
   z_stream stream;
 
@@ -50,11 +50,11 @@ class inflate_guard {
       inflateEnd(stream_);
     }
   }
-  int init_result() const { return init; }
+  [[nodiscard]] auto init_result() const -> int { return init; }
 };
 
-int gzip_uncompress(void* dest, size_t* destLen, const void* source,
-                    size_t sourceLen) {
+auto gzip_uncompress(void* dest, size_t* destLen, const void* source,
+                     size_t sourceLen) -> int {
   // no initialization due to gcc 4.8 bug
   z_stream stream;
   stream.next_in = reinterpret_cast<z_const Bytef*>(const_cast<void*>(source));

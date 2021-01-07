@@ -29,7 +29,6 @@ cc_library(
         "spectator/gauge.cc",
         "spectator/gzip.cc",
         "spectator/http_client.cc",
-        "spectator/id.cc",
         "spectator/max_gauge.cc",
         "spectator/monotonic_counter.cc",
         "spectator/monotonic_sampled.cc",

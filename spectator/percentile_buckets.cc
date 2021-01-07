@@ -5,9 +5,9 @@ namespace spectator {
 
 #include "percentile_bucket_values.inc"
 
-int64_t GetPercBucketValue(size_t i) { return kBucketValues.at(i); }
+auto GetPercBucketValue(size_t i) -> int64_t { return kBucketValues.at(i); }
 
-size_t PercentileBucketIndexOf(int64_t v) {
+auto PercentileBucketIndexOf(int64_t v) -> size_t {
   if (v <= 0) {
     return 0;
   }
@@ -71,15 +71,15 @@ void Percentiles(const std::array<int64_t, PercentileBucketsLength()>& counts,
   }
 }
 
-double Percentile(const std::array<int64_t, PercentileBucketsLength()>& counts,
-                  double p) {
+auto Percentile(const std::array<int64_t, PercentileBucketsLength()>& counts,
+                double p) -> double {
   std::vector<double> pcts{p};
   std::vector<double> results;
   Percentiles(counts, pcts, &results);
   return results[0];
 }
 
-int64_t PercentileBucket(int64_t v) {
+auto PercentileBucket(int64_t v) -> int64_t {
   return GetPercBucketValue(PercentileBucketIndexOf(v));
 }
 

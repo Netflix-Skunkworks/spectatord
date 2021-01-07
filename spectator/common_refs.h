@@ -16,15 +16,15 @@ class Refs final {
         max_(intern_str("max")),
         statistic_(intern_str("statistic")) {}
 
-  [[nodiscard]] StrRef name() const { return name_; }
-  [[nodiscard]] StrRef count() const { return count_; }
-  [[nodiscard]] StrRef gauge() const { return gauge_; }
-  [[nodiscard]] StrRef totalTime() const { return totalTime_; }
-  [[nodiscard]] StrRef totalAmount() const { return totalAmount_; }
-  [[nodiscard]] StrRef totalOfSquares() const { return totalSq_; }
-  [[nodiscard]] StrRef percentile() const { return percentile_; }
-  [[nodiscard]] StrRef max() const { return max_; }
-  [[nodiscard]] StrRef statistic() const { return statistic_; }
+  [[nodiscard]] auto name() const -> StrRef { return name_; }
+  [[nodiscard]] auto count() const -> StrRef { return count_; }
+  [[nodiscard]] auto gauge() const -> StrRef { return gauge_; }
+  [[nodiscard]] auto totalTime() const -> StrRef { return totalTime_; }
+  [[nodiscard]] auto totalAmount() const -> StrRef { return totalAmount_; }
+  [[nodiscard]] auto totalOfSquares() const -> StrRef { return totalSq_; }
+  [[nodiscard]] auto percentile() const -> StrRef { return percentile_; }
+  [[nodiscard]] auto max() const -> StrRef { return max_; }
+  [[nodiscard]] auto statistic() const -> StrRef { return statistic_; }
 
  private:
   StrRef name_;
@@ -38,6 +38,6 @@ class Refs final {
   StrRef statistic_;
 };
 
-Refs& refs();
+auto refs() -> Refs&;
 
 }  // namespace spectator

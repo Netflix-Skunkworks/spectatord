@@ -17,32 +17,52 @@ class Id {
   Id(std::string_view name, Tags tags) noexcept
       : name_(intern_str(name)), tags_(std::move(tags)), hash_(0U) {}
 
-  static Id Of(std::string_view name, Tags tags = {}) {
+  static auto Of(std::string_view name, Tags tags = {}) -> Id {
     return Id(name, std::move(tags));
   }
 
-  bool operator==(const Id& rhs) const noexcept;
+  auto operator==(const Id& rhs) const noexcept -> bool {
+    return name_ == rhs.name_ && tags_ == rhs.tags_;
+  }
 
-  StrRef Name() const noexcept;
+  [[nodiscard]] auto Name() const noexcept -> StrRef { return name_; }
 
-  const Tags& GetTags() const noexcept;
+  [[nodiscard]] auto GetTags() const noexcept -> const Tags& { return tags_; }
 
-  Id WithTag(StrRef key, StrRef value) const;
+  [[nodiscard]] auto WithTag(StrRef key, StrRef value) const -> Id {
+    // Create a copy
+    Tags tags{GetTags()};
+    tags.add(key, value);
+    return Id(Name(), tags);
+  }
 
-  Id WithTags(StrRef k1, StrRef v1, StrRef k2, StrRef v2) const;
+  [[nodiscard]] auto WithTags(StrRef k1, StrRef v1, StrRef k2, StrRef v2) const
+      -> Id {
+    // Create a copy
+    Tags tags{GetTags()};
+    tags.add(k1, v1);
+    tags.add(k2, v2);
+    return Id(Name(), tags);
+  }
 
-  Id WithTags(Tags&& extra_tags) const;
+  [[nodiscard]] auto WithTags(Tags&& extra_tags) const -> Id {
+    Tags tags{GetTags()};
+    tags.add_all(extra_tags);
+    return Id(Name(), std::move(tags));
+  }
 
-  Id WithStat(StrRef stat) const { return WithTag(refs().statistic(), stat); };
+  [[nodiscard]] auto WithStat(StrRef stat) const -> Id {
+    return WithTag(refs().statistic(), stat);
+  };
 
-  Id WithDefaultStat(StrRef stat) const {
+  [[nodiscard]] auto WithDefaultStat(StrRef stat) const -> Id {
     if (tags_.has(refs().statistic())) {
       return *this;
     }
     return WithStat(stat);
   }
 
-  friend std::ostream& operator<<(std::ostream& os, const Id& id) {
+  friend auto operator<<(std::ostream& os, const Id& id) -> std::ostream& {
     return os << fmt::format("{}", id);
   }
 
@@ -55,7 +75,7 @@ class Id {
   Tags tags_;
   mutable size_t hash_;
 
-  size_t Hash() const noexcept {
+  [[nodiscard]] auto Hash() const noexcept -> size_t {
     if (hash_ == 0) {
       // compute hash code, and reuse it
       hash_ = tags_.hash() ^ std::hash<StrRef>()(name_);
@@ -69,25 +89,27 @@ class Id {
 namespace std {
 template <>
 struct hash<spectator::Id> {
-  size_t operator()(const spectator::Id& id) const { return id.Hash(); }
+  auto operator()(const spectator::Id& id) const -> size_t { return id.Hash(); }
 };
 
 template <>
 struct hash<spectator::Tags> {
-  size_t operator()(const spectator::Tags& tags) const { return tags.hash(); }
+  auto operator()(const spectator::Tags& tags) const -> size_t {
+    return tags.hash();
+  }
 };
 
 template <>
 struct hash<shared_ptr<spectator::Id>> {
-  size_t operator()(const shared_ptr<spectator::Id>& id) const {
+  auto operator()(const shared_ptr<spectator::Id>& id) const -> size_t {
     return id->Hash();
   }
 };
 
 template <>
 struct equal_to<shared_ptr<spectator::Id>> {
-  bool operator()(const shared_ptr<spectator::Id>& lhs,
-                  const shared_ptr<spectator::Id>& rhs) const {
+  auto operator()(const shared_ptr<spectator::Id>& lhs,
+                  const shared_ptr<spectator::Id>& rhs) const -> bool {
     return *lhs == *rhs;
   }
 };

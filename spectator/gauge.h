@@ -12,12 +12,12 @@ class Gauge : public Meter {
                int64_t now = absl::GetCurrentTimeNanos()) const noexcept;
 
   void Set(double value) noexcept;
-  double Get() const noexcept;
+  auto Get() const noexcept -> double;
   void SetTtl(absl::Duration ttl) noexcept;
-  absl::Duration GetTtl() const noexcept {
+  auto GetTtl() const noexcept -> absl::Duration {
     return absl::Nanoseconds(ttl_nanos_.load());
   }
-  bool HasExpired(int64_t now) const noexcept;
+  auto HasExpired(int64_t now) const noexcept -> bool;
 
  private:
   std::atomic<int64_t> ttl_nanos_;

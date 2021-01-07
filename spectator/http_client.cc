@@ -15,12 +15,12 @@ class CurlHeaders {
   ~CurlHeaders() { curl_slist_free_all(list_); }
   CurlHeaders(const CurlHeaders&) = delete;
   CurlHeaders(CurlHeaders&&) = delete;
-  CurlHeaders& operator=(const CurlHeaders&) = delete;
-  CurlHeaders& operator=(CurlHeaders&&) = delete;
+  auto operator=(const CurlHeaders&) -> CurlHeaders& = delete;
+  auto operator=(CurlHeaders &&) -> CurlHeaders& = delete;
   void append(const std::string& string) {
     list_ = curl_slist_append(list_, string.c_str());
   }
-  curl_slist* headers() { return list_; }
+  auto headers() -> curl_slist* { return list_; }
 
  private:
   curl_slist* list_{nullptr};
@@ -28,21 +28,21 @@ class CurlHeaders {
 
 namespace {
 
-size_t curl_ignore_output_fun(char* /*unused*/, size_t size, size_t nmemb,
-                              void* /*unused*/) {
+auto curl_ignore_output_fun(char* /*unused*/, size_t size, size_t nmemb, void *
+                            /*unused*/) -> size_t {
   return size * nmemb;
 }
 
-size_t curl_capture_output_fun(char* contents, size_t size, size_t nmemb,
-                               void* userp) {
+auto curl_capture_output_fun(char* contents, size_t size, size_t nmemb,
+                             void* userp) -> size_t {
   auto real_size = size * nmemb;
   auto* resp = static_cast<std::string*>(userp);
   resp->append(contents, real_size);
   return real_size;
 }
 
-size_t curl_capture_headers_fun(char* contents, size_t size, size_t nmemb,
-                                void* userp) {
+auto curl_capture_headers_fun(char* contents, size_t size, size_t nmemb,
+                              void* userp) -> size_t {
   auto real_size = size * nmemb;
   auto end = contents + real_size;
   auto* headers = static_cast<HttpHeaders*>(userp);
@@ -65,37 +65,37 @@ class CurlHandle {
 
   CurlHandle(const CurlHandle&) = delete;
 
-  CurlHandle& operator=(const CurlHandle&) = delete;
+  auto operator=(const CurlHandle&) -> CurlHandle& = delete;
 
   CurlHandle(CurlHandle&& other) = delete;
 
-  CurlHandle& operator=(CurlHandle&& other) = delete;
+  auto operator=(CurlHandle&& other) -> CurlHandle& = delete;
 
   ~CurlHandle() {
     // nullptr is handled by curl
     curl_easy_cleanup(handle_);
   }
 
-  CURL* handle() const noexcept { return handle_; }
+  auto handle() const noexcept -> CURL* { return handle_; }
 
-  CURLcode perform() { return curl_easy_perform(handle()); }
+  auto perform() -> CURLcode { return curl_easy_perform(handle()); }
 
-  CURLcode set_opt(CURLoption option, const void* param) {
+  auto set_opt(CURLoption option, const void* param) -> CURLcode {
     return curl_easy_setopt(handle(), option, param);
   }
 
-  [[nodiscard]] int status_code() const {
+  [[nodiscard]] auto status_code() const -> int {
     // curl requires this to be a long
     long http_code = 400;
     curl_easy_getinfo(handle(), CURLINFO_RESPONSE_CODE, &http_code);
     return static_cast<int>(http_code);
   }
 
-  [[nodiscard]] std::string response() const { return response_; }
+  [[nodiscard]] auto response() const -> std::string { return response_; }
 
   void move_response(std::string* out) { *out = std::move(response_); }
 
-  [[nodiscard]] HttpHeaders headers() const { return resp_headers_; }
+  [[nodiscard]] auto headers() const -> HttpHeaders { return resp_headers_; }
 
   void move_headers(HttpHeaders* out) { *out = std::move(resp_headers_); }
 
@@ -163,23 +163,25 @@ class CurlHandle {
 HttpClient::HttpClient(Registry* registry, HttpClientConfig config)
     : registry_(registry), config_{config} {}
 
-HttpResponse HttpClient::Get(const std::string& url) const {
+auto HttpClient::Get(const std::string& url) const -> HttpResponse {
   return perform("GET", url, std::make_shared<CurlHeaders>(), nullptr, 0u, 0);
 }
 
-HttpResponse HttpClient::Get(const std::string& url,
-                             const std::vector<std::string>& headers) const {
+auto HttpClient::Get(const std::string& url,
+                     const std::vector<std::string>& headers) const
+    -> HttpResponse {
   return method_header("GET", url, headers);
 }
 
-HttpResponse HttpClient::Put(const std::string& url,
-                             const std::vector<std::string>& headers) const {
+auto HttpClient::Put(const std::string& url,
+                     const std::vector<std::string>& headers) const
+    -> HttpResponse {
   return method_header("PUT", url, headers);
 }
 
-HttpResponse HttpClient::method_header(
-    const char* method, const std::string& url,
-    const std::vector<std::string>& headers) const {
+auto HttpClient::method_header(const char* method, const std::string& url,
+                               const std::vector<std::string>& headers) const
+    -> HttpResponse {
   auto curl_headers = std::make_shared<CurlHeaders>();
   for (const auto& h : headers) {
     curl_headers->append(h);
@@ -187,14 +189,14 @@ HttpResponse HttpClient::method_header(
   return perform(method, url, std::move(curl_headers), nullptr, 0u, 0);
 }
 
-inline bool is_retryable_error(int http_code) {
+inline auto is_retryable_error(int http_code) -> bool {
   return http_code == 429 || (http_code / 100) == 5;
 }
 
-HttpResponse HttpClient::perform(const char* method, const std::string& url,
-                                 std::shared_ptr<CurlHeaders> headers,
-                                 const void* payload, size_t size,
-                                 int attempt_number) const {
+auto HttpClient::perform(const char* method, const std::string& url,
+                         std::shared_ptr<CurlHeaders> headers,
+                         const void* payload, size_t size,
+                         int attempt_number) const -> HttpResponse {
   LogEntry entry{registry_, method, url};
 
   CurlHandle curl;
@@ -287,8 +289,8 @@ HttpResponse HttpClient::perform(const char* method, const std::string& url,
 
 static constexpr const char* const kGzipEncoding = "Content-Encoding: gzip";
 
-HttpResponse HttpClient::Post(const std::string& url, const char* content_type,
-                              const CompressedResult& payload) const {
+auto HttpClient::Post(const std::string& url, const char* content_type,
+                      const CompressedResult& payload) const -> HttpResponse {
   auto headers = std::make_shared<CurlHeaders>();
   headers->append(content_type);
   headers->append(kGzipEncoding);
@@ -297,8 +299,8 @@ HttpResponse HttpClient::Post(const std::string& url, const char* content_type,
                  0);
 }
 
-HttpResponse HttpClient::Post(const std::string& url, const char* content_type,
-                              const void* payload, size_t size) const {
+auto HttpClient::Post(const std::string& url, const char* content_type,
+                      const void* payload, size_t size) const -> HttpResponse {
   auto logger = registry_->GetLogger();
   auto headers = std::make_shared<CurlHeaders>();
   headers->append(content_type);

@@ -13,9 +13,9 @@ namespace spectatord {
 
 enum class StatsdMetricType { Counter, Timing, Gauge, Histogram, Set };
 
-inline bool add_tag(spectator::Tags* tags, const char* begin_key,
+inline auto add_tag(spectator::Tags* tags, const char* begin_key,
                     const char* end_key, const char* begin_value,
-                    const char* end_value) {
+                    const char* end_value) -> bool {
   std::string_view key;
   std::string_view value;
 
@@ -37,8 +37,8 @@ inline bool add_tag(spectator::Tags* tags, const char* begin_key,
 }
 
 // feed lines into parser
-std::optional<std::string> Server::parse_lines(char* buffer,
-                                               const handler_t& parser) {
+auto Server::parse_lines(char* buffer, const handler_t& parser)
+    -> std::optional<std::string> {
   char* p = buffer;
   std::string err_msg;
   while (*p != '\0') {
@@ -120,7 +120,8 @@ static void update_statsd_metric(spectator::Registry* registry,
 //  users.online:1|c|#country:china - Increment the active users COUNT metric
 //  and tag by country of origin. users.online:1|c|@0.5|#country:china - Track
 //  active China users and use a sample rate.
-std::optional<std::string> Server::parse_statsd_line(const char* buffer) {
+auto Server::parse_statsd_line(const char* buffer)
+    -> std::optional<std::string> {
   assert(buffer != nullptr);
 
   // get name
@@ -216,8 +217,8 @@ std::optional<std::string> Server::parse_statsd_line(const char* buffer) {
   return {};
 }
 
-std::optional<measurement> get_measurement(std::string_view measurement_str,
-                                           std::string* err_msg) {
+auto get_measurement(std::string_view measurement_str, std::string* err_msg)
+    -> std::optional<measurement> {
   // get name (tags are specified with , but are optional)
   auto pos = measurement_str.find_first_of(",:");
   if (pos == std::string_view::npos || pos == 0) {
@@ -430,17 +431,17 @@ void Server::Stop() {
   }
 }
 
-std::optional<std::string> Server::parse_statsd(char* buffer) {
+auto Server::parse_statsd(char* buffer) -> std::optional<std::string> {
   return parse_lines(
       buffer, [this](char* line) { return this->parse_statsd_line(line); });
 }
 
-std::optional<std::string> Server::parse(char* buffer) {
+auto Server::parse(char* buffer) -> std::optional<std::string> {
   return parse_lines(
       buffer, [this](const char* line) { return this->parse_line(line); });
 }
 
-std::optional<std::string> Server::parse_line(const char* buffer) {
+auto Server::parse_line(const char* buffer) -> std::optional<std::string> {
   static int_fast64_t parsed_count = 0;
 
   const char* p = buffer;

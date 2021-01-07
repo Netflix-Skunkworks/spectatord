@@ -18,7 +18,7 @@ CompressedBuffer::~CompressedBuffer() {
   (void)Result();
 }
 
-void CompressedBuffer::maybe_compress() {
+auto CompressedBuffer::maybe_compress() -> void {
   if (cur_.size() > chunk_size_) {
     compress(Z_NO_FLUSH);
     cur_.clear();
@@ -26,7 +26,7 @@ void CompressedBuffer::maybe_compress() {
 }
 
 // compress the current chunk
-void CompressedBuffer::compress(int flush) {
+auto CompressedBuffer::compress(int flush) -> void {
   stream.avail_in = cur_.size();
   stream.next_in =
       reinterpret_cast<z_const Bytef*>(const_cast<uint8_t*>(cur_.data()));
@@ -50,7 +50,7 @@ void CompressedBuffer::compress(int flush) {
   assert(stream.avail_in == 0);
 }
 
-CompressedResult CompressedBuffer::Result() {
+auto CompressedBuffer::Result() -> CompressedResult {
   if (init_) {
     init_ = false;
     compress(Z_FINISH);
@@ -59,7 +59,7 @@ CompressedResult CompressedBuffer::Result() {
   return CompressedResult{dest_.data(), stream.total_out};
 }
 
-void CompressedBuffer::Init() {
+auto CompressedBuffer::Init() -> void {
   cur_.clear();
   init_ = true;
   dest_index_ = 0;

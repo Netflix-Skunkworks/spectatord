@@ -19,79 +19,82 @@ Registry::Registry(std::unique_ptr<Config> config,
   }
 }
 
-const Config& Registry::GetConfig() const noexcept { return *config_; }
+auto Registry::GetConfig() const noexcept -> const Config& { return *config_; }
 
-Registry::logger_ptr Registry::GetLogger() const noexcept { return logger_; }
+auto Registry::GetLogger() const noexcept -> Registry::logger_ptr {
+  return logger_;
+}
 
-std::shared_ptr<Counter> Registry::GetCounter(Id id) noexcept {
+auto Registry::GetCounter(Id id) noexcept -> std::shared_ptr<Counter> {
   return all_meters_.insert_counter(std::move(id));
 }
 
-std::shared_ptr<Counter> Registry::GetCounter(std::string_view name,
-                                              Tags tags) noexcept {
+auto Registry::GetCounter(std::string_view name, Tags tags) noexcept
+    -> std::shared_ptr<Counter> {
   return GetCounter(Id::Of(name, std::move(tags)));
 }
 
-std::shared_ptr<DistributionSummary> Registry::GetDistributionSummary(
-    Id id) noexcept {
+auto Registry::GetDistributionSummary(Id id) noexcept
+    -> std::shared_ptr<DistributionSummary> {
   return all_meters_.insert_dist_sum(std::move(id));
 }
 
-std::shared_ptr<DistributionSummary> Registry::GetDistributionSummary(
-    std::string_view name, Tags tags) noexcept {
+auto Registry::GetDistributionSummary(std::string_view name, Tags tags) noexcept
+    -> std::shared_ptr<DistributionSummary> {
   return GetDistributionSummary(Id::Of(name, std::move(tags)));
 }
 
-std::shared_ptr<Gauge> Registry::GetGauge(Id id) noexcept {
+auto Registry::GetGauge(Id id) noexcept -> std::shared_ptr<Gauge> {
   return all_meters_.insert_gauge(std::move(id), GetConfig().meter_ttl);
 }
 
-std::shared_ptr<Gauge> Registry::GetGauge(Id id, absl::Duration ttl) noexcept {
+auto Registry::GetGauge(Id id, absl::Duration ttl) noexcept
+    -> std::shared_ptr<Gauge> {
   auto g = all_meters_.insert_gauge(std::move(id), ttl);
   g->SetTtl(ttl);  // in case the previous ttl was different
   return g;
 }
 
-std::shared_ptr<Gauge> Registry::GetGauge(std::string_view name,
-                                          Tags tags) noexcept {
+auto Registry::GetGauge(std::string_view name, Tags tags) noexcept
+    -> std::shared_ptr<Gauge> {
   return GetGauge(Id::Of(name, std::move(tags)));
 }
 
-std::shared_ptr<MaxGauge> Registry::GetMaxGauge(Id id) noexcept {
+auto Registry::GetMaxGauge(Id id) noexcept -> std::shared_ptr<MaxGauge> {
   return all_meters_.insert_max_gauge(std::move(id));
 }
 
-std::shared_ptr<MaxGauge> Registry::GetMaxGauge(std::string_view name,
-                                                Tags tags) noexcept {
+auto Registry::GetMaxGauge(std::string_view name, Tags tags) noexcept
+    -> std::shared_ptr<MaxGauge> {
   return GetMaxGauge(Id::Of(name, std::move(tags)));
 }
 
-std::shared_ptr<MonotonicCounter> Registry::GetMonotonicCounter(
-    Id id) noexcept {
+auto Registry::GetMonotonicCounter(Id id) noexcept
+    -> std::shared_ptr<MonotonicCounter> {
   return all_meters_.insert_mono_counter(std::move(id));
 }
 
-std::shared_ptr<MonotonicCounter> Registry::GetMonotonicCounter(
-    std::string_view name, Tags tags) noexcept {
+auto Registry::GetMonotonicCounter(std::string_view name, Tags tags) noexcept
+    -> std::shared_ptr<MonotonicCounter> {
   return GetMonotonicCounter(Id::Of(name, std::move(tags)));
 }
 
-std::shared_ptr<MonotonicSampled> Registry::GetMonotonicSampled(
-    Id id) noexcept {
+auto Registry::GetMonotonicSampled(Id id) noexcept
+    -> std::shared_ptr<MonotonicSampled> {
   return all_meters_.insert_mono_sampled(std::move(id));
 }
 
-std::shared_ptr<MonotonicSampled> Registry::GetMonotonicSampled(
-    std::string_view name, Tags tags) noexcept {
+auto Registry::GetMonotonicSampled(std::string_view name, Tags tags) noexcept
+    -> std::shared_ptr<MonotonicSampled> {
   return GetMonotonicSampled(Id::Of(name, std::move(tags)));
 }
 
-std::shared_ptr<Timer> Registry::GetTimer(Id id) noexcept {
+auto Registry::GetTimer(Id id) noexcept -> std::shared_ptr<Timer> {
   return all_meters_.insert_timer(std::move(id));
 }
 
-std::shared_ptr<Timer> Registry::GetTimer(std::string_view name,
-                                          Tags tags) noexcept {
+auto Registry::GetTimer(std::string_view name, Tags tags) noexcept
+    -> std::shared_ptr<Timer> {
   return GetTimer(Id::Of(name, std::move(tags)));
 }
 
@@ -114,7 +117,7 @@ void Registry::Stop() noexcept {
   }
 }
 
-std::vector<Measurement> Registry::Measurements() const noexcept {
+auto Registry::Measurements() const noexcept -> std::vector<Measurement> {
   auto res = all_meters_.measure(meter_ttl_);
   registry_size_->Record(res.size());
   for (const auto& callback : ms_callbacks_) {

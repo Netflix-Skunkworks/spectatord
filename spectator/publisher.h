@@ -23,7 +23,7 @@ namespace spectator {
 
 namespace detail {
 template <typename R>
-std::shared_ptr<Counter> get_counter(R* registry, Tags tags) {
+auto get_counter(R* registry, Tags tags) -> std::shared_ptr<Counter> {
   static constexpr auto kSpectatorMeasurements = "spectator.measurements";
   return registry->GetCounter(kSpectatorMeasurements, std::move(tags));
 }
@@ -53,8 +53,8 @@ class Publisher {
 
   Publisher(const Publisher&) = delete;
   Publisher(Publisher&&) = delete;
-  Publisher& operator=(const Publisher&) = delete;
-  Publisher& operator=(Publisher&&) = delete;
+  auto operator=(const Publisher&) -> Publisher& = delete;
+  auto operator=(Publisher &&) -> Publisher& = delete;
 
   ~Publisher() {
     if (started_) {
@@ -143,9 +143,10 @@ class Publisher {
   // for testing
  protected:
   using StrTable = ska::flat_hash_map<StrRef, int>;
-  StrTable build_str_table(SmilePayload* payload,
-                           std::vector<Measurement>::const_iterator first,
-                           std::vector<Measurement>::const_iterator last) {
+  auto build_str_table(SmilePayload* payload,
+                       std::vector<Measurement>::const_iterator first,
+                       std::vector<Measurement>::const_iterator last)
+      -> StrTable {
     StrTable strings{static_cast<StrTable::size_type>((last - first) * 7)};
     for (const auto& tag : common_tags_) {
       strings[tag.key] = 0;
@@ -174,7 +175,7 @@ class Publisher {
 
   enum class Op { Add = 0, Max = 10 };
 
-  Op op_from_tags(const Tags& tags) {
+  auto op_from_tags(const Tags& tags) -> Op {
     auto stat = tags.at(refs().statistic());
     if (stat == refs().count() || stat == refs().totalAmount() ||
         stat == refs().totalTime() || stat == refs().totalOfSquares() ||
@@ -216,7 +217,7 @@ class Publisher {
     payload->Append(m.value);
   }
 
-  std::vector<int> get_common_ids(const StrTable& strings) {
+  auto get_common_ids(const StrTable& strings) -> std::vector<int> {
     std::vector<int> ids;
     ids.reserve(common_tags_.size() * 2);
     for (const auto& tag : common_tags_) {
@@ -241,7 +242,7 @@ class Publisher {
     }
   }
 
-  static HttpClientConfig get_http_config(const Config& cfg) {
+  static auto get_http_config(const Config& cfg) -> HttpClientConfig {
     auto read_timeout = cfg.read_timeout;
     auto connect_timeout = cfg.connect_timeout;
     if (read_timeout == absl::ZeroDuration()) {
@@ -254,9 +255,10 @@ class Publisher {
                             false,           true,         cfg.verbose_http};
   }
 
-  std::pair<size_t, size_t> handle_aggr_response(
-      const HttpResponse& http_response, size_t num_measurements,
-      tsl::hopscotch_set<std::string>* err_messages) {
+  auto handle_aggr_response(const HttpResponse& http_response,
+                            size_t num_measurements,
+                            tsl::hopscotch_set<std::string>* err_messages)
+      -> std::pair<size_t, size_t> {
     size_t num_sent = 0U;
     size_t num_err = 0U;
     auto logger = registry_->GetLogger();

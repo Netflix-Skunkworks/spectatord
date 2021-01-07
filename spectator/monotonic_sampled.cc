@@ -48,7 +48,7 @@ void MonotonicSampled::Measure(Measurements* results) const noexcept {
   }
 }
 
-double MonotonicSampled::SampledRate() const noexcept {
+auto MonotonicSampled::SampledRate() const noexcept -> double {
   absl::MutexLock lock(&mutex_);
   auto delta_t = (ts_ - prev_ts_) / 1e9;
   return (value_ - prev_value_) / delta_t;

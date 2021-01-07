@@ -10,7 +10,7 @@ class MonotonicSampled : public Meter {
   void Measure(Measurements* results) const noexcept;
 
   void Set(double amount, int64_t ts_nanos) noexcept;
-  double SampledRate() const noexcept;
+  auto SampledRate() const noexcept -> double;
 
  private:
   mutable std::unique_ptr<Id> count_id_;
