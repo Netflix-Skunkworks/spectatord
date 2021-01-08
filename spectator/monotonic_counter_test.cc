@@ -6,7 +6,7 @@ namespace {
 
 using spectator::refs;
 
-spectator::MonotonicCounter getMonotonicCounter(std::string_view name) {
+auto getMonotonicCounter(std::string_view name) -> spectator::MonotonicCounter {
   return spectator::MonotonicCounter(spectator::Id::Of(name));
 }
 
@@ -77,6 +77,19 @@ TEST(MonotonicCounter, Measure) {
   c.Measure(&measures);
   EXPECT_TRUE(measures.empty())
       << "MonotonicCounters should not report delta=0";
+}
+
+TEST(MonotonicCounter, DefaultStatistic) {
+  spectator::Measurements measures;
+  auto c = spectator::MonotonicCounter(
+      spectator::Id::Of("foo", {{"statistic", "totalAmount"}}));
+  c.Set(42);
+  c.Measure(&measures);
+  c.Set(84.0);
+  c.Measure(&measures);
+  auto id = spectator::Id::Of("foo", {{"statistic", "totalAmount"}});
+  std::vector<spectator::Measurement> expected({{id, 42.0}});
+  EXPECT_EQ(expected, measures);
 }
 
 TEST(MonotonicCounter, Update) {

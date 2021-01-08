@@ -24,7 +24,8 @@ void MonotonicCounter::Measure(Measurements* results) const noexcept {
                     std::memory_order_relaxed);
   if (delta > 0) {
     if (!count_id_) {
-      count_id_ = std::make_unique<Id>(MeterId().WithStat(refs().count()));
+      count_id_ =
+          std::make_unique<Id>(MeterId().WithDefaultStat(refs().count()));
     }
     results->emplace_back(*count_id_, delta);
   }
