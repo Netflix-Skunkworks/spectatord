@@ -55,9 +55,9 @@ def nflx_spectatord_deps():
   http_archive(
           name = "com_github_fmtlib_fmt",
           build_file = "@nflx_spectatord//third_party:fmtlib.BUILD",
-          strip_prefix = "fmt-7.0.3",
-          sha256 = "decfdf9ad274070fa85f26407b816f5a4d82205ae86bac1990be658d0795ea4d",
-          urls = ["https://github.com/fmtlib/fmt/releases/download/7.0.3/fmt-7.0.3.zip"],
+          strip_prefix = "fmt-7.1.3",
+          urls = ["https://github.com/fmtlib/fmt/releases/download/7.1.3/fmt-7.1.3.zip"],
+          sha256 = "5d98c504d0205f912e22449ecdea776b78ce0bb096927334f80781e720084c9f"
           )
 
   # https://github.com/envoyproxy/envoy/blob/master/bazel/repository_locations.bzl.
