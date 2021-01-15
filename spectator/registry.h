@@ -2,6 +2,7 @@
 
 #include "absl/synchronization/mutex.h"
 #include "absl/time/time.h"
+#include "age_gauge.h"
 #include "config.h"
 #include "counter.h"
 #include "dist_summary.h"
@@ -209,6 +210,10 @@ class Registry {
   auto GetMonotonicCounter(Id id) noexcept -> std::shared_ptr<MonotonicCounter>;
   auto GetMonotonicCounter(std::string_view name, Tags tags = {}) noexcept
       -> std::shared_ptr<MonotonicCounter>;
+
+  auto GetAgeGauge(Id id) noexcept -> std::shared_ptr<AgeGauge>;
+  auto GetAgeGauge(std::string_view name, Tags tags = {}) noexcept
+      -> std::shared_ptr<AgeGauge>;
 
   auto GetMonotonicSampled(Id id) noexcept -> std::shared_ptr<MonotonicSampled>;
   auto GetMonotonicSampled(std::string_view name, Tags tags = {}) noexcept

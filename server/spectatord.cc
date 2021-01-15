@@ -312,6 +312,7 @@ static void prepare_socket_path(const std::string& socket_path) {
 
 void Server::Start() {
   auto logger = Logger();
+  registry_->GetAgeGauge("spectatord.uptime")->UpdateLastSuccess();
 
   logger->info("Starting janitorial tasks");
   upkeep_thread_ = std::thread(&Server::upkeep, this);
