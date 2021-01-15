@@ -22,7 +22,7 @@ TEST(AgeGauge, Update) {
   g.UpdateLastSuccess(now);
   EXPECT_DOUBLE_EQ(g.Value(now), 0.0);
 
-  now += 1e9;
+  now += int64_t{1000} * 1000 * 1000;
   EXPECT_DOUBLE_EQ(g.Value(now), 1.0);
 }
 
