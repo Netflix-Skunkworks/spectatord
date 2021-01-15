@@ -4,9 +4,9 @@ def nflx_spectatord_deps():
   http_archive(
           name = "curl",
           build_file = "@nflx_spectatord//third_party:curl.BUILD",
-          strip_prefix = "curl-7.72.0",
-          sha256 = "d4d5899a3868fbb6ae1856c3e55a32ce35913de3956d1973caccd37bd0174fa2",
-          urls = [ "https://curl.haxx.se/download/curl-7.72.0.tar.gz", ],
+          strip_prefix = "curl-7.74.0",
+          urls = [ "https://curl.haxx.se/download/curl-7.74.0.tar.gz", ],
+          sha256 = "e56b3921eeb7a2951959c02db0912b5fcd5fdba5aca071da819e1accf338bbd7"
           )
 
   http_archive(
