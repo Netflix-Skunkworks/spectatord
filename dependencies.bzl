@@ -46,9 +46,9 @@ def nflx_spectatord_deps():
   http_archive(
           name = "com_github_tessil_hopscotch_map",
           build_file = "@nflx_spectatord//third_party:hopscotch_map.BUILD",
-          strip_prefix = "hopscotch-map-2.2.1",
-          sha256 = "73e301925e1418c5ed930ef37ebdcab2c395a6d1bdaf5a012034bb75307d33f1",
-          urls = ["https://github.com/Tessil/hopscotch-map/archive/v2.2.1.tar.gz"],
+          strip_prefix = "hopscotch-map-2.3.0",
+          urls = ["https://github.com/Tessil/hopscotch-map/archive/v2.3.0.tar.gz"],
+          sha256 = "a59d65b552dc7682521989842418c92257147f5068152b5af50e917892ad9317"
           )
 
   # https://github.com/envoyproxy/envoy/blob/master/bazel/repository_locations.bzl.
