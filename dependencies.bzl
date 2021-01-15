@@ -82,9 +82,9 @@ def nflx_spectatord_deps():
   http_archive(
           name = "asio",
           build_file = "@nflx_spectatord//third_party:asio.BUILD",
-          urls = ["https://github.com/chriskohlhoff/asio/archive/asio-1-14-0.zip"],
-          strip_prefix = "asio-asio-1-14-0",
-          sha256 = "7887c91704a92dc8425385b1ff6f3e432e8869745b2ee2f896a1e7eb2a60e729",
+          urls = ["https://github.com/chriskohlhoff/asio/archive/asio-1-18-1.zip"],
+          strip_prefix = "asio-asio-1-18-1",
+          sha256 = "01e4c72985af0e19378e763d513ddc0c61886bc14556a14dd4220eb18304c383"
           )
 
   # GoogleTest/GoogleMock framework.
