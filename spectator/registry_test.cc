@@ -1,4 +1,4 @@
-#include "../spectator/registry.h"
+#include "registry.h"
 #include "test_utils.h"
 #include <fmt/ostream.h>
 #include <gtest/gtest.h>
@@ -9,6 +9,13 @@ using spectator::Id;
 using spectator::Registry;
 using spectator::Tags;
 using spectatord::Logger;
+
+TEST(Registry, AgeGauge) {
+  Registry r{GetConfiguration(), spectatord::Logger()};
+  auto g = r.GetAgeGauge("foo");
+  g->UpdateLastSuccess();
+  EXPECT_TRUE(g->Value() > 0.0);
+}
 
 TEST(Registry, Counter) {
   Registry r{GetConfiguration(), spectatord::Logger()};

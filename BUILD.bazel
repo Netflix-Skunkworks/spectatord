@@ -40,6 +40,7 @@ cc_library(
         "spectator/timer.cc",
     ],
     hdrs = [
+        "spectator/age_gauge.h",
         "spectator/atomicnumber.h",
         "spectator/common_refs.h",
         "spectator/compressed_buffer.h",

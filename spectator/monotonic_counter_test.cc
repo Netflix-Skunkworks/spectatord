@@ -1,5 +1,5 @@
-#include "../spectator/monotonic_counter.h"
-#include "../spectator/common_refs.h"
+#include "common_refs.h"
+#include "monotonic_counter.h"
 #include <gtest/gtest.h>
 
 namespace {

@@ -75,7 +75,7 @@ TEST(HttpTest, Post) {
   auto timer_for_req = find_timer(&registry, "ipc.client.call", "200");
   ASSERT_TRUE(timer_for_req != nullptr);
   auto expected_tags =
-      Tags{{"owner", "spectator-cpp"},   {"http.status", "200"},
+      Tags{{"owner", "spectatord"},   {"http.status", "200"},
            {"http.method", "POST"},      {"ipc.status", "success"},
            {"ipc.result", "success"},    {"ipc.endpoint", "/foo"},
            {"ipc.attempt.final", "true"}};
@@ -133,7 +133,7 @@ TEST(HttpTest, PostUncompressed) {
   auto timer_for_req = find_timer(&registry, "ipc.client.call", "200");
   ASSERT_TRUE(timer_for_req != nullptr);
   auto expected_tags =
-      Tags{{"owner", "spectator-cpp"}, {"http.status", "200"},
+      Tags{{"owner", "spectatord"}, {"http.status", "200"},
            {"http.method", "POST"},    {"ipc.status", "success"},
            {"ipc.result", "success"},  {"ipc.attempt", "initial"},
            {"ipc.endpoint", "/foo"},   {"ipc.attempt.final", "true"}};
@@ -181,7 +181,7 @@ TEST(HttpTest, Timeout) {
   ASSERT_TRUE(timer_for_req != nullptr);
 
   auto expected_tags =
-      Tags{{"owner", "spectator-cpp"}, {"http.status", "-1"},
+      Tags{{"owner", "spectatord"}, {"http.status", "-1"},
            {"ipc.result", "failure"},  {"ipc.status", "timeout"},
            {"ipc.attempt", "initial"}, {"ipc.attempt.final", "true"},
            {"ipc.endpoint", "/foo"},   {"http.method", "POST"}};
@@ -262,7 +262,7 @@ TEST(HttpTest, Get) {
 
   spectator::Tags timer_tags{
       {"http.status", "200"},    {"ipc.attempt", "initial"},
-      {"ipc.result", "success"}, {"owner", "spectator-cpp"},
+      {"ipc.result", "success"}, {"owner", "spectatord"},
       {"ipc.status", "success"}, {"ipc.attempt.final", "true"},
       {"http.method", "GET"},    {"ipc.endpoint", "/get"}};
   auto timer_id = Id::Of("ipc.client.call", std::move(timer_tags));
@@ -294,12 +294,12 @@ TEST(HttpTest, Get503) {
 
   spectator::Tags err_timer_tags{
       {"http.status", "503"},       {"ipc.attempt", "initial"},
-      {"ipc.result", "failure"},    {"owner", "spectator-cpp"},
+      {"ipc.result", "failure"},    {"owner", "spectatord"},
       {"ipc.status", "http_error"}, {"ipc.attempt.final", "false"},
       {"http.method", "GET"},       {"ipc.endpoint", "/get503"}};
   spectator::Tags success_timer_tags{
       {"http.status", "200"},    {"ipc.attempt", "second"},
-      {"ipc.result", "success"}, {"owner", "spectator-cpp"},
+      {"ipc.result", "success"}, {"owner", "spectatord"},
       {"ipc.status", "success"}, {"ipc.attempt.final", "true"},
       {"http.method", "GET"},    {"ipc.endpoint", "/get503"}};
   auto err_id = Id::Of("ipc.client.call", std::move(err_timer_tags));
@@ -336,7 +336,7 @@ void test_method_header(const std::string& method) {
 
   spectator::Tags timer_tags{
       {"http.status", "200"},    {"ipc.attempt", "initial"},
-      {"ipc.result", "success"}, {"owner", "spectator-cpp"},
+      {"ipc.result", "success"}, {"owner", "spectatord"},
       {"ipc.status", "success"}, {"ipc.attempt.final", "true"},
       {"http.method", method},   {"ipc.endpoint", "/getheader"}};
   auto timer_id = Id::Of("ipc.client.call", std::move(timer_tags));
