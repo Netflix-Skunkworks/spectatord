@@ -25,6 +25,15 @@ auto Registry::GetLogger() const noexcept -> Registry::logger_ptr {
   return logger_;
 }
 
+auto Registry::GetAgeGauge(Id id) noexcept -> std::shared_ptr<AgeGauge> {
+  return all_meters_.insert_age_gauge(std::move(id));
+}
+
+auto Registry::GetAgeGauge(std::string_view name, Tags tags) noexcept
+    -> std::shared_ptr<AgeGauge> {
+  return GetAgeGauge(Id::Of(name, std::move(tags)));
+}
+
 auto Registry::GetCounter(Id id) noexcept -> std::shared_ptr<Counter> {
   return all_meters_.insert_counter(std::move(id));
 }

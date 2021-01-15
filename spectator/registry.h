@@ -101,6 +101,7 @@ struct meter_map {
 };
 
 struct all_meters {
+  meter_map<AgeGauge> age_gauges_;
   meter_map<Counter> counters_;
   meter_map<DistributionSummary> dist_sums_;
   meter_map<Gauge> gauges_;
@@ -110,13 +111,15 @@ struct all_meters {
   meter_map<Timer> timers_;
 
   auto size() const -> size_t {
-    return counters_.size() + dist_sums_.size() + gauges_.size() +
-           max_gauges_.size() + mono_counters_.size() + timers_.size();
+    return age_gauges_.size() + counters_.size() + dist_sums_.size() +
+           gauges_.size() + max_gauges_.size() + mono_counters_.size() +
+           timers_.size();
   }
 
   auto measure(int64_t meter_ttl) const -> std::vector<Measurement> {
     std::vector<Measurement> res;
     res.reserve(size() * 2);
+    age_gauges_.measure(&res, meter_ttl);
     counters_.measure(&res, meter_ttl);
     dist_sums_.measure(&res, meter_ttl);
     gauges_.measure(&res, meter_ttl);
@@ -131,6 +134,8 @@ struct all_meters {
     int total_count = 0;
     int expired = 0;
     int count = 0;
+
+    // age gauges don't expire
     std::tie(expired, count) = counters_.remove_expired(meter_ttl);
     total_expired += expired;
     total_count += count;
@@ -150,6 +155,10 @@ struct all_meters {
     total_expired += expired;
     total_count += count;
     return {total_expired, total_count};
+  }
+
+  auto insert_age_gauge(Id id) {
+    return age_gauges_.insert(std::make_shared<AgeGauge>(std::move(id)));
   }
 
   auto insert_counter(Id id) {
