@@ -105,9 +105,9 @@ def nflx_spectatord_deps():
 
     http_archive(
         name = "com_google_absl",
-        urls = ["https://github.com/abseil/abseil-cpp/archive/0f3bb466b868b523cf1dc9b2aaaed65c77b28862.zip"],
-        strip_prefix = "abseil-cpp-0f3bb466b868b523cf1dc9b2aaaed65c77b28862",
-        sha256 = "9929f3662141bbb9c6c28accf68dcab34218c5ee2d83e6365d9cb2594b3f3171",
+        urls = ["https://github.com/abseil/abseil-cpp/archive/322ae2420d27fc96d0a8ab1167d7de33671048df.zip"],
+        strip_prefix = "abseil-cpp-322ae2420d27fc96d0a8ab1167d7de33671048df",
+        sha256 = "05012198200d750f48b46a9130b8da7569a705797fbc27fb3e07bf61f5008c32"
     )
 
     http_archive(
