@@ -107,14 +107,14 @@ def nflx_spectatord_deps():
         name = "com_google_absl",
         urls = ["https://github.com/abseil/abseil-cpp/archive/322ae2420d27fc96d0a8ab1167d7de33671048df.zip"],
         strip_prefix = "abseil-cpp-322ae2420d27fc96d0a8ab1167d7de33671048df",
-        sha256 = "05012198200d750f48b46a9130b8da7569a705797fbc27fb3e07bf61f5008c32"
+        sha256 = "05012198200d750f48b46a9130b8da7569a705797fbc27fb3e07bf61f5008c32",
     )
 
     http_archive(
         name = "com_google_tcmalloc",
-        urls = ["https://github.com/google/tcmalloc/archive/b28df226c5e6dfbc488f82514244d0b800a92685.zip"],
-        strip_prefix = "tcmalloc-b28df226c5e6dfbc488f82514244d0b800a92685",
-        sha256 = "8568fb0aaf3961bf26cd3ae570580e9ed1ce419c607b80b497f4a54f2c7441fa",
+        urls = ["https://github.com/google/tcmalloc/archive/1ceaf9496ea9771fc61c2e2104130ceb7f7bb9b6.zip"],
+        strip_prefix = "tcmalloc-1ceaf9496ea9771fc61c2e2104130ceb7f7bb9b6",
+        sha256 = "0e0ae9766206a148943169144009c4159b7e2bd64e20d8ba39489e17273f342a",
     )
 
     http_archive(
