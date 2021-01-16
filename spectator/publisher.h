@@ -1,5 +1,6 @@
 #pragma once
 
+#include "absl/time/time.h"
 #include "absl/synchronization/blocking_counter.h"
 #include "common_refs.h"
 #include "config.h"
@@ -36,6 +37,7 @@ class Publisher {
       : registry_{registry},
         started_{false},
         should_stop_{false},
+        last_successful_send_{absl::GetCurrentTimeNanos()},
         sentMetrics_{detail::get_counter(registry, Tags{{"id", "sent"}})},
         invalidMetrics_{detail::get_counter(
             registry, Tags{{"id", "dropped"}, {"error", "validation"}})},
@@ -81,6 +83,10 @@ class Publisher {
     sender_thread_ = std::thread(&Publisher::sender, this);
   }
 
+  auto GetLastSuccessTime() const -> int64_t {
+    return last_successful_send_.load(std::memory_order_relaxed);
+  }
+
   void Stop() {
     if (started_.exchange(false)) {
       should_stop_ = true;
@@ -98,6 +104,7 @@ class Publisher {
   std::atomic<bool> started_;
   std::atomic<bool> http_initialized_{false};
   std::atomic<bool> should_stop_;
+  std::atomic<int64_t> last_successful_send_;
   std::mutex cv_mutex_;
   std::condition_variable cv_;
   std::thread sender_thread_;
@@ -361,6 +368,9 @@ class Publisher {
         {
           absl::MutexLock lock(&responses_mutex);
           auto batch_size = batch.second - batch.first;
+          if (response.status / 100 == 2) {
+            last_successful_send_ = absl::GetCurrentTimeNanos();
+          }
           responses.emplace_back(batch_size, std::move(response));
         }
         {

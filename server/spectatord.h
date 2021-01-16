@@ -44,6 +44,7 @@ class Server {
   std::optional<std::string> parse_lines(char* buffer, const handler_t& parser);
   std::optional<std::string> parse_line(const char* buffer);
   std::optional<std::string> parse_statsd_line(const char* buffer);
+  void ensure_not_stuck();
 
  protected:
   std::optional<std::string> parse(char* buffer);
