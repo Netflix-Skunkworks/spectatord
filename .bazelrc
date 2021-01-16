@@ -1,4 +1,5 @@
 build --cxxopt='-std=c++17' --cxxopt='-Wall' --cxxopt='-fno-omit-frame-pointer'
+build:macos --features=-supports_dynamic_linker
 
 # Address sanitizer
 # To use it: bazel build --config asan
