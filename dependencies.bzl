@@ -127,10 +127,10 @@ def nflx_spectatord_deps():
 
   http_archive(
           name = "com_github_bombela_backward",
-          urls = [ "https://github.com/bombela/backward-cpp/archive/1efdd145b5fa84f457fb6727677ce0bc9f2c7b5b.zip" ],
-          strip_prefix = "backward-cpp-1efdd145b5fa84f457fb6727677ce0bc9f2c7b5b",
+          urls = [ "https://github.com/bombela/backward-cpp/archive/f6f7253656159f225b88e03d38b2dec52f1e6258.zip" ],
+          strip_prefix = "backward-cpp-f6f7253656159f225b88e03d38b2dec52f1e6258",
           build_file = "@nflx_spectatord//third_party:backward.BUILD",
-          sha256 = "97ddc265cc42afadf870ccfa9b079382766eb9e46e8fc1994a61a92ff547c851",
+          sha256 = "a406afa70e7a24f68cb98579723d6ba64236daca74cc79a63c33569392512d53"
           )
 
   # netflix internal config
