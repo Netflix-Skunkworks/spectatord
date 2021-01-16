@@ -353,6 +353,21 @@ void Server::Start() {
   io_context.run();
 }
 
+void Server::ensure_not_stuck() {
+  auto now = absl::GetCurrentTimeNanos();
+  auto elapsed = absl::Nanoseconds(now - registry_->GetLastSuccessTime());
+  auto seconds = absl::ToDoubleSeconds(elapsed);
+  if (seconds > 60) {
+    logger_->error(
+        "Too long since we were able to send metrics successfully: {} > 60s. "
+        "ABORTING.",
+        seconds);
+    abort();
+  }
+  logger_->debug("Last batch of metrics was sent successfully {} seconds ago",
+                 seconds);
+}
+
 // run our background tasks
 void Server::upkeep() {
   static auto timers_size_gauge = registry_->GetGauge(
@@ -383,6 +398,8 @@ void Server::upkeep() {
   size_t t_expired = 0;
   while (!should_stop_) {
     auto start = clock::now();
+    ensure_not_stuck();
+
     std::tie(ds_size, ds_expired) = perc_ds_.expire();
     std::tie(t_size, t_expired) = perc_timers_.expire();
     timers_size_gauge->Set(t_size);

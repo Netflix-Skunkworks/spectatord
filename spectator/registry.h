@@ -272,6 +272,9 @@ class Registry {
   auto DistSummaries() const -> std::vector<const DistributionSummary*> {
     return all_meters_.dist_sums_.get_values();
   }
+  auto GetLastSuccessTime() const -> int64_t {
+    return publisher_.GetLastSuccessTime();
+  }
 
  private:
   std::atomic<bool> should_stop_;
