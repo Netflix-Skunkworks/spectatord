@@ -24,6 +24,7 @@ $ echo "d:server.responseSizes:1024" | nc -w0 -uU /run/spectatord/spectatord.uni
 $ echo "g:someGauge:60" | nc -w0 -uU /run/spectatord/spectatord.unix
 $ echo "X,1543160297100:monotonic.Source:42" | nc -w0 -uU /run/spectatord/spectatord.unix
 $ echo "X,1543160298100:monotonic.Source:43" | nc -w0 -uU /run/spectatord/spectatord.unix
+$ echo "A:age.gauge:0" | nc -u -w0 localhost 1234
 ```
 
 ## Format
@@ -51,6 +52,17 @@ Multiple lines might be send in the same packet separated by newlines (`\n`).
              ```
              This will use a 5s TTL.
 * `m` Max Gauge. This will report the maximum value to the aggregator
+* `A` Age Gauge. Report the number of seconds since this event. 
+                 A value in seconds since this epoch can be set or 0 to use the current time. 
+                 For example: 
+  ```
+  A:time.sinceLastSuccess:1611081000
+  ```
+  To use an explicit time, or simply:
+  ```
+  A:time.sinceLastSuccess:0
+  ```
+  to set `now()` as the last success.
 * `C` Monotonic Counters. To track monotonic sources. `spectatord`
 will convert it to a delta once it receives a second sample.
 * `D` Percentile Distribution Summary

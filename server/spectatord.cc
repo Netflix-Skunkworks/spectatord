@@ -528,6 +528,14 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string> {
     case 'm':
       registry_->GetMaxGauge(measurement->id)->Update(measurement->value);
       break;
+    case 'A':
+      if (measurement->value == 0) {
+        registry_->GetAgeGauge(measurement->id)->UpdateLastSuccess();
+      } else {
+        registry_->GetAgeGauge(measurement->id)
+            ->UpdateLastSuccess(static_cast<int64_t>(measurement->value * 1e9));
+      }
+      break;
     case 'd':
       // dist summary
       registry_->GetDistributionSummary(measurement->id)
