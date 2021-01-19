@@ -299,6 +299,30 @@ TEST(Spectatord, ParseTimer) {
   EXPECT_DOUBLE_EQ(map["timer.name|statistic=max"], 0.001);
 }
 
+TEST(Spectatord, ParseAgeGauge) {
+  auto logger = Logger();
+  spectator::Registry registry{GetConfiguration(), logger};
+  test_server server{&registry};
+
+  char_ptr line{strdup("A:gauge.name:0")};
+  server.parse_msg(line.get());
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  auto map = server.measurements();
+  EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 1);
+  auto secs = map["gauge.name|statistic=gauge"];
+  EXPECT_TRUE(secs >= 1e-3 && secs < 1);
+
+  auto now_secs = absl::GetCurrentTimeNanos() / 1e9 - 1;
+  auto explicit_t = fmt::format("A:gauge.name:{}", now_secs);
+  char_ptr line2{strdup(explicit_t.c_str())};
+  server.parse_msg(line2.get());
+  map = server.measurements();
+  EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 1);
+  secs = map["gauge.name|statistic=gauge"];
+  EXPECT_TRUE(secs >= 1 && secs < 2);
+}
+
 TEST(Spectatord, ParseGauge) {
   auto logger = Logger();
   spectator::Registry registry{GetConfiguration(), logger};
