@@ -111,13 +111,6 @@ def nflx_spectatord_deps():
     )
 
     http_archive(
-        name = "com_google_tcmalloc",
-        urls = ["https://github.com/google/tcmalloc/archive/1ceaf9496ea9771fc61c2e2104130ceb7f7bb9b6.zip"],
-        strip_prefix = "tcmalloc-1ceaf9496ea9771fc61c2e2104130ceb7f7bb9b6",
-        sha256 = "0e0ae9766206a148943169144009c4159b7e2bd64e20d8ba39489e17273f342a",
-    )
-
-    http_archive(
         name = "com_github_cyan4973_xxhash",
         urls = ["https://github.com/Cyan4973/xxHash/archive/v0.8.0.tar.gz"],
         strip_prefix = "xxHash-0.8.0",
