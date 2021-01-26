@@ -7,11 +7,6 @@ config_setting(
     },
 )
 
-memory_allocator = select({
-    "@bazel_tools//src/conditions:linux_x86_64": "@com_google_tcmalloc//tcmalloc",
-    "//conditions:default": "@bazel_tools//tools/cpp:malloc",
-})
-
 cc_library(
     name = "util",
     srcs = ["util/logger.cc"],
@@ -225,7 +220,6 @@ cc_test(
     name = "parse_bench",
     srcs = ["bench/parse_bench.cc"],
     includes = ["server"],
-    malloc = memory_allocator,
     deps = [
         ":spectatord",
         "@com_google_benchmark//:benchmark",
@@ -236,7 +230,6 @@ cc_test(
     name = "ms_bench",
     srcs = ["bench/get_measurement_bench.cc"],
     includes = ["server"],
-    malloc = memory_allocator,
     deps = [
         ":spectatord",
         "@com_google_benchmark//:benchmark",
@@ -247,7 +240,6 @@ cc_test(
     name = "statsd_bench",
     srcs = ["bench/statsd_bench.cc"],
     includes = ["server"],
-    malloc = memory_allocator,
     deps = [
         ":spectatord",
         "@com_google_benchmark//:benchmark",
@@ -258,7 +250,6 @@ cc_test(
     name = "fmt_bench",
     srcs = ["bench/measurements_fmt_bench.cc"],
     includes = ["server"],
-    malloc = memory_allocator,
     deps = [
         ":spectatord",
         "@com_google_benchmark//:benchmark",
@@ -281,7 +272,6 @@ cc_binary(
         "@bazel_tools//src/conditions:linux_x86_64": ["BACKWARD_HAS_BFD=1"],
         "//conditions:default": [],
     }),
-    malloc = memory_allocator,
     deps = [
         ":spectatord",
         "@com_google_absl//absl/flags:parse",
@@ -301,7 +291,6 @@ cc_binary(
     ],
     includes = ["server"],
     linkopts = ["-pthread"],
-    malloc = memory_allocator,
     deps = [
         "@asio",
         "@com_github_fmtlib_fmt//:fmtlib",
