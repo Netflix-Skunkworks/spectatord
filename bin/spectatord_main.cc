@@ -91,7 +91,11 @@ ABSL_FLAG(PortNumber, statsd_port, PortNumber(8125),
 
 auto main(int argc, char** argv) -> int {
   auto logger = Logger();
-  backward::SignalHandling sh;
+  auto signals = backward::SignalHandling::make_default_signals();
+  // default signals with the exception of SIGABRT
+  signals.erase(std::remove(signals.begin(), signals.end(), SIGABRT),
+                signals.end());
+  backward::SignalHandling sh{signals};
 
   absl::SetProgramUsageMessage(
       "A daemon that listens for metrics and reports them to atlas");
