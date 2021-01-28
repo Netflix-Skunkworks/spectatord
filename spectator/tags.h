@@ -37,6 +37,7 @@ class Tags {
     if (is_large()) {
       // take ownership of the memory
       o.begin_ = nullptr;
+      U.capacity_ = o.U.capacity_;
     } else {
       begin_ = &U.entries_[0];
       std::copy(o.begin(), o.end(), begin());
@@ -45,7 +46,8 @@ class Tags {
 
   Tags(const Tags& o) : size_{o.size_} {
     if (is_large()) {
-      begin_ = static_cast<Tag*>(malloc(sizeof(Tag) * size()));
+      begin_ = static_cast<Tag*>(malloc(sizeof(Tag) * size_));
+      U.capacity_ = size_;
     } else {
       begin_ = &U.entries_[0];
     }
@@ -143,6 +145,10 @@ class Tags {
 
   [[nodiscard]] auto size() const -> size_type { return size_; }
 
+  [[nodiscard]] auto capacity() const -> size_type {
+    return is_large() ? U.capacity_ : kSmallTags;
+  }
+
   [[nodiscard]] auto empty() const -> bool { return size_ == 0; }
 
   [[nodiscard]] auto begin() const -> const_iterator { return begin_; }
@@ -171,7 +177,8 @@ class Tags {
         it = begin() + diff;
       }
 
-      // move all elements one to the right
+      // move all elements to the right to make room
+      // for the new element at position `it`
       std::copy_backward(it, end(), end() + 1);
     } else if (size() == capacity()) {
       reallocate();
@@ -179,10 +186,6 @@ class Tags {
     }
     *it = {k, v};
     ++size_;
-  }
-
-  [[nodiscard]] auto capacity() const -> size_type {
-    return is_large() ? U.capacity_ : kSmallTags;
   }
 
   auto reallocate() -> void {
