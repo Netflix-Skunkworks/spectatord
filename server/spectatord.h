@@ -10,7 +10,7 @@ namespace spectatord {
 
 class Server {
  public:
-  Server(int port_number, int statsd_port_number, std::string socket_path,
+  Server(int port_number, std::optional<int> statsd_port_number, std::optional<std::string> socket_path,
          spectator::Registry* registry);
   Server(const Server&) = delete;
   Server(Server&&) = delete;
@@ -24,8 +24,8 @@ class Server {
 
  private:
   int port_number_;
-  int statsd_port_number_;
-  std::string socket_path_;
+  std::optional<int> statsd_port_number_;
+  std::optional<std::string> socket_path_;
   spectator::Registry* registry_;
   std::shared_ptr<spectator::Counter> parsed_count_;
   std::shared_ptr<spectator::Counter> parse_errors_;

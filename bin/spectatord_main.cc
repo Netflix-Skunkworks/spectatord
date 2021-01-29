@@ -17,31 +17,6 @@ auto GetSpectatorConfig() -> std::unique_ptr<spectator::Config>;
 using spectatord::GetLogger;
 using spectatord::Logger;
 
-auto get_port_number(spdlog::logger* logger, const char* str) -> int {
-  int n;
-  if (!absl::SimpleAtoi(str, &n) || n < 0 || n > 65535) {
-    logger->warn(
-        "Invalid port number specified: {} - valid range is 1-65535. ");
-    return -1;
-  }
-  return n;
-}
-
-auto usage(int exit_code, const char* progname, spdlog::logger* logger) {
-  logger->info("Usage: {} [options]", progname);
-  logger->info("\t-p <port-number>\tPort number to use. Default 1234");
-  logger->info("\t-s <port-number>\tStatsd Port number to use. Default 8125");
-  logger->info(
-      "\t-l <socket-path>\tPath for our unix domain socket. Default {}",
-      spectatord::kSocketNameDgram);
-  logger->info(
-      "\t-t <ttl-seconds>\tExpire meters after ttl. Default 15 minutes");
-  logger->info("\t-v\t\tVerbose logging");
-  logger->info("\t-d\t\tDebug - send all meters to dev aggr to be dropped");
-  logger->info("\t-h\t\tPrint this message");
-  exit(exit_code);
-}
-
 struct PortNumber {
   explicit PortNumber(int p = 0) : port(p) {}
   int port;  // Valid range is [1..65535]
@@ -72,22 +47,22 @@ auto AbslParseFlag(absl::string_view text, PortNumber* p, std::string* error)
 ABSL_FLAG(bool, debug, false,
           "Debug spectatord. All values will be sent to a dev aggregator and "
           "dropped.");
-ABSL_FLAG(bool, verbose, false, "Use verbose logging");
+ABSL_FLAG(bool, verbose, false, "Use verbose logging.");
 ABSL_FLAG(bool, verbose_http, false,
-          "Output debugging info about http requests");
-ABSL_FLAG(bool, enable_statsd, false, "Enable statsd support");
+          "Output debug info for HTTP requests.");
+ABSL_FLAG(bool, enable_statsd, false, "Enable statsd support.");
+ABSL_FLAG(bool, enable_unix_socket, true, "Enable UNIX domain socket support.");
 ABSL_FLAG(absl::Duration, meter_ttl, absl::Minutes(15),
-          "Meter ttl: expire meters after this period of inactivity");
+          "Meter TTL: expire meters after this period of inactivity.");
 ABSL_FLAG(std::string, socket_path, "/run/spectatord/spectatord.unix",
-          "Path for our UNIX domain socket");
+          "Path to the UNIX domain socket.");
 ABSL_FLAG(std::string, common_tags, "",
-          "Common tags: nf.app=app,nf.cluster=cluster. Override default common "
-          "tags. If left empty then spectatord will use the default set. "
-          "It is discouraged to use this flag since it can cause confusion. "
-          "Only for expert users who understand the risks");
-ABSL_FLAG(PortNumber, port, PortNumber(1234), "Port number for our daemon");
+          "Common tags: nf.app=app,nf.cluster=cluster. Override the default common "
+          "tags. If empty, then spectatord will use the default set. "
+          "This flag should only be used by experts who understand the risks.");
+ABSL_FLAG(PortNumber, port, PortNumber(1234), "Port number for the UDP socket.");
 ABSL_FLAG(PortNumber, statsd_port, PortNumber(8125),
-          "Port number for statsd compatibility");
+          "Port number for the statsd socket.");
 
 auto main(int argc, char** argv) -> int {
   auto logger = Logger();
@@ -98,7 +73,7 @@ auto main(int argc, char** argv) -> int {
   backward::SignalHandling sh{signals};
 
   absl::SetProgramUsageMessage(
-      "A daemon that listens for metrics and reports them to atlas");
+      "A daemon that listens for metrics and reports them to Atlas.");
   absl::ParseCommandLine(argc, argv);
 
   auto cfg = GetSpectatorConfig();
@@ -139,11 +114,19 @@ auto main(int argc, char** argv) -> int {
   }
   spectator::Registry registry{std::move(cfg), std::move(spectator_logger)};
   registry.Start();
-  auto statsd_enabled = absl::GetFlag(FLAGS_enable_statsd);
-  auto statsd_port =
-      statsd_enabled ? absl::GetFlag(FLAGS_statsd_port).port : -1;
+
+  std::optional<std::string> socket_path;
+  if (absl::GetFlag(FLAGS_enable_unix_socket)) {
+      socket_path = absl::GetFlag(FLAGS_socket_path);
+  }
+
+  std::optional<int> statsd_port;
+  if (absl::GetFlag(FLAGS_enable_statsd)) {
+    statsd_port = absl::GetFlag(FLAGS_statsd_port).port;
+  }
+
   spectatord::Server server{absl::GetFlag(FLAGS_port).port, statsd_port,
-                            absl::GetFlag(FLAGS_socket_path), &registry};
+                            socket_path, &registry};
   server.Start();
   return 0;
 }
