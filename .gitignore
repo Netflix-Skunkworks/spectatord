@@ -1,9 +1,10 @@
-bazel-*
-build-*
-.idea/
-.vscode/
 .clwb
-build
-spectatord
-compile_commands.json
+.idea/
 .newt-cache/
+.vscode/
+Dockerfile-e
+bazel-*
+build
+build-*
+compile_commands.json
+spectatord

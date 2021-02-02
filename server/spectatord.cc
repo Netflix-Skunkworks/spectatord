@@ -280,8 +280,8 @@ static auto create_perc_ds(spectator::Registry* registry, spectator::Id id) {
       registry, std::move(id), min_ds, max_ds);
 }
 
-Server::Server(int port_number, int statsd_port_number, std::string socket_path,
-               spectator::Registry* registry)
+Server::Server(int port_number, std::optional<int> statsd_port_number,
+               std::optional<std::string> socket_path, spectator::Registry* registry)
     : port_number_{port_number},
       statsd_port_number_{statsd_port_number},
       socket_path_{std::move(socket_path)},
@@ -334,22 +334,27 @@ void Server::Start() {
   udp_server.Start();
 
   std::unique_ptr<UdpServer> statsd_server;
-  if (statsd_port_number_ > 0) {
+  if (statsd_port_number_) {
     auto statsd_parser = [this](char* buffer) {
       return this->parse_statsd(buffer);
     };
-    statsd_server = std::make_unique<UdpServer>(io_context, statsd_port_number_,
+    statsd_server = std::make_unique<UdpServer>(io_context, *statsd_port_number_,
                                                 statsd_parser);
-    logger->info("Starting statsd server on port {}", statsd_port_number_);
+    logger->info("Starting statsd server on port {}", *statsd_port_number_);
     statsd_server->Start();
   } else {
     logger->info("statsd support is not enabled");
   }
 
-  prepare_socket_path(socket_path_);
-  LocalServer dgram_local{io_context, socket_path_, parser};
-  dgram_local.Start();
-  logger->info("Starting local server (dgram) on socket {}", socket_path_);
+  if (socket_path_) {
+    prepare_socket_path(*socket_path_);
+    LocalServer dgram_local{io_context, *socket_path_, parser};
+    dgram_local.Start();
+    logger->info("Starting local server (dgram) on socket {}", *socket_path_);
+  } else {
+    logger->info("unix socket support is not enabled");
+  }
+
   io_context.run();
 }
 
