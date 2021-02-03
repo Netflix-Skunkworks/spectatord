@@ -29,6 +29,13 @@ inline auto is_meter_expired(int64_t now, const T& m, int64_t meter_ttl)
 }
 
 template <>
+inline auto is_meter_expired<AgeGauge>(int64_t /* now */,
+                                       const AgeGauge& /* m */,
+                                       int64_t /* meter_ttl */) -> bool {
+  return false;
+}
+
+template <>
 inline auto is_meter_expired<Gauge>(int64_t now, const Gauge& m,
                                     int64_t /* meter_ttl */) -> bool {
   return m.HasExpired(now);
@@ -131,11 +138,12 @@ struct all_meters {
 
   auto remove_expired(int64_t meter_ttl) -> std::pair<int, int> {
     int total_expired = 0;
-    int total_count = 0;
     int expired = 0;
     int count = 0;
 
     // age gauges don't expire
+    int total_count = age_gauges_.size();
+
     std::tie(expired, count) = counters_.remove_expired(meter_ttl);
     total_expired += expired;
     total_count += count;
