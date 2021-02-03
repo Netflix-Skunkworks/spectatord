@@ -36,6 +36,12 @@ TEST(MaxGauge, MaxUpdates) {
   EXPECT_DOUBLE_EQ(g.Get(), 101.0);
 }
 
+TEST(MaxGauge, NegativeValues) {
+  auto g = getMaxGauge("max");
+  g.Update(-2);
+  EXPECT_DOUBLE_EQ(g.Get(), -2);
+}
+
 TEST(MaxGauge, Id) {
   auto g = getMaxGauge("id");
   auto id = spectator::Id("id", spectator::Tags{});
