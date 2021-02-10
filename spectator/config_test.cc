@@ -8,5 +8,6 @@ TEST(Config, Constructor) {
   // just make sure that our documented Config constructor works
   spectator::Config config{
       common_tags, kDefault, kDefault, kDefault,
-      kDefault,    kDefault, kDefault, "http://example.org/api/v1/publish"};
+      kDefault,    kDefault, kDefault, kDefault,
+      "http://example.org/api/v1/publish"};
 }

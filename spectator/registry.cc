@@ -9,6 +9,7 @@ namespace spectator {
 Registry::Registry(std::unique_ptr<Config> config,
                    Registry::logger_ptr logger) noexcept
     : should_stop_{true},
+      age_gauge_first_warn_{true},
       meter_ttl_{absl::ToInt64Nanoseconds(config->meter_ttl)},
       config_{std::move(config)},
       logger_{std::move(logger)},
@@ -26,7 +27,26 @@ auto Registry::GetLogger() const noexcept -> Registry::logger_ptr {
 }
 
 auto Registry::GetAgeGauge(Id id) noexcept -> std::shared_ptr<AgeGauge> {
-  return all_meters_.insert_age_gauge(std::move(id));
+  if (all_meters_.age_gauges_.contains(id)) {
+    return all_meters_.age_gauges_.at(id);
+  } else {
+    if (all_meters_.age_gauges_.size() < config_->age_gauge_limit) {
+      return all_meters_.insert_age_gauge(std::move(id));
+    } else {
+      logger_->warn("max number of age gauges ({}) has been reached, skipping creation",
+                    config_->age_gauge_limit);
+
+      if (age_gauge_first_warn_) {
+        auto known_age_gauges = all_meters_.age_gauges_.get_ids();
+        for (size_t i = 0; i < known_age_gauges.size(); ++i) {
+          logger_->warn("known age gauge {}: {}", i, known_age_gauges[i]);
+        }
+        age_gauge_first_warn_ = false;
+      }
+
+      return std::make_shared<AgeGauge>(std::move(id));
+    }
+  }
 }
 
 auto Registry::GetAgeGauge(std::string_view name, Tags tags) noexcept

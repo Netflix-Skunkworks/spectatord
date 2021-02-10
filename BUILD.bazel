@@ -207,6 +207,8 @@ cc_test(
         "bin/test_main.cc",
         "server/proc_utils_test.cc",
         "server/spectatord_test.cc",
+        "spectator/test_utils.h",
+        "spectator/test_utils.cc"
     ],
     data = glob(["test-resources/*"]),
     deps = [

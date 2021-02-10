@@ -2,6 +2,7 @@
 #include "local.h"
 #include "util/logger.h"
 #include "spectatord.h"
+#include "spectator/test_utils.h"
 
 #include "gtest/gtest.h"
 
@@ -301,7 +302,9 @@ TEST(Spectatord, ParseTimer) {
 
 TEST(Spectatord, ParseAgeGauge) {
   auto logger = Logger();
-  spectator::Registry registry{GetConfiguration(), logger};
+  auto cfg = GetConfiguration();
+  cfg->age_gauge_limit = 1;
+  spectator::Registry registry{std::move(cfg), logger};
   test_server server{&registry};
 
   char_ptr line{strdup("A:gauge.name:0")};
@@ -309,6 +312,7 @@ TEST(Spectatord, ParseAgeGauge) {
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
   auto map = server.measurements();
+  EXPECT_EQ(my_age_gauges(registry).size(), 1);
   EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 1);
   auto secs = map["gauge.name|statistic=gauge"];
   EXPECT_TRUE(secs >= 1e-3 && secs < 1);
@@ -318,9 +322,35 @@ TEST(Spectatord, ParseAgeGauge) {
   char_ptr line2{strdup(explicit_t.c_str())};
   server.parse_msg(line2.get());
   map = server.measurements();
+  EXPECT_EQ(my_age_gauges(registry).size(), 1);
   EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 1);
   secs = map["gauge.name|statistic=gauge"];
   EXPECT_TRUE(secs >= 1 && secs < 2);
+}
+
+TEST(Spectatord, TooManyAgeGauges) {
+  auto logger = Logger();
+  auto cfg = GetConfiguration();
+  cfg->age_gauge_limit = 1;
+  spectator::Registry registry{std::move(cfg), logger};
+  test_server server{&registry};
+
+  char_ptr line{strdup("A:gauge.name,app=spectatord,region=us-east-1:0")};
+  server.parse_msg(line.get());
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  auto map = server.measurements();
+  EXPECT_EQ(my_age_gauges(registry).size(), 1);
+  EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 1);
+
+  // add a second gauge, against a limit of 1, to see the list of known gauges
+  char_ptr line2{strdup("A:gauge.second_name:0")};
+  server.parse_msg(line2.get());
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  map = server.measurements();
+  EXPECT_EQ(my_age_gauges(registry).size(), 1);
+  EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 1);
 }
 
 TEST(Spectatord, ParseGauge) {
