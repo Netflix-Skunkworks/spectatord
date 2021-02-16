@@ -52,12 +52,22 @@ struct meter_map {
     return meters_.size();
   }
 
+  auto contains(const Id& id) -> bool {
+    absl::MutexLock lock(&meters_mutex_);
+    return meters_.contains(id);
+  }
+
   // only insert if it doesn't exist, otherwise return the existing meter
   auto insert(std::shared_ptr<M> meter) -> std::shared_ptr<M> {
     absl::MutexLock lock(&meters_mutex_);
     const auto& id = meter->MeterId();
     auto insert_result = meters_.emplace(id, std::move(meter));
     return insert_result.first->second;
+  }
+
+  auto at(const Id& id) -> std::shared_ptr<M> {
+    absl::MutexLock lock(&meters_mutex_);
+    return meters_.at(id);
   }
 
   void measure(std::vector<Measurement>* res, int64_t meter_ttl) const {
@@ -92,6 +102,18 @@ struct meter_map {
       }
     }
     return {expired, total};
+  }
+
+  auto get_ids() const -> std::vector<Id> {
+    std::vector<Id> res;
+    {
+      absl::MutexLock lock(&meters_mutex_);
+      res.reserve(meters_.size());
+      for (const auto& pair : meters_) {
+        res.emplace_back(pair.first);
+      }
+    }
+    return res;
   }
 
   auto get_values() const -> std::vector<const M*> {
@@ -274,6 +296,9 @@ class Registry {
   auto Gauges() const -> std::vector<const Gauge*> {
     return all_meters_.gauges_.get_values();
   }
+  auto AgeGauges() const -> std::vector<const AgeGauge*> {
+    return all_meters_.age_gauges_.get_values();
+  }
   auto MaxGauges() const -> std::vector<const MaxGauge*> {
     return all_meters_.max_gauges_.get_values();
   }
@@ -286,6 +311,7 @@ class Registry {
 
  private:
   std::atomic<bool> should_stop_;
+  std::atomic<bool> age_gauge_first_warn_;
   std::mutex cv_mutex_;
   std::condition_variable cv_;
   std::thread expirer_thread_;

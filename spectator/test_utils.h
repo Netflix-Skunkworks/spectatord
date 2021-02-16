@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../spectator/registry.h"
+#include "registry.h"
 #include <map>
 #include <string>
 #include <vector>
@@ -43,6 +43,11 @@ inline auto my_gauges(const spectator::Registry& registry)
   return filter_my_meters(registry.Gauges());
 }
 
+inline auto my_age_gauges(const spectator::Registry& registry)
+-> std::vector<const spectator::AgeGauge*> {
+  return filter_my_meters(registry.AgeGauges());
+}
+
 inline auto my_max_gauges(const spectator::Registry& registry)
     -> std::vector<const spectator::MaxGauge*> {
   return filter_my_meters(registry.MaxGauges());
@@ -55,6 +60,7 @@ inline auto my_mono_counters(const spectator::Registry& registry)
 
 inline auto my_meters_size(const spectator::Registry& registry) -> size_t {
   return my_timers(registry).size() + my_counters(registry).size() +
-         my_gauges(registry).size() + my_max_gauges(registry).size() +
-         my_ds(registry).size() + my_mono_counters(registry).size();
+         my_gauges(registry).size() + my_age_gauges(registry).size() +
+         my_max_gauges(registry).size() + my_ds(registry).size() +
+         my_mono_counters(registry).size();
 }

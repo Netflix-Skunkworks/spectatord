@@ -54,6 +54,8 @@ ABSL_FLAG(bool, enable_statsd, false, "Enable statsd support.");
 ABSL_FLAG(bool, enable_unix_socket, true, "Enable UNIX domain socket support.");
 ABSL_FLAG(absl::Duration, meter_ttl, absl::Minutes(15),
           "Meter TTL: expire meters after this period of inactivity.");
+ABSL_FLAG(size_t, age_gauge_limit, 1000,
+          "The maximum number of age gauges that may be reported by this process.");
 ABSL_FLAG(std::string, socket_path, "/run/spectatord/spectatord.unix",
           "Path to the UNIX domain socket.");
 ABSL_FLAG(std::string, common_tags, "",
@@ -77,14 +79,20 @@ auto main(int argc, char** argv) -> int {
   absl::ParseCommandLine(argc, argv);
 
   auto cfg = GetSpectatorConfig();
+
   if (absl::GetFlag(FLAGS_debug)) {
     cfg->uri =
         "http://atlas-aggr-dev.us-east-1.ieptest.netflix.net/api/v4/update";
   }
+
   if (absl::GetFlag(FLAGS_verbose_http)) {
     cfg->verbose_http = true;
   }
+
   cfg->meter_ttl = absl::GetFlag(FLAGS_meter_ttl);
+
+  cfg->age_gauge_limit = absl::GetFlag(FLAGS_age_gauge_limit);
+
   auto spectator_logger = GetLogger("spectator");
   if (absl::GetFlag(FLAGS_verbose)) {
     logger->set_level(spdlog::level::trace);
@@ -112,6 +120,7 @@ auto main(int argc, char** argv) -> int {
   if (!sh.loaded()) {
     logger->info("Unable to load signal handling for stacktraces");
   }
+
   spectator::Registry registry{std::move(cfg), std::move(spectator_logger)};
   registry.Start();
 
