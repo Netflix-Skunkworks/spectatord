@@ -12,8 +12,15 @@ atlas-aggregator.
 
 ## Endpoints
 
-By default the daemon will listen on UDP port 1234
-and on the Unix domain socket `/run/spectatord/spectatord.unix`
+By default the daemon will listen on the following endpoints:
+
+* UDP port = 1234 *(~430K reqs/sec with 16MB buffers)*
+* Unix domain socket = `/run/spectatord/spectatord.unix` *(~1M reqs/sec with batching)*
+
+The choice of which endpoint to use is determined by your performance and access requirements;
+the Unix domain socket offers higher performance, but requires filesystem access, which may not
+be tenable under some container configurations. See [Performance Numbers](#performance-numbers)
+for more details.
 
 ## Examples
 
@@ -100,18 +107,17 @@ be converted to an `_` by the client.
 
 A double value. The meaning of the value depends on the metric type.
 
-## Some performance numbers
+## Performance Numbers
 
-A key goal of this project is to have some good performance. This means we need to be able to 
-use few resources for the common use cases where the number of metric updates is relatively small 
-(fewer than 10k requests per second), and being able to scale to handle hundreds of thousands
-of updates per second when that is required.
+A key goal of this project is to deliver high performance. This means that we need to use few
+resources for the common use case, where the number of metric updates is relatively small
+(< 10k reqs/sec), and it also needs to be able to handle hundreds of thousands of updates per
+second when required.
 
-Using Unix domain sockets we can handle close to 1M metric updates per second,
-assuming the client batches the updates and sends a few at a time. Sending
-every single metric update requires a lot of context switching but is something that
-works well for the majority of our use cases. This simplicity means the user does not have
-to maintain any local state.
+Using Unix domain sockets, we can handle close to 1M metric updates per second, assuming the client
+batches the updates and sends a few at a time. Sending every single metric update requires a lot of
+context switching, but is something that works well for the majority of our use cases. This
+simplicity means the user does not have to maintain any local state.
 
 ```
 Transport          Batch Size    First 10M          Second 10M
@@ -122,6 +128,5 @@ Unix Dgram         32            10.38s (963k rps)   8.49s (1178k rps)
 
 The UDP transport is particularly sensitive the max receive buffer size (16MB on our systems). 
 
-Our tests indicated that sending 430k rps to our UDP port did not drop packets but if there is a need for higher
-throughput, then tweaking `/proc/sys/net/unix/max_dgram_qlen` is recommended.
-
+Our tests indicate that sending 430K rps to the UDP port did not drop packets, but if there is a
+need for higher throughput, then tweaking `/proc/sys/net/unix/max_dgram_qlen` is recommended.
