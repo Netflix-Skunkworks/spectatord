@@ -130,8 +130,8 @@ def nflx_spectatord_deps():
     http_archive(
         name = "nflx_spectator_cfg",
         build_file = "@nflx_spectatord//third_party:spectator_cfg.BUILD",
-        urls = ["https://stash.corp.netflix.com/rest/api/latest/projects/CLDMTA/repos/netflix-spectator-cppconf/archive?at=e2fa37ea6fed338a3fe7b12c7701ec086d4c5713&format=zip"],
-        sha256 = "08be5c03f7f90c7c8727a2ca395048b9651ca48620bd978db530414ff7b7d666",
+        urls = ["https://stash.corp.netflix.com/rest/api/latest/projects/CLDMTA/repos/netflix-spectator-cppconf/archive?at=ef2fd86ce9ecd46a6bf46ed3381cfde934f65b0d&format=zip"],
+        sha256 = "81e904bea6aadd16f7093bc68472d734062d820f88067fd4dd770071a38664a8",
         type = "zip",
     )
 
