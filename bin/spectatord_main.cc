@@ -44,27 +44,27 @@ auto AbslParseFlag(absl::string_view text, PortNumber* p, std::string* error)
   return true;
 }
 
-ABSL_FLAG(bool, debug, false,
-          "Debug spectatord. All values will be sent to a dev aggregator and "
-          "dropped.");
-ABSL_FLAG(bool, verbose, false, "Use verbose logging.");
-ABSL_FLAG(bool, verbose_http, false,
-          "Output debug info for HTTP requests.");
+ABSL_FLAG(PortNumber, port, PortNumber(1234), "Port number for the UDP socket.");
 ABSL_FLAG(bool, enable_statsd, false, "Enable statsd support.");
-ABSL_FLAG(bool, enable_unix_socket, true, "Enable UNIX domain socket support.");
+ABSL_FLAG(PortNumber, statsd_port, PortNumber(8125),
+          "Port number for the statsd socket.");
+ABSL_FLAG(bool, enable_socket, true, "Enable UNIX domain socket support.");
+ABSL_FLAG(std::string, socket_path, "/run/spectatord/spectatord.unix",
+          "Path to the UNIX domain socket.");
 ABSL_FLAG(absl::Duration, meter_ttl, absl::Minutes(15),
           "Meter TTL: expire meters after this period of inactivity.");
 ABSL_FLAG(size_t, age_gauge_limit, 1000,
           "The maximum number of age gauges that may be reported by this process.");
-ABSL_FLAG(std::string, socket_path, "/run/spectatord/spectatord.unix",
-          "Path to the UNIX domain socket.");
 ABSL_FLAG(std::string, common_tags, "",
           "Common tags: nf.app=app,nf.cluster=cluster. Override the default common "
           "tags. If empty, then spectatord will use the default set. "
           "This flag should only be used by experts who understand the risks.");
-ABSL_FLAG(PortNumber, port, PortNumber(1234), "Port number for the UDP socket.");
-ABSL_FLAG(PortNumber, statsd_port, PortNumber(8125),
-          "Port number for the statsd socket.");
+ABSL_FLAG(bool, verbose, false, "Use verbose logging.");
+ABSL_FLAG(bool, verbose_http, false,
+          "Output debug info for HTTP requests.");
+ABSL_FLAG(bool, debug, false,
+          "Debug spectatord. All values will be sent to a dev aggregator and "
+          "dropped.");
 
 auto main(int argc, char** argv) -> int {
   auto logger = Logger();
@@ -125,7 +125,7 @@ auto main(int argc, char** argv) -> int {
   registry.Start();
 
   std::optional<std::string> socket_path;
-  if (absl::GetFlag(FLAGS_enable_unix_socket)) {
+  if (absl::GetFlag(FLAGS_enable_socket)) {
       socket_path = absl::GetFlag(FLAGS_socket_path);
   }
 
