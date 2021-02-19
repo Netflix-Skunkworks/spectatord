@@ -346,11 +346,12 @@ void Server::Start() {
     logger->info("statsd support is not enabled");
   }
 
+  std::unique_ptr<LocalServer> local_server;
   if (socket_path_) {
     prepare_socket_path(*socket_path_);
-    LocalServer dgram_local{io_context, *socket_path_, parser};
-    dgram_local.Start();
+    local_server = std::make_unique<LocalServer>(io_context, *socket_path_, parser);
     logger->info("Starting local server (dgram) on socket {}", *socket_path_);
+    local_server->Start();
   } else {
     logger->info("unix socket support is not enabled");
   }
