@@ -22,11 +22,8 @@ fi
 
 # recommend 8GB RAM allocation for docker desktop, to allow the test build with asan to succeed
 cat >start-build <<EOF
-echo "-- build tests with address sanitizer enabled"
-bazel --output_user_root=/storage/bazel build --config=asan spectator_test spectatord_test
-
-echo "-- run tests"
-bazel-bin/spectator_test && bazel-bin/spectatord_test
+echo "-- run tests with address sanitizer enabled"
+bazel --output_user_root=/storage/bazel test --config=asan spectator_test spectatord_test
 
 echo "-- build optimized daemon"
 bazel --output_user_root=/storage/bazel build --compilation_mode=opt spectatord_main
@@ -35,6 +32,7 @@ echo "-- check shared library dependencies"
 ldd bazel-bin/spectatord_main || true
 
 echo "-- copy binary to local filesystem"
+rm -f spectatord
 cp -p bazel-bin/spectatord_main spectatord
 EOF
 
