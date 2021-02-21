@@ -5,18 +5,19 @@ SPECTATORD_IMAGE_ID=$(docker images --quiet $SPECTATORD_IMAGE)
 
 if [[ -z "$SPECTATORD_IMAGE_ID" ]]; then
   if [[ -z "$BASEOS_IMAGE" ]]; then
-    echo "set BASEOS_IMAGE to a reasonable value, such as an Ubuntu LTS version" && exit 1
+    echo "set BASEOS_IMAGE to a reasonable value, such as ubuntu:bionic" && exit 1
   fi
 
   sed -i -e "s,BASEOS_IMAGE,$BASEOS_IMAGE,g" Dockerfile
-  docker build --tag spectatord/builder:latest . || exit 1
+  docker build --tag $SPECTATORD_IMAGE . || exit 1
   git checkout Dockerfile
 else
   echo "using image $SPECTATORD_IMAGE $SPECTATORD_IMAGE_ID"
 fi
 
+# option to start an interactive shell in the source directory
 if [[ "$1" == "shell" ]]; then
-  docker run --rm --interactive --tty --mount type=bind,source="$(pwd)",target=/src $SPECTATORD_IMAGE /bin/bash
+  docker run --rm --interactive --tty --mount type=bind,source="$(pwd)",target=/src --workdir /src $SPECTATORD_IMAGE /bin/bash
   exit 0
 fi
 
@@ -44,3 +45,8 @@ chmod 755 start-build
 docker run --rm --tty --mount type=bind,source="$(pwd)",target=/src $SPECTATORD_IMAGE /bin/bash -c "cd src && ./start-build"
 
 rm start-build
+
+# adjust symlinks to point to the local .cache directory
+for link in bazel-*; do
+  ln -nsf "$(readlink "$link" |sed -e "s:^/src/::g")" "$link"
+done
