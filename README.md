@@ -151,7 +151,7 @@ need for higher throughput, then tweaking `/proc/sys/net/unix/max_dgram_qlen` is
     bazel build //clwb:clwb_bazel_zip --define=ij_product=clion-beta
     bazel-bin/clwb/clwb_bazel.zip
     ```
-* When loading a new project, use the `Import Bazel Project` from the `BUILD file` feature.
+* When loading a new project, use the `Import Bazel Project from the BUILD file` feature.
 * If you need to remove the latest version of CLion and install an older one, disable JetBrains
 settings sync and clear out all CLion locally cached data.
     ```
