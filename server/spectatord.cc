@@ -361,15 +361,18 @@ void Server::Start() {
 
 void Server::ensure_not_stuck() {
   auto now = absl::GetCurrentTimeNanos();
+  const auto& cfg = registry_->GetConfig();
   auto elapsed = absl::Nanoseconds(now - registry_->GetLastSuccessTime());
   auto seconds = absl::ToDoubleSeconds(elapsed);
-  if (seconds > 60) {
+
+  if (cfg.is_enabled() && seconds > 60) {
     logger_->error(
         "Too long since we were able to send metrics successfully: {} > 60s. "
         "ABORTING.",
         seconds);
     abort();
   }
+
   logger_->debug("Last batch of metrics was sent successfully {} seconds ago",
                  seconds);
 }

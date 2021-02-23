@@ -316,7 +316,11 @@ class Publisher {
     auto batch_size =
         static_cast<std::vector<Measurement>::difference_type>(cfg.batch_size);
     auto measurements = registry_->Measurements();
+
     if (!cfg.is_enabled() || measurements.empty()) {
+      if (logger->should_log(spdlog::level::trace)) {
+        logger->trace("Skip sending metrics: ATLAS_DISABLED_FILE exists or measurements is empty");
+      }
       return;
     }
 
