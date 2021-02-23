@@ -14,8 +14,10 @@ TEST(CompressedBuffer, Basic) {
   std::string string2(1000, 'b');
   std::string string3(1000, 'c');
 
-  // start with a tiny out to test the resize
-  CompressedBuffer buf{1024, 32};
+  // Small output sizes are to ensure there will not be enough space
+  // to finish the compressed buffer and a resize will be required to
+  // correctly compress the data.
+  CompressedBuffer buf{1024, 32, 32};
   buf.Init();
   buf.Append(string1);
   buf.Append(string2);
