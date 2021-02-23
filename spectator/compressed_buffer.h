@@ -13,10 +13,12 @@ struct CompressedResult {
 
 class CompressedBuffer {
  public:
-  static constexpr size_t kDefaultChunkSize = 256 * 1024;
+  static constexpr size_t kDefaultChunkSizeInput = 256 * 1024;
   static constexpr size_t kDefaultOutSize = 256 * 1024;
-  explicit CompressedBuffer(size_t chunk_size = kDefaultChunkSize,
-                            size_t out_size = kDefaultOutSize);
+  static constexpr size_t kDefaultChunkSizeOutput = 32 * 1024;
+  explicit CompressedBuffer(size_t chunk_size_input = kDefaultChunkSizeInput,
+                            size_t out_size = kDefaultOutSize,
+                            size_t chunk_size_output = kDefaultChunkSizeOutput);
   CompressedBuffer(const CompressedBuffer&) = delete;
   CompressedBuffer(CompressedBuffer&&) = default;
   auto operator=(const CompressedBuffer&) -> CompressedBuffer& = delete;
@@ -90,14 +92,17 @@ class CompressedBuffer {
  private:
   bool init_{false};
   std::vector<uint8_t> cur_;
-  size_t chunk_size_;
+  size_t chunk_size_input_;
   std::vector<uint8_t> dest_;
+  size_t chunk_size_output_;
   int dest_index_{0};
   z_stream stream;
 
   auto compress(int flush) -> void;
 
   auto maybe_compress() -> void;
+
+  auto deflate_chunk(size_t chunk_size, int flush) -> int;
 };
 
 }  // namespace spectator
