@@ -174,7 +174,7 @@ TEST(HttpTest, Timeout) {
                               post_data.c_str(), post_data.length());
   server.stop();
 
-  auto expected_response = HttpResponse{400, ""};
+  auto expected_response = HttpResponse{-1, ""};
   ASSERT_EQ(response.status, expected_response.status);
   ASSERT_EQ(response.raw_body, expected_response.raw_body);
   auto timer_for_req = find_timer(&registry, "ipc.client.call", "-1");
@@ -198,7 +198,7 @@ TEST(HttpTest, ConnectTimeout) {
   const std::string post_data = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   auto response = client.Post(url, "Content-type: application/json", post_data);
 
-  auto expected_response = HttpResponse{400, ""};
+  auto expected_response = HttpResponse{-1, ""};
   ASSERT_EQ(response.status, expected_response.status);
   ASSERT_EQ(response.raw_body, expected_response.raw_body);
 
