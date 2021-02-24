@@ -300,6 +300,9 @@ class Publisher {
           num_err = num_measurements;
         }
       }
+    } else if (http_code == -1) {  // connection error or timeout
+      num_err = num_measurements;
+      droppedOther_->Add(num_measurements);
     } else {  // 5xx error
       droppedHttp_->Add(num_measurements);
       num_err = num_measurements;
