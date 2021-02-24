@@ -226,7 +226,7 @@ auto HttpClient::perform(const char* method, const std::string& url,
     curl.trace_requests();
   }
   auto curl_res = curl.perform();
-  auto http_code = 400;
+  int http_code;
 
   if (curl_res != CURLE_OK) {
     logger->error("Failed to {} {}: {}", method, url,
@@ -255,6 +255,7 @@ auto HttpClient::perform(const char* method, const std::string& url,
                      attempt_number + 1);
     }
 
+    http_code = -1;
     entry.set_status_code(-1);
   } else {
     http_code = curl.status_code();

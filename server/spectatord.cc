@@ -359,6 +359,10 @@ void Server::Start() {
   io_context.run();
 }
 
+// This watchdog is removed from the upkeep loop, because there are many instances
+// in the environment which do not have configurations that allow them to publish
+// metrics. We do not want to fill those disks with core files. The function remains
+// in the codebase, so that we can rapidly re-enable it for debugging.
 void Server::ensure_not_stuck() {
   auto now = absl::GetCurrentTimeNanos();
   const auto& cfg = registry_->GetConfig();
@@ -407,7 +411,6 @@ void Server::upkeep() {
   size_t t_expired = 0;
   while (!should_stop_) {
     auto start = clock::now();
-    ensure_not_stuck();
 
     std::tie(ds_size, ds_expired) = perc_ds_.expire();
     std::tie(t_size, t_expired) = perc_timers_.expire();
