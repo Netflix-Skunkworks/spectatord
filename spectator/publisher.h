@@ -122,10 +122,12 @@ class Publisher {
     using std::chrono::milliseconds;
 
     const auto& cfg = registry_->GetConfig();
-
     auto logger = registry_->GetLogger();
+
     logger->info("Starting to send metrics to {} every {}s.", cfg.uri,
                  absl::ToDoubleSeconds(cfg.frequency));
+    logger->info("Publishing metrics with the following common tags: {}",
+                 common_tags_);
 
     while (!should_stop_) {
       auto start = absl::Now();
