@@ -107,6 +107,20 @@ be converted to an `_` by the client.
 
 A double value. The meaning of the value depends on the metric type.
 
+## Metrics
+
+### spectator.measurements
+
+The number of measurements that have either been sent to an Atlas backend or dropped.
+
+**Unit:** measurements/second
+
+**Dimensions:**
+
+* `id`: One of `sent` or `dropped`.
+* `error`: The type of error that occurred, one of `http-error`, `validation`, or `other`.
+* Common Infrastructure
+
 ## Performance Numbers
 
 A key goal of this project is to deliver high performance. This means that we need to use few
