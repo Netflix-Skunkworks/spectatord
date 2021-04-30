@@ -109,17 +109,7 @@ A double value. The meaning of the value depends on the metric type.
 
 ## Metrics
 
-### spectator.measurements
-
-The number of measurements that have either been sent to an Atlas backend or dropped.
-
-**Unit:** measurements/second
-
-**Dimensions:**
-
-* `id`: One of `sent` or `dropped`.
-* `error`: The type of error that occurred, one of `http-error`, `validation`, or `other`.
-* Common Infrastructure
+See [METRICS](./METRICS.md) for a list of metrics published by this service.
 
 ## Performance Numbers
 
