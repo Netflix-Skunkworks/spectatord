@@ -44,7 +44,8 @@ The number of errors that have occurred while parsing input lines.
 
 ### spectatord.percentileCacheSize
 
-The number of active meters in the registry.
+The number of Distribution Summaries and/or Percentile Timers that have been updated recently in
+the dedicated cache.
 
 **Unit:** meters
 
@@ -55,7 +56,8 @@ The number of active meters in the registry.
 
 ### spectatord.percentileExpired
 
-The number of meters which have expired and were removed from the registry.
+The number of Distribution Summaries and/or Percentile Timers that have been expired from the
+dedicated cache.
 
 **Unit:** meters/second
 
