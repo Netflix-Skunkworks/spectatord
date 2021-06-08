@@ -36,15 +36,17 @@ $ echo "A:age.gauge:0" | nc -u -w0 localhost 1234
 
 ## Format
 
-The message sent to the server has the following format:
+The message sent to the server has the following format, where the `,tags` portion is optional:
 
 ```
 metric-type:name,tags:value
 ```
 
-where the `,tags` portion is optional.
+Multiple lines may be sent in the same packet, separated by newlines (`\n`):
 
-Multiple lines might be send in the same packet separated by newlines (`\n`).
+```
+$ echo -e "t:server.requestLatency:0.042\nd:server.responseSizes:1024" | nc -u -w0 localhost 1234
+```
 
 ### Metric Types
 
