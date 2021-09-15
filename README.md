@@ -1,6 +1,6 @@
 # Spectatord - A High Performance Metrics Daemon
 
-[![Build Status](https://travis-ci.com/Netflix-Skunkworks/spectatord.svg?branch=master)](https://travis-ci.com/Netflix-Skunkworks/spectatord)
+[![Snapshot](https://github.com/Netflix-Skunkworks/spectatord/actions/workflows/snapshot.yml/badge.svg)](https://github.com/Netflix-Skunkworks/spectatord/actions/workflows/snapshot.yml)
 
 > :warning: Experimental
 
