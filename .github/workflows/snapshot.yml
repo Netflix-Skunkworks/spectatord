@@ -16,6 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Enable Cache for Bazel
+        uses: actions/cache@v2
+        with:
+          path: |
+            $HOME/.cache/bazel
+          key: ${{ runner.os }}-${{ hashFiles('**/dependencies.bzl') }}
+
       - name: Install Dependencies
         run: |
           sudo apt-get update
@@ -27,10 +34,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bazel binutils-dev g++-10 libiberty-dev
 
-      - name: Build
+      - name: Build SpectatorD
         run: |
           tools/generate_version.sh > spectator/version.h
-          echo "-- build tests with address sanitizer enabled"
           bazel --output_user_root=$HOME/.cache/bazel --batch build --config=asan spectator_test spectatord_test spectatord_main --verbose_failures
-          echo "-- run tests"
+
+      - name: Run Tests
+        run: |
           bazel-bin/spectator_test && bazel-bin/spectatord_test

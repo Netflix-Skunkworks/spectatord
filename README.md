@@ -1,8 +1,6 @@
-# Spectatord - A High Performance Metrics Daemon
+# SpectatorD - A High Performance Metrics Daemon
 
 [![Snapshot](https://github.com/Netflix-Skunkworks/spectatord/actions/workflows/snapshot.yml/badge.svg)](https://github.com/Netflix-Skunkworks/spectatord/actions/workflows/snapshot.yml)
-
-> :warning: Experimental
 
 ## Description
 
