@@ -7,13 +7,6 @@ config_setting(
     },
 )
 
-config_setting(
-    name = "centos7",
-    define_values = {
-        "centos7": "1",
-    },
-)
-
 cc_library(
     name = "util",
     srcs = ["util/logger.cc"],
@@ -82,10 +75,6 @@ cc_library(
         "valid_chars.inc",
     ],
     visibility = ["//visibility:public"],
-    local_defines = select({
-        ":centos7": ["CENTOS7=1"],
-        "//conditions:default": [],
-    }),
     deps = [
         ":util",
         "@asio",

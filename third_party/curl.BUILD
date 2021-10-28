@@ -8,6 +8,12 @@ config_setting(
     values = {"cpu": "darwin"},
 )
 
+config_setting(
+    name = "centos7",
+    define_values = {
+        "centos7": "1",
+    },
+)
 
 licenses(["notice"])  # MIT/X derivative license
 
@@ -277,6 +283,9 @@ cc_library(
         "//conditions:default": [
             "-DCURL_MAX_WRITE_SIZE=65536",
         ],
+    }) + select({
+        ":centos7": ["-DCENTOS7"],
+        "//conditions:default": [],
     }),
     defines = ["CURL_STATICLIB"],
     includes = ["include"],
