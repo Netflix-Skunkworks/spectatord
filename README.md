@@ -135,6 +135,18 @@ The UDP transport is particularly sensitive the max receive buffer size (16MB on
 Our tests indicate that sending 430K rps to the UDP port did not drop packets, but if there is a
 need for higher throughput, then tweaking `/proc/sys/net/unix/max_dgram_qlen` is recommended.
 
+## Performance Testing
+
+* Start spectatord in debug mode (`--debug`) to send metrics to a dev stack of the Atlas aggregator,
+which will perform validation and return the correct HTTP status codes for payloads, then drop the
+metrics on the floor. Alternatively, you can also configure it to send metrics to `/dev/null`.
+* Use the [`metrics_gen`](./tools/metrics_gen.cc) binary to generate and send a stream of metrics to a
+running spectatord binary.
+* Use the `perf-record` and `perf-report` Linux utilities to measure the performance of the running
+binary.
+* The [`udp_numbers.pl`](./tools/udp_numbers.pl) script is used to automate running `metrics_gen`
+with different kernel settings for UDP sockets.
+
 ## Local Development
 
 ### Builds
