@@ -32,6 +32,9 @@ $ echo "X,1543160298100:monotonic.Source:43" | nc -w0 -uU /run/spectatord/specta
 $ echo "A:age.gauge:0" | nc -u -w0 localhost 1234
 ```
 
+> :warning: In container environments, the `-w0` option may not work and `-w1` should be
+used instead.
+
 ## Format
 
 The message sent to the server has the following format, where the `,tags` portion is optional:
