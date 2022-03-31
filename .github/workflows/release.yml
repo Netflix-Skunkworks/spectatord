@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+
+      - v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+
+
+jobs:
+  build:
+    if: ${{ github.repository == 'Netflix-Skunkworks/spectatord' }}
+    runs-on: ubuntu-latest
+    env:
+      CC: "gcc-10"
+      CXX: "g++-10"
+      LANG: "en_US.UTF-8"
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Enable Cache for Bazel
+        uses: actions/cache@v2
+        with:
+          path: |
+            $HOME/.cache/bazel
+          key: ${{ runner.os }}-${{ hashFiles('**/dependencies.bzl') }}
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl gnupg software-properties-common
+          curl -fsSL https://bazel.build/bazel-release.pub.gpg | gpg --dearmor > bazel.gpg
+          sudo mv bazel.gpg /etc/apt/trusted.gpg.d/
+          echo "deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8" | sudo tee /etc/apt/sources.list.d/bazel.list
+          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          sudo apt-get update
+          sudo apt-get install -y bazel binutils-dev g++-10 libiberty-dev
+
+      - name: Build SpectatorD
+        run: |
+          tools/generate_version.sh > spectator/version.h
+          bazel --output_user_root=$HOME/.cache/bazel --batch build --config=asan spectator_test spectatord_test spectatord_main --verbose_failures
+
+      - name: Run Tests
+        run: |
+          bazel-bin/spectator_test && bazel-bin/spectatord_test
