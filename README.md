@@ -27,6 +27,7 @@ $ echo "c:server.numRequests,id=failed:1" | nc -u -w0 localhost 1234
 $ echo "t:server.requestLatency:0.042" | nc -u -w0 localhost 1234
 $ echo "d:server.responseSizes:1024" | nc -w0 -uU /run/spectatord/spectatord.unix
 $ echo "g:someGauge:60" | nc -w0 -uU /run/spectatord/spectatord.unix
+$ echo "g,300:anotherGauge:60" | nc -w0 -uU /run/spectatord/spectatord.unix
 $ echo "X,1543160297100:monotonic.Source:42" | nc -w0 -uU /run/spectatord/spectatord.unix
 $ echo "X,1543160298100:monotonic.Source:43" | nc -w0 -uU /run/spectatord/spectatord.unix
 $ echo "A:age.gauge:0" | nc -u -w0 localhost 1234
@@ -37,10 +38,11 @@ used instead.
 
 ## Format
 
-The message sent to the server has the following format, where the `,tags` portion is optional:
+The message sent to the server has the following format, where the `,options` and `,tags` portions
+are optional:
 
 ```
-metric-type:name,tags:value
+meter-type,options:name,tags:value
 ```
 
 Multiple lines may be sent in the same packet, separated by newlines (`\n`):
@@ -49,38 +51,20 @@ Multiple lines may be sent in the same packet, separated by newlines (`\n`):
 $ echo -e "t:server.requestLatency:0.042\nd:server.responseSizes:1024" | nc -u -w0 localhost 1234
 ```
 
-### Metric Types
+### Meter Types
 
-* `c` Counter. The value represents the number of increments
-* `d` Distribution Summary.
-* `t` Timer. The value is expressed in seconds
-* `g` Gauge. This will report the last value set. An optional TTL
-             can follow the `g` preceded by a comma. Otherwise the value will have
-             a TTL of 15 minutes. For example:
-             ```
-             g,5:gauge:42.0
-             ```
-             This will use a 5s TTL.
-* `m` Max Gauge. This will report the maximum value to the aggregator
-* `A` Age Gauge. Report the number of seconds since this event. 
-                 A value in seconds since this epoch can be set or 0 to use the current time. 
-                 For example: 
-  ```
-  A:time.sinceLastSuccess:1611081000
-  ```
-  To use an explicit time, or simply:
-  ```
-  A:time.sinceLastSuccess:0
-  ```
-  to set `now()` as the last success.
-* `C` Monotonic Counters. To track monotonic sources. `spectatord`
-will convert it to a delta once it receives a second sample.
-* `D` Percentile Distribution Summary
-* `T` Percentile Timer. The value is expressed in seconds
-* `X` Monotonic Counters sampled at a given time. This is an experimental type
-that can be used to track monotonic sources that were sampled in the recent 
-past. The timestamp in milliseconds of when the reported value was sampled must 
-be included after the `X` preceded by a comma.
+| Symbol | Meter Type | Description |
+|--------|------------|-------------|
+| `c` | Counter | The value is the number of increments that have occurred since the last time it was recorded. |
+| `d` | Distribution Summary | The value tracks the distribution of events. It is similar to a Timer, but more general, because the size does not have to be a period of time. <br><br> For example, it can be used to measure the payload sizes of requests hitting a server or the number of records returned from a query. |
+| `g` | Gauge | The value is a number that was sampled at a point in time. The default time-to-live (TTL) for gauges is 900 seconds (15 minutes) - they will continue reporting the last value set for this duration of time. <br><br> Optionally, the TTL may be specified in seconds, with a minimum TTL of 5 seconds. For example, `g,120:gauge:42.0` spcifies a gauge with a 120 second (2 minute) TTL. |
+| `m` | Max Gauge | The value is a number that was sampled at a point in time, but it is reported as a maximum gauge value to the backend. |
+| `t` | Timer | The value is the number of seconds that have elapsed for an event. |
+| `A` | Age Gauge | The value is the time in seconds since the epoch at which an event has successfully occurred, or `0` to use the current time in epoch seconds. After an Age Gauge has been set, it will continue reporting the number of seconds since the last time recorded, for as long as the spectatord process runs. The purpose of this meter type is to enable users to more easily implement the Time Since Last Success alerting pattern. <br><br> To set a specific time as the last success: `A:time.sinceLastSuccess:1611081000`. <br><br> To set `now()` as the last success: `A:time.sinceLastSuccess:0`. <br><br> By default, a maximum of `1000` Age Gauges are allowed per `spectatord` process, because there is no mechanism for cleaning them up. This value may be tuned with the `--age_gauge_limit` flag on the spectatord binary. |
+| `C` | Monotonic Counter | The value is a monotonically increasing number. A minimum of two samples must be received in order for `spectatord` to calculate a delta value and report it to the backend. <br><br> A variety of networking metrics may be reported monotically and this meter type provides a convenient means of recording these values, at the expense of a slower time-to-first metric. |
+| `D` | Percentile Distribution Summary | The value tracks the distribution of events, with percentile precision. It is similar to a Percentile Timer, but more general, because the size does not have to be a period of time. <br><br> For example, it can be used to measure the payload sizes of requests hitting a server or the number of records returned from a query. |
+| `T` | Percentile Timer | The value is the number of seconds that have elapsed for an event, with percentile precision. <br><br> This meter type will track the data distribution by maintaining a set of Counters. The distribution can then be used on the server side to estimate percentiles, while still allowing for arbitrary slicing and dicing based on dimensions. <br><br> In order to maintain the data distribution, they have a higher storage cost, with a worst-case of up to 300X that of a standard Timer. Be diligent about any additional dimensions added to Percentile Timers and ensure that they have a small bounded cardinality. |
+| `X` | Monotonic Counter with Millisecond Timestamps |  The value is a monotonically increasing number, sampled at a specified number of milliseconds since the epoch. A minimum of two samples must be received in order for `spectatord` to calculate a delta value and report it to the backend. <br><br> This is an experimental meter type that can be used to track monotonic sources that were sampled in the recent past, with the value normalized over the reported time period. <br><br> The timestamp in milliseconds since the epoch when the value was sampled must be included as a meter option: `X,1543160297100:monotonic.Source:42` |
 
 ### Name and Tags
 
