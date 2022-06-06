@@ -268,10 +268,16 @@ cc_binary(
             "/usr/lib/x86_64-linux-gnu/libiberty.a",
             "-ldl",
         ],
+        "@bazel_tools//src/conditions:linux_aarch64": [
+            "/usr/lib/aarch64-linux-gnu/libbfd.a",
+            "/usr/lib/aarch64-linux-gnu/libiberty.a",
+            "-ldl",
+        ],
         "//conditions:default": [],
     }),
     local_defines = select({
         "@bazel_tools//src/conditions:linux_x86_64": ["BACKWARD_HAS_BFD=1"],
+        "@bazel_tools//src/conditions:linux_aarch64": ["BACKWARD_HAS_BFD=1"],
         "//conditions:default": [],
     }),
     deps = [
