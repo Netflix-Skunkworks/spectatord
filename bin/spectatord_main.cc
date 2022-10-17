@@ -51,6 +51,8 @@ ABSL_FLAG(PortNumber, statsd_port, PortNumber(8125),
 ABSL_FLAG(bool, enable_socket, true, "Enable UNIX domain socket support.");
 ABSL_FLAG(std::string, socket_path, "/run/spectatord/spectatord.unix",
           "Path to the UNIX domain socket.");
+ABSL_FLAG(std::string, uri, "",
+          "Optional override URI for the aggregator.");
 ABSL_FLAG(absl::Duration, meter_ttl, absl::Minutes(15),
           "Meter TTL: expire meters after this period of inactivity.");
 ABSL_FLAG(size_t, age_gauge_limit, 1000,
@@ -80,9 +82,12 @@ auto main(int argc, char** argv) -> int {
 
   auto cfg = GetSpectatorConfig();
 
+  auto maybe_agg_uri = absl::GetFlag(FLAGS_uri);
   if (absl::GetFlag(FLAGS_debug)) {
     cfg->uri =
         "http://atlas-aggr-dev.us-east-1.ieptest.netflix.net/api/v4/update";
+  } else if (!maybe_agg_uri.empty()) {
+    cfg->uri = std::move(maybe_agg_uri);
   }
 
   if (absl::GetFlag(FLAGS_verbose_http)) {
