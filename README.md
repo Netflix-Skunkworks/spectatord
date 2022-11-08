@@ -4,13 +4,48 @@
 
 ## Description
 
-This project provides a high performance daemon that listens for updates to
-metrics like counters, timers, or gauges, sending aggregates periodically to an
-atlas-aggregator.
+SpectatorD is a high-performance telemetry daemon that listens for metrics specified by a
+text-based protocol and publishes updates periodically to an [Atlas] aggregator service.
+It consolidates the logic required to apply common tagging to all metrics received, maintain
+metric lifetimes, and route metrics to the correct backend.
+
+[Atlas]: https://github.com/Netflix/atlas
+
+## Command Line Configuration Flags
+
+```shell
+spectatord --help
+spectatord: A daemon that listens for metrics and reports them to Atlas.
+
+  Flags from Users/matthewj/git/github/copperlight/spectatord/bin/spectatord_main.cc:
+    --age_gauge_limit (The maximum number of age gauges that may be reported by
+      this process.); default: 1000;
+    --common_tags (Common tags: nf.app=app,nf.cluster=cluster. Override the
+      default common tags. If empty, then spectatord will use the default set.
+      This flag should only be used by experts who understand the risks.);
+      default: "";
+    --debug (Debug spectatord. All values will be sent to a dev aggregator and
+      dropped.); default: false;
+    --enable_socket (Enable UNIX domain socket support.); default: true;
+    --enable_statsd (Enable statsd support.); default: false;
+    --meter_ttl (Meter TTL: expire meters after this period of inactivity.);
+      default: 15m;
+    --port (Port number for the UDP socket.); default: 1234;
+    --socket_path (Path to the UNIX domain socket.);
+      default: "/run/spectatord/spectatord.unix";
+    --statsd_port (Port number for the statsd socket.); default: 8125;
+    --uri (Optional override URI for the aggregator.); default: "";
+    --verbose (Use verbose logging.); default: false;
+    --verbose_http (Output debug info for HTTP requests.); default: false;
+
+Try --helpfull to get a list of all flags or --help=substring shows help for
+flags which include specified substring in either in the name, or description or
+path.
+```
 
 ## Endpoints
 
-By default the daemon will listen on the following endpoints:
+By default, the daemon will listen on the following endpoints:
 
 * UDP port = 1234 *(~430K reqs/sec with 16MB buffers)*
 * Unix domain socket = `/run/spectatord/spectatord.unix` *(~1M reqs/sec with batching)*
@@ -20,23 +55,23 @@ the Unix domain socket offers higher performance, but requires filesystem access
 be tenable under some container configurations. See [Performance Numbers](#performance-numbers)
 for more details.
 
-## Examples
-
-```
-$ echo "c:server.numRequests,id=failed:1" | nc -u -w0 localhost 1234
-$ echo "t:server.requestLatency:0.042" | nc -u -w0 localhost 1234
-$ echo "d:server.responseSizes:1024" | nc -w0 -uU /run/spectatord/spectatord.unix
-$ echo "g:someGauge:60" | nc -w0 -uU /run/spectatord/spectatord.unix
-$ echo "g,300:anotherGauge:60" | nc -w0 -uU /run/spectatord/spectatord.unix
-$ echo "X,1543160297100:monotonic.Source:42" | nc -w0 -uU /run/spectatord/spectatord.unix
-$ echo "X,1543160298100:monotonic.Source:43" | nc -w0 -uU /run/spectatord/spectatord.unix
-$ echo "A:age.gauge:0" | nc -u -w0 localhost 1234
-```
+## Usage Examples
 
 > :warning: In container environments, the `-w0` option may not work and `-w1` should be
 used instead.
 
-## Format
+```
+echo "c:server.numRequests,id=failed:1" | nc -u -w0 localhost 1234
+echo "t:server.requestLatency:0.042" | nc -u -w0 localhost 1234
+echo "d:server.responseSizes:1024" | nc -w0 -uU /run/spectatord/spectatord.unix
+echo "g:someGauge:60" | nc -w0 -uU /run/spectatord/spectatord.unix
+echo "g,300:anotherGauge:60" | nc -w0 -uU /run/spectatord/spectatord.unix
+echo "X,1543160297100:monotonic.Source:42" | nc -w0 -uU /run/spectatord/spectatord.unix
+echo "X,1543160298100:monotonic.Source:43" | nc -w0 -uU /run/spectatord/spectatord.unix
+echo "A:age.gauge:0" | nc -u -w0 localhost 1234
+```
+
+## Message Format
 
 The message sent to the server has the following format, where the `,options` and `,tags` portions
 are optional:
@@ -48,7 +83,7 @@ metric-type,options:name,tags:value
 Multiple lines may be sent in the same packet, separated by newlines (`\n`):
 
 ```
-$ echo -e "t:server.requestLatency:0.042\nd:server.responseSizes:1024" | nc -u -w0 localhost 1234
+echo -e "t:server.requestLatency:0.042\nd:server.responseSizes:1024" | nc -u -w0 localhost 1234
 ```
 
 ### Metric Types
@@ -66,7 +101,7 @@ $ echo -e "t:server.requestLatency:0.042\nd:server.responseSizes:1024" | nc -u -
 | `T` | Percentile Timer | The value is the number of seconds that have elapsed for an event, with percentile estimates. <br><br> This metric type will track the data distribution by maintaining a set of Counters. The distribution can then be used on the server side to estimate percentiles, while still allowing for arbitrary slicing and dicing based on dimensions. <br><br> In order to maintain the data distribution, they have a higher storage cost, with a worst-case of up to 300X that of a standard Timer. Be diligent about any additional dimensions added to Percentile Timers and ensure that they have a small bounded cardinality. |
 | `X` | Monotonic Counter with Millisecond Timestamps |  The value is a monotonically increasing number, sampled at a specified number of milliseconds since the epoch. A minimum of two samples must be received in order for `spectatord` to calculate a delta value and report it to the backend. <br><br> This is an experimental metric type that can be used to track monotonic sources that were sampled in the recent past, with the value normalized over the reported time period. <br><br> The timestamp in milliseconds since the epoch when the value was sampled must be included as a metric option: `X,1543160297100:monotonic.Source:42` |
 
-### Name and Tags
+### Metric Name and Tags
 
 The metric name and tags must follow Atlas restrictions, which are described in the sections below.
 
@@ -80,7 +115,7 @@ fooIsTheName,some.tag=val1,some.otherTag=val2
 See [Atlas Naming Conventions](https://netflix.github.io/atlas-docs/concepts/naming/) for
 recommendations on naming metrics.
 
-#### Length
+#### Length Restrictions
 
 | Limit            | Min | Max |
 |------------------|-----|-----|
@@ -97,13 +132,13 @@ All others characters will be converted to an underscore (`_`) by the client.
 To avoid issues with parsing metrics, avoid using the SpectatorD protocol delimiter characters
 (`,=:`) rather than relying on the client to rewrite them to `_`.
 
-### Value
+### Metric Value
 
 A double value. The meaning of the value depends on the metric type.
 
 ## Metrics
 
-See [METRICS](./METRICS.md) for a list of metrics published by this service.
+See [METRICS](docs/METRICS.md) for a list of metrics published by this service.
 
 ## Performance Numbers
 
@@ -131,11 +166,11 @@ need for higher throughput, then tweaking `/proc/sys/net/unix/max_dgram_qlen` is
 
 ## Performance Testing
 
-* Start spectatord in debug mode (`--debug`) to send metrics to a dev stack of the Atlas aggregator,
+* Start `spectatord` in debug mode (`--debug`) to send metrics to a dev stack of the Atlas aggregator,
 which will perform validation and return the correct HTTP status codes for payloads, then drop the
 metrics on the floor. Alternatively, you can also configure it to send metrics to `/dev/null`.
-* Use the [`metrics_gen`](./tools/metrics_gen.cc) binary to generate and send a stream of metrics to a
-running spectatord binary.
+* Use the [`metrics_gen`](./tools/metrics_gen.cc) binary to generate and send a stream of metrics to
+a running spectatord binary.
 * Use the `perf-record` and `perf-report` Linux utilities to measure the performance of the running
 binary.
 * The [`udp_numbers.pl`](./tools/udp_numbers.pl) script is used to automate running `metrics_gen`
@@ -143,31 +178,12 @@ with different kernel settings for UDP sockets.
 
 ## Local Development
 
-### Builds
+```shell
+./setup-venv.sh
+source venv/bin/activate
+./build.sh  # [clean|skiptest]
+```
 
-* If you are running Docker Desktop, then allocate 8GB RAM to allow builds to succeed.
-* Set the `BASEOS_IMAGE` environment variable to a reasonable value, such as `ubuntu:bionic`.
-* Run the build: `./build.sh`
-* Start an interactive shell in the source directory: `./build.sh shell`
-
-### CLion
-
-* Use JetBrains Toolbox to install version 2020.1.3 (latest is >= 2020.3.1).
-* The older version of CLion is required to gain access to the [Bazel plugin] released by Google.
-* You can build the Bazel plugin from source, to get the latest, which may fix more issues.
-    ```
-    git clone https://github.com/bazelbuild/intellij.git
-    git checkout v2021.01.05
-    bazel build //clwb:clwb_bazel_zip --define=ij_product=clion-beta
-    bazel-bin/clwb/clwb_bazel.zip
-    ```
-* When loading a new project, use the `Import Bazel Project from the BUILD file` feature.
-* If you need to remove the latest version of CLion and install an older one, disable JetBrains
-settings sync and clear out all CLion locally cached data.
-    ```
-    rm -rf ~/Library/Application Support/CLion
-    rm -rf ~/Library/Application Support/JetBrains/CLion*
-    rm -rf $WORKSPACE/.idea
-    ```
-
-[Bazel plugin]: https://plugins.jetbrains.com/plugin/9554-bazel/versions
+* CLion > Preferences > Plugins > Marketplace > Conan > Install
+* CLion > Preferences > Build, Execution, Deploy > Conan > Conan Executable: $PROJECT_HOME/venv/bin/conan
+* CLion > Bottom Bar: Conan > Left Button: Match Profile > CMake Profile: Debug, Conan Profile: default

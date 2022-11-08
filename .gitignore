@@ -1,8 +1,7 @@
-.cache/
-.clwb/
+**/*.inc
 .idea/
-.newt-cache/
-.vscode/
-Dockerfile-e
-bazel-*
-spectatord
+cmake-build-debug/
+cmake-build/
+ska/
+spectator/netflix_config.cc
+venv/

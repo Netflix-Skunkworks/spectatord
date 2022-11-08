@@ -1,55 +1,48 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-SPECTATORD_IMAGE="spectatord/builder:latest"
-SPECTATORD_IMAGE_ID=$(docker images --quiet $SPECTATORD_IMAGE)
+BUILD_DIR=cmake-build
 
-if [[ -z "$SPECTATORD_IMAGE_ID" ]]; then
-  if [[ -z "$BASEOS_IMAGE" ]]; then
-    echo "set BASEOS_IMAGE to a reasonable value, such as ubuntu:bionic" && exit 1
+BLUE="\033[0;34m"
+NC="\033[0m"
+
+if [[ "$1" == "clean" ]]; then
+  echo -e "${BLUE}==== clean ====${NC}"
+  rm -rf $BUILD_DIR
+  rm spectator/*.inc
+  rm spectator/netflix_config.cc
+fi
+
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  export CC=gcc-11
+  export CXX=g++-11
+fi
+
+if [[ ! -d $BUILD_DIR ]]; then
+  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    echo -e "${BLUE}==== configure default profile ====${NC}"
+    conan profile new default --detect
+    conan profile update settings.compiler.libcxx=libstdc++11 default
   fi
 
-  sed -i -e "s,BASEOS_IMAGE,$BASEOS_IMAGE,g" Dockerfile
-  docker build --tag $SPECTATORD_IMAGE . || exit 1
-  git checkout Dockerfile
-else
-  echo "using image $SPECTATORD_IMAGE $SPECTATORD_IMAGE_ID"
+  echo -e "${BLUE}==== install required dependencies ====${NC}"
+  conan install . --build=missing --install-folder $BUILD_DIR
+
+  echo -e "${BLUE}==== install source dependencies ====${NC}"
+  conan source .
 fi
 
-# option to start an interactive shell in the source directory
-if [[ "$1" == "shell" ]]; then
-  docker run --rm --interactive --tty --mount type=bind,source="$(pwd)",target=/src --workdir /src $SPECTATORD_IMAGE /bin/bash
-  exit 0
+pushd $BUILD_DIR || exit 1
+
+echo -e "${BLUE}==== generate build files ====${NC}"
+# Choose: Debug, Release, RelWithDebInfo and MinSizeRel
+cmake .. -DCMAKE_BUILD_TYPE=Debug || exit 1
+
+echo -e "${BLUE}==== build ====${NC}"
+cmake --build . || exit 1
+
+if [[ "$1" != "skiptest" ]]; then
+  echo -e "${BLUE}==== test ====${NC}"
+  GTEST_COLOR=1 ctest --verbose
 fi
 
-# recommend 8GB RAM allocation for docker desktop, to allow the test build with asan to succeed
-cat >start-build <<EOF
-export CC="gcc-10"
-export CXX="g++-10"
-
-echo "-- build tests with address sanitizer enabled"
-bazel --output_user_root=.cache build --config=asan spectator_test spectatord_test
-
-echo "-- run tests"
-bazel-bin/spectator_test && bazel-bin/spectatord_test
-
-echo "-- build optimized daemon"
-bazel --output_user_root=.cache build --compilation_mode=opt spectatord_main
-
-echo "-- check shared library dependencies"
-ldd bazel-bin/spectatord_main || true
-
-echo "-- copy binary to local filesystem"
-rm -f spectatord
-cp -p bazel-bin/spectatord_main spectatord
-EOF
-
-chmod 755 start-build
-
-docker run --rm --tty --mount type=bind,source="$(pwd)",target=/src $SPECTATORD_IMAGE /bin/bash -c "cd src && ./start-build"
-
-rm start-build
-
-# adjust symlinks to point to the local .cache directory
-for link in bazel-*; do
-  ln -nsf "$(readlink "$link" |sed -e "s:^/src/::g")" "$link"
-done
+popd || exit 1
