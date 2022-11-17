@@ -5,7 +5,7 @@
 
 namespace spectator::detail {
 
-#include "percentile_bucket_tags.inc"
+#include "spectator/percentile_bucket_tags.inc"
 
 using counters_t =
     std::array<std::shared_ptr<Counter>, PercentileBucketsLength()>;

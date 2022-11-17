@@ -13,6 +13,7 @@
 #include <asio/post.hpp>
 #include <asio/thread_pool.hpp>
 #include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <mutex>
 #include <rapidjson/document.h>

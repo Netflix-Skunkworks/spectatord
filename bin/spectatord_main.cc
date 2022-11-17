@@ -110,7 +110,7 @@ auto main(int argc, char** argv) -> int {
   auto maybe_common_tags = absl::GetFlag(FLAGS_common_tags);
   if (!maybe_common_tags.empty()) {
     std::map<std::string, std::string> common_tags;
-    for (std::string_view sp : absl::StrSplit(maybe_common_tags, ',')) {
+    for (auto sp : absl::StrSplit(maybe_common_tags, ',')) {
       std::vector<std::string> kv = absl::StrSplit(sp, absl::MaxSplits('=', 1));
       if (kv.size() != 2 || kv.at(0).empty() || kv.at(1).empty()) {
         logger->error("Invalid common tags specified: {}", maybe_common_tags);
