@@ -63,43 +63,23 @@ target_include_directories(spectatord_main PRIVATE
     ${CMAKE_SOURCE_DIR}/server
 )
 if(NFLX_INTERNAL)
+    message(STATUS "Using Netflix config")
     target_link_libraries(spectatord_main
         netflix_cfg
         spectatord
         ${CONAN_LIBS}
     )
 else()
+    message(STATUS "Using sample config")
     target_link_libraries(spectatord_main
         sample_cfg
         spectatord
         ${CONAN_LIBS}
     )
 endif()
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    message(STATUS "System name is Linux")
-    execute_process(
-        COMMAND uname -m
-        RESULT_VARIABLE uname_result
-        OUTPUT_VARIABLE HW_PLATFORM
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-    if(HW_PLATFORM STREQUAL "x86_64")
-        message(STATUS "Hardware platform is x86_64")
-        target_link_options(spectatord_main PRIVATE
-            "/usr/lib/x86_64-linux-gnu/libbfd.a"
-            "/usr/lib/x86_64-linux-gnu/libiberty.a"
-            "$<$<CONFIG:Release>:-static>"
-        )
-    elseif(HW_PLATFORM STREQUAL "aarch64")
-        message(STATUS "Hardware platform is aarch64")
-        target_link_options(spectatord_main PRIVATE
-            "/usr/lib/aarch64-linux-gnu/libbfd.a"
-            "/usr/lib/aarch64-linux-gnu/libiberty.a"
-            "$<$<CONFIG:Release>:-static>"
-        )
-    endif()
-    target_compile_definitions(spectatord_main PRIVATE "BACKWARD_HAS_BFD=1")
-endif()
+target_link_options(spectatord_main PRIVATE
+    "$<$<CONFIG:Release>:-static-libstdc++>"
+)
 
 #-- metrics_gen executable
 add_executable(metrics_gen
