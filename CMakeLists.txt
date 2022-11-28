@@ -12,6 +12,7 @@ include(CTest)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
 
+add_subdirectory(admin)
 add_subdirectory(bench)
 add_subdirectory(server)
 add_subdirectory(spectator)
@@ -41,6 +42,7 @@ add_test(
 
 #-- spectatord_test test executable
 add_executable(spectatord_test
+    "admin/admin_server_test.cc"
     "bin/test_main.cc"
     "server/proc_utils_test.cc"
     "server/spectatord_test.cc"
@@ -48,7 +50,7 @@ add_executable(spectatord_test
     "spectator/test_utils.h"
 )
 target_include_directories(spectatord_test PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(spectatord_test spectatord ${CONAN_LIBS})
+target_link_libraries(spectatord_test admin_server spectatord ${CONAN_LIBS})
 add_test(
     NAME spectatord_test
     COMMAND spectatord_test
@@ -67,6 +69,7 @@ if(NFLX_INTERNAL)
     target_link_libraries(spectatord_main
         netflix_cfg
         spectatord
+        admin_server
         ${CONAN_LIBS}
     )
 else()
@@ -74,6 +77,7 @@ else()
     target_link_libraries(spectatord_main
         sample_cfg
         spectatord
+        admin_server
         ${CONAN_LIBS}
     )
 endif()

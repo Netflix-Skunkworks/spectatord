@@ -28,14 +28,22 @@ if [[ ! -d $BUILD_DIR ]]; then
   conan install . --build=missing --install-folder $BUILD_DIR
 
   echo -e "${BLUE}==== install source dependencies ====${NC}"
-  conan source .
+  if [[ "$NFLX_INTERNAL" == "ON" ]]; then
+    NFLX_INTERNAL=ON conan source .
+  else
+    conan source .
+  fi
 fi
 
 pushd $BUILD_DIR || exit 1
 
 echo -e "${BLUE}==== generate build files ====${NC}"
 # Choose: Debug, Release, RelWithDebInfo and MinSizeRel
-cmake .. -DCMAKE_BUILD_TYPE=Debug || exit 1
+if [[ "$NFLX_INTERNAL" == "ON" ]]; then
+  cmake .. -DCMAKE_BUILD_TYPE=Debug -DNFLX_INTERNAL=ON || exit 1
+else
+  cmake .. -DCMAKE_BUILD_TYPE=Debug -DNFLX_INTERNAL=OFF || exit 1
+fi
 
 echo -e "${BLUE}==== build ====${NC}"
 cmake --build . || exit 1

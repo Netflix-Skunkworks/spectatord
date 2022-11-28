@@ -182,8 +182,39 @@ TEST(Registry, DistSummary_Size) {
   r.GetCounter("bar")->Increment();
   // we have 4 measurements from the timer + 1 from the counter
   r.Measurements();
-  EXPECT_DOUBLE_EQ(
-      r.GetDistributionSummary("spectator.registrySize")->TotalAmount(), 5.0);
+  EXPECT_DOUBLE_EQ(r.GetDistributionSummary("spectator.registrySize")->TotalAmount(), 5.0);
+}
+
+TEST(Registry, DeleteMeters) {
+  Registry r{GetConfiguration(), spectatord::Logger()};
+
+  r.GetGauge("g1")->Set(1);
+  r.GetGauge("g2")->Set(1);
+  r.GetGauge("g3")->Set(1);
+  EXPECT_DOUBLE_EQ(r.Gauges().size(), 3.0);
+
+  auto succeeded = r.DeleteMeter("g", Id {"g1", Tags{}});
+  auto failed = r.DeleteMeter("g", Id {"g1", Tags{}});
+  EXPECT_TRUE(succeeded);
+  EXPECT_FALSE(failed);
+  EXPECT_DOUBLE_EQ(r.Gauges().size(), 2.0);
+
+  r.DeleteAllMeters("g");
+  EXPECT_DOUBLE_EQ(r.Gauges().size(), 0.0);
+
+  r.GetAgeGauge("ag1")->UpdateLastSuccess();
+  r.GetAgeGauge("ag2")->UpdateLastSuccess();
+  r.GetAgeGauge("ag3")->UpdateLastSuccess();
+  EXPECT_DOUBLE_EQ(r.AgeGauges().size(), 3.0);
+
+  succeeded = r.DeleteMeter("A", Id {"ag1", Tags{}});
+  failed = r.DeleteMeter("A", Id {"ag1", Tags{}});
+  EXPECT_TRUE(succeeded);
+  EXPECT_FALSE(failed);
+  EXPECT_DOUBLE_EQ(r.AgeGauges().size(), 2.0);
+
+  r.DeleteAllMeters("A");
+  EXPECT_DOUBLE_EQ(r.AgeGauges().size(), 0.0);
 }
 
 }  // namespace

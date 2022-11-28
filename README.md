@@ -15,7 +15,6 @@ metric lifetimes, and route metrics to the correct backend.
 spectatord --help
 spectatord: A daemon that listens for metrics and reports them to Atlas.
 
-  Flags from Users/matthewj/git/github/copperlight/spectatord/bin/spectatord_main.cc:
     --age_gauge_limit (The maximum number of age gauges that may be reported by
       this process.); default: 1000;
     --common_tags (Common tags: nf.app=app,nf.cluster=cluster. Override the
@@ -24,7 +23,8 @@ spectatord: A daemon that listens for metrics and reports them to Atlas.
       default: "";
     --debug (Debug spectatord. All values will be sent to a dev aggregator and
       dropped.); default: false;
-    --enable_socket (Enable UNIX domain socket support.); default: true;
+    --enable_socket (Enable UNIX domain socket support. Default is true on Linux
+      and false on MacOS.); default: true;
     --enable_statsd (Enable statsd support.); default: false;
     --meter_ttl (Meter TTL: expire meters after this period of inactivity.);
       default: 15m;
@@ -32,6 +32,7 @@ spectatord: A daemon that listens for metrics and reports them to Atlas.
     --socket_path (Path to the UNIX domain socket.);
       default: "/run/spectatord/spectatord.unix";
     --statsd_port (Port number for the statsd socket.); default: 8125;
+    --admin_port (Port number for the admin server.); default: 1234;
     --uri (Optional override URI for the aggregator.); default: "";
     --verbose (Use verbose logging.); default: false;
     --verbose_http (Output debug info for HTTP requests.); default: false;
@@ -137,6 +138,61 @@ A double value. The meaning of the value depends on the metric type.
 ## Metrics
 
 See [METRICS](docs/METRICS.md) for a list of metrics published by this service.
+
+## Admin Server
+
+An administrative server is provided with SpectatorD, so that debugging information and few
+data management tasks may be completed. By default, this server listens on port `1234/TCP`,
+but this can be modified with the `--admin_port` flag. The endpoints which change data may
+only be accessed from localhost.
+
+* `GET /`
+    * Returns a service description and list of available endpoints. 
+* `GET /config`
+    * Returns the current SpectatorD configuration, including the current set of common tags.
+* `GET /config/common_tags`
+    * Returns a description of how to use this endpoint to modify common tags.
+* `POST /config/common_tags`
+    * Create, modify or delete common tags from the allowed set of Mantis common tags. No other
+    common tags may be modified. Create or update a tag by setting it to a string. Delete a tag
+    by setting the value to an empty string.
+    * Allowed tags:
+        * `mantisJobId`
+        * `mantisJobName`
+        * `mantisUser`
+        * `mantisWorkerIndex`
+        * `mantisWorkerNumber`
+        * `mantisWorkerStageNumber`
+    * Example:
+        ```
+        curl -X POST \
+        -d '{"mantisJobId": "foo", "mantisJobName": "bar", "mantisUser": ""}' \
+        -w " %{http_code}\n" \
+        http://localhost:1234/config/common_tags
+        ```
+* `GET /metrics`
+    * Return an object containing lists of all metrics currently known to the Registry, grouped
+    by type.
+* `DELETE /metrics/A`
+    * Delete all AgeGauge metrics from the Registry. 
+* `DELETE /metrics/A/{id}`
+    * Delete one AgeGauge metric from the Registry, identified by the `id`.
+    * Example:
+        ```
+        curl -X DELETE \
+        -w " %{http_code}\n" \
+        http://localhost:1234/metrics/A/fooIsTheName,some.tag=val1,some.otherTag=val2
+        ```
+* `DELETE /metrics/g`
+    * Delete all Gauge metrics from the Registry. 
+* `DELETE /metrics/g/{id}`
+    * Delete one Gauge metric from the Registry, identified by the `id`.
+    * Example:
+        ```
+        curl -X DELETE \
+        -w " %{http_code}\n" \
+        http://localhost:1234/metrics/g/fooIsTheName,some.tag=val1,some.otherTag=val2
+        ```
 
 ## Performance Numbers
 

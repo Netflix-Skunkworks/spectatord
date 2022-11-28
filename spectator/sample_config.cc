@@ -4,7 +4,9 @@ namespace spectator {
 
 // used in tests
 auto GetConfiguration() -> std::unique_ptr<Config> {
-  return std::make_unique<Config>();
+  auto config = std::make_unique<Config>();
+  config->age_gauge_limit = 10;
+  return config;
 }
 
 }  // namespace spectator

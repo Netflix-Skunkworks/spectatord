@@ -38,7 +38,7 @@ jobs:
           python3 -V
 
           echo "==== conan ===="
-          pip install conan
+          pip install "conan==1.59.0"
           conan --version
           if [[ ! -f ~/.conan/profiles/default ]]; then conan profile new default --detect; fi
           conan profile update settings.compiler.libcxx=libstdc++11 default
@@ -54,6 +54,8 @@ jobs:
           cd $BUILD_DIR
           cmake .. -DCMAKE_BUILD_TYPE=Release
           cmake --build .
+          echo "==== ldd ===="
+          ldd bin/spectatord_main || true
 
       - name: Test spectatord
         run: |

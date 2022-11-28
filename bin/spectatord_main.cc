@@ -1,5 +1,4 @@
 #include "backward.hpp"
-#include "local.h"
 #include "util/logger.h"
 #include "spectatord.h"
 #include "spectator/registry.h"
@@ -7,9 +6,9 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/flags/usage.h"
-#include "absl/strings/numbers.h"
 #include "absl/strings/str_split.h"
 #include "absl/time/time.h"
+#include "admin/admin_server.h"
 #include <fmt/ranges.h>
 
 auto GetSpectatorConfig() -> std::unique_ptr<spectator::Config>;
@@ -44,11 +43,21 @@ auto AbslParseFlag(absl::string_view text, PortNumber* p, std::string* error)
   return true;
 }
 
-ABSL_FLAG(PortNumber, port, PortNumber(1234), "Port number for the UDP socket.");
-ABSL_FLAG(bool, enable_statsd, false, "Enable statsd support.");
+ABSL_FLAG(PortNumber, port, PortNumber(1234),
+          "Port number for the UDP socket.");
+ABSL_FLAG(bool, enable_statsd, false,
+          "Enable statsd support.");
 ABSL_FLAG(PortNumber, statsd_port, PortNumber(8125),
           "Port number for the statsd socket.");
-ABSL_FLAG(bool, enable_socket, true, "Enable UNIX domain socket support.");
+ABSL_FLAG(PortNumber, admin_port, PortNumber(1234),
+          "Port number for the admin server.");
+#ifdef __APPLE__
+  ABSL_FLAG(bool, enable_socket, false,
+          "Enable UNIX domain socket support. Default is true on Linux and false on MacOS.");
+#else
+  ABSL_FLAG(bool, enable_socket, true,
+          "Enable UNIX domain socket support. Default is true on Linux and false on MacOS.");
+#endif
 ABSL_FLAG(std::string, socket_path, "/run/spectatord/spectatord.unix",
           "Path to the UNIX domain socket.");
 ABSL_FLAG(std::string, uri, "",
@@ -61,7 +70,8 @@ ABSL_FLAG(std::string, common_tags, "",
           "Common tags: nf.app=app,nf.cluster=cluster. Override the default common "
           "tags. If empty, then spectatord will use the default set. "
           "This flag should only be used by experts who understand the risks.");
-ABSL_FLAG(bool, verbose, false, "Use verbose logging.");
+ABSL_FLAG(bool, verbose, false,
+          "Use verbose logging.");
 ABSL_FLAG(bool, verbose_http, false,
           "Output debug info for HTTP requests.");
 ABSL_FLAG(bool, debug, false,
@@ -71,7 +81,7 @@ ABSL_FLAG(bool, debug, false,
 auto main(int argc, char** argv) -> int {
   auto logger = Logger();
   auto signals = backward::SignalHandling::make_default_signals();
-  // default signals with the exception of SIGABRT
+  // default signals except SIGABRT
   signals.erase(std::remove(signals.begin(), signals.end(), SIGABRT),
                 signals.end());
   backward::SignalHandling sh{signals};
@@ -139,8 +149,12 @@ auto main(int argc, char** argv) -> int {
     statsd_port = absl::GetFlag(FLAGS_statsd_port).port;
   }
 
-  spectatord::Server server{absl::GetFlag(FLAGS_port).port, statsd_port,
-                            socket_path, &registry};
+  logger->info("Starting admin server on port {}/tcp", absl::GetFlag(FLAGS_admin_port).port);
+  admin::AdminServer admin_server(registry, absl::GetFlag(FLAGS_admin_port).port);
+  admin_server.Start();
+
+  spectatord::Server server{absl::GetFlag(FLAGS_port).port, statsd_port, socket_path, &registry};
   server.Start();
+
   return 0;
 }
