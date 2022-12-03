@@ -1,8 +1,6 @@
+[![Build](https://github.com/Netflix-Skunkworks/spectatord/actions/workflows/build.yml/badge.svg)](https://github.com/Netflix-Skunkworks/spectatord/actions/workflows/build.yml)
+
 # SpectatorD - A High Performance Metrics Daemon
-
-[![Snapshot](https://github.com/Netflix-Skunkworks/spectatord/actions/workflows/snapshot.yml/badge.svg)](https://github.com/Netflix-Skunkworks/spectatord/actions/workflows/snapshot.yml)
-
-## Description
 
 SpectatorD is a high-performance telemetry daemon that listens for metrics specified by a
 text-based protocol and publishes updates periodically to an [Atlas] aggregator service.
