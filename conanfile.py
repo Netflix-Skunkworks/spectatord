@@ -43,10 +43,10 @@ class SpectatorDConan(ConanFile):
         if os.environ.get("NFLX_INTERNAL") != "ON":
             return
         dir_name = "netflix_spectator_cppconf"
-        commit = "88e98808b2a5cbd60198faa79dd1eaee557ce71b"
+        commit = "cc20c455e182e662f75d38de39d1ffb8f46fb94e"
         zip_name = f"nflx_spectator_cfg-{commit}.zip"
         download(f"https://stash.corp.netflix.com/rest/api/latest/projects/CLDMTA/repos/netflix-spectator-cppconf/archive?at={commit}&format=zip", zip_name)
-        check_sha256(zip_name, "af4d6d9458bf367a1c6ec04e4dae6b15060446331f6f8edd66cf518f0f453dc1")
+        check_sha256(zip_name, "2a871e8182f371d73d5b6679c04c286ca7f185d87a0cfc535a126fcca3cc9863")
         unzip(zip_name, destination=dir_name)
         shutil.move(f"{dir_name}/netflix_config.cc", "spectator")
         os.unlink(zip_name)
