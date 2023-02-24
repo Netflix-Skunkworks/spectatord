@@ -4,6 +4,8 @@ project(spectatord)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+set(BUILD_SHARED_LIBS OFF)
 
 add_compile_options(-fno-omit-frame-pointer "$<$<CONFIG:Debug>:-fsanitize=address>")
 add_link_options(-fno-omit-frame-pointer "$<$<CONFIG:Debug>:-fsanitize=address>")
@@ -71,6 +73,7 @@ if(NFLX_INTERNAL)
         spectatord
         admin_server
         ${CONAN_LIBS}
+        -static
     )
 else()
     message(STATUS "Using sample config")
@@ -79,11 +82,9 @@ else()
         spectatord
         admin_server
         ${CONAN_LIBS}
+        -static
     )
 endif()
-target_link_options(spectatord_main PRIVATE
-    "$<$<CONFIG:Release>:-static-libstdc++>"
-)
 
 #-- metrics_gen executable
 add_executable(metrics_gen
