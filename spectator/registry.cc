@@ -155,6 +155,36 @@ auto Registry::Measurements() const noexcept -> std::vector<Measurement> {
   return res;
 }
 
+void Registry::UpdateCommonTag(const std::string& k, const std::string& v) {
+  auto it = config_->common_tags.find(k);
+  if (it != config_->common_tags.end()) {
+    it->second = v;
+  } else {
+    config_->common_tags.insert({k, v});
+  }
+}
+
+void Registry::EraseCommonTag(const std::string& k) {
+  config_->common_tags.erase(k);
+}
+
+bool Registry::DeleteMeter(const std::string& type, const Id& id) {
+  if (type == "A") {
+    return all_meters_.age_gauges_.remove_one(id);
+  } else if (type == "g") {
+    return all_meters_.gauges_.remove_one(id);
+  }
+  return false;
+}
+
+void Registry::DeleteAllMeters(const std::string& type) {
+  if (type == "A") {
+    all_meters_.age_gauges_.remove_all();
+  } else if (type == "g") {
+    all_meters_.gauges_.remove_all();
+  }
+}
+
 void Registry::remove_expired_meters() noexcept {
   int total = 0, expired = 0;
   std::tie(expired, total) = all_meters_.remove_expired(meter_ttl_);

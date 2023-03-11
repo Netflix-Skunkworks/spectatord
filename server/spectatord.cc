@@ -330,7 +330,7 @@ void Server::Start() {
   logger->info("Using receive buffer size = {}", max_buffer_size());
   auto parser = [this](char* buffer) { return this->parse(buffer); };
   UdpServer udp_server{io_context, port_number_, parser};
-  logger->info("Starting spectatord server on port {}", port_number_);
+  logger->info("Starting spectatord server on port {}/udp", port_number_);
   udp_server.Start();
 
   std::unique_ptr<UdpServer> statsd_server;
@@ -340,7 +340,7 @@ void Server::Start() {
     };
     statsd_server = std::make_unique<UdpServer>(io_context, *statsd_port_number_,
                                                 statsd_parser);
-    logger->info("Starting statsd server on port {}", *statsd_port_number_);
+    logger->info("Starting statsd server on port {}/udp", *statsd_port_number_);
     statsd_server->Start();
   } else {
     logger->info("statsd support is not enabled");

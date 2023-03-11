@@ -16,6 +16,7 @@
 #include <mutex>
 #include <spdlog/spdlog.h>
 #include <tsl/hopscotch_map.h>
+#include <iostream>
 
 namespace spectator {
 
@@ -102,6 +103,26 @@ struct meter_map {
       }
     }
     return {expired, total};
+  }
+
+  auto remove_one(Id id) noexcept -> bool {
+    if (contains(id)) {
+      absl::MutexLock lock{&meters_mutex_};
+      meters_.erase(id);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  void remove_all() noexcept {
+    absl::MutexLock lock{&meters_mutex_};
+    auto it = meters_.begin();
+    auto end = meters_.end();
+    while (it != end) {
+      meters_.erase(it->first);
+      ++it;
+    }
   }
 
   auto get_ids() const -> std::vector<Id> {
@@ -282,6 +303,14 @@ class Registry {
 
   void Start() noexcept;
   void Stop() noexcept;
+
+  // for updating mantis common tags
+  void UpdateCommonTag(const std::string& k, const std::string& v);
+  void EraseCommonTag(const std::string& k);
+
+  // for administering gauges
+  bool DeleteMeter(const std::string& type, const Id& id);
+  void DeleteAllMeters(const std::string& type);
 
   // for debugging / testing
   auto Timers() const -> std::vector<const Timer*> {

@@ -32,7 +32,7 @@ TEST(StringIntern, Valid) {
   EXPECT_EQ(intern_str(very_invalid), intern_str("12_45"));
 }
 
-TEST(StringInter, Hash) {
+TEST(StringIntern, Hash) {
   auto h1 = std::hash<spectator::StrRef>{}(intern_str("hash"));
   auto h2 = std::hash<spectator::StrRef>{}(intern_str("hash1"));
   auto h3 = std::hash<spectator::StrRef>{}(intern_str("hash2"));

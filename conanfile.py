@@ -15,15 +15,26 @@ class SpectatorDConan(ConanFile):
         "c-ares/1.15.0",
         "fmt/7.1.3",
         "gtest/1.10.0",
-        "libcurl/7.74.0",
+        "libcurl/7.87.0",
+        "openssl/1.1.1t",
+        "poco/1.12.4",
         "rapidjson/1.1.0",
-        "spdlog/1.8.0",
+        "spdlog/1.8.5",
         "tsl-hopscotch-map/2.3.0",
         "xxhash/0.8.0",
-        "zlib/1.2.11"
+        "zlib/1.2.13"
     )
     generators = "cmake"
     default_options = {}
+
+    def configure(self):
+        self.options["poco"].enable_data_mysql = False
+        self.options["poco"].enable_data_postgresql = False
+        self.options["poco"].enable_data_sqlite = False
+        self.options["poco"].enable_jwt = False
+        self.options["poco"].enable_mongodb = False
+        self.options["poco"].enable_redis = False
+        self.options["poco"].enable_activerecord = False
 
     @staticmethod
     def get_flat_hash_map():
