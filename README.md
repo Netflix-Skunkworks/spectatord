@@ -230,6 +230,39 @@ binary.
 * The [`udp_numbers.pl`](./tools/udp_numbers.pl) script is used to automate running `metrics_gen`
 with different kernel settings for UDP sockets.
 
+## External Publishing
+
+Example command for running `spectatord` locally with external publishing enabled, and providing
+a reasonable minimal subset of common tags, so that the metrics may be located in Atlas:
+
+```shell
+./spectatord --enable_external --common_tags nf.app=${USER}_spectatord,nf.node=${HOST}
+```
+
+There are 14 internal metrics which will start publishing after starting the process, and these
+metrics will have these tags applied.
+
+## Build Configuration Notes
+
+The default build recipe for `libcurl` in Conan will use the Apple Secure Transport SSL backend,
+which will return the following error when external publishing is enabled, and it attempts to
+verify Metatron certificates:
+
+```
+SSL: Can't find the certificate "$PATH/user.crt" and its private key in the Keychain.
+```
+
+To work around this issue, we specify that OpenSSL should always be used as the `ssl` backend
+for `libcurl` in `conanfile.py`.
+
+```python
+from conans import ConanFile
+
+class SpectatorDConan(ConanFile):
+    def configure(self):
+        self.options["libcurl"].with_ssl = "openssl"
+```
+
 ## Local Development
 
 ```shell
@@ -238,6 +271,7 @@ source venv/bin/activate
 ./build.sh  # [clean|skiptest]
 ```
 
+* CLion version 2022.1.3 required until the Conan plugin is updated
 * CLion > Preferences > Plugins > Marketplace > Conan > Install
 * CLion > Preferences > Build, Execution, Deploy > Conan > Conan Executable: $PROJECT_HOME/venv/bin/conan
 * CLion > Bottom Bar: Conan > Left Button: Match Profile > CMake Profile: Debug, Conan Profile: default

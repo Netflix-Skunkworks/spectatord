@@ -1,8 +1,7 @@
-#-- sample config library
+#-- config library
 add_library(sample_cfg OBJECT "sample_config.cc")
 target_link_libraries(sample_cfg spectator)
 
-#-- netflix config library
 if(NFLX_INTERNAL)
     add_library(netflix_cfg OBJECT "netflix_config.cc")
     target_link_libraries(netflix_cfg spectator)
@@ -63,23 +62,23 @@ add_library(spectator OBJECT
     "version.h"
 )
 target_include_directories(spectator PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(spectator util ${CONAN_LIBS})
+target_link_libraries(spectator metatron util ${CONAN_LIBS})
 
 #-- file generators, must exist where the outputs are referenced
 add_custom_command(
-    OUTPUT "percentile_bucket_tags.inc"
-    COMMAND "${CMAKE_BINARY_DIR}/bin/gen_perc_bucket_tags" > "${CMAKE_SOURCE_DIR}/spectator/percentile_bucket_tags.inc"
+    OUTPUT percentile_bucket_tags.inc
+    COMMAND ${CMAKE_BINARY_DIR}/bin/gen_perc_bucket_tags > ${CMAKE_CURRENT_SOURCE_DIR}/percentile_bucket_tags.inc
     DEPENDS gen_perc_bucket_tags
 )
 
 add_custom_command(
-    OUTPUT "percentile_bucket_values.inc"
-    COMMAND "${CMAKE_BINARY_DIR}/bin/gen_perc_bucket_values" > "${CMAKE_SOURCE_DIR}/spectator/percentile_bucket_values.inc"
+    OUTPUT percentile_bucket_values.inc
+    COMMAND ${CMAKE_BINARY_DIR}/bin/gen_perc_bucket_values > ${CMAKE_CURRENT_SOURCE_DIR}/percentile_bucket_values.inc
     DEPENDS gen_perc_bucket_values
 )
 
 add_custom_command(
-    OUTPUT "valid_chars.inc"
-    COMMAND "${CMAKE_BINARY_DIR}/bin/gen_valid_chars" > "${CMAKE_SOURCE_DIR}/spectator/valid_chars.inc"
+    OUTPUT valid_chars.inc
+    COMMAND ${CMAKE_BINARY_DIR}/bin/gen_valid_chars > ${CMAKE_CURRENT_SOURCE_DIR}/valid_chars.inc
     DEPENDS gen_valid_chars
 )

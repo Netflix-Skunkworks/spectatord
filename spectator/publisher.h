@@ -1,14 +1,15 @@
 #pragma once
 
-#include "absl/time/time.h"
 #include "absl/synchronization/blocking_counter.h"
+#include "absl/time/time.h"
 #include "common_refs.h"
 #include "config.h"
 #include "counter.h"
 #include "http_client.h"
-#include "util/logger.h"
 #include "measurement.h"
+#include "metatron/metatron_config.h"
 #include "smile.h"
+#include "util/logger.h"
 
 #include <asio/post.hpp>
 #include <asio/thread_pool.hpp>
@@ -70,15 +71,15 @@ class Publisher {
       http_initialized_ = true;
       HttpClient::GlobalInit();
     }
+
     const auto& cfg = registry_->GetConfig();
     auto logger = registry_->GetLogger();
-    if (cfg.uri.empty()) {
+    if (!cfg.external_enabled && cfg.uri.empty()) {
       logger->warn("Registry config has no uri. Ignoring start request");
       return;
     }
     if (started_.exchange(true)) {
       logger->warn("Registry already started. Ignoring start request");
-
       return;
     }
 
@@ -126,8 +127,13 @@ class Publisher {
     const auto& cfg = registry_->GetConfig();
     auto logger = registry_->GetLogger();
 
-    logger->info("Starting to send metrics to {} every {}s.", cfg.uri,
-                 absl::ToDoubleSeconds(cfg.frequency));
+    if (cfg.external_enabled) {
+      logger->info("Starting to send metrics to {} every {}s.", cfg.external_uri,
+                   absl::ToDoubleSeconds(cfg.frequency));
+    } else {
+      logger->info("Starting to send metrics to {} every {}s.", cfg.uri,
+                   absl::ToDoubleSeconds(cfg.frequency));
+    }
     logger->info("Publishing metrics with the following common tags: {}",
                  common_tags_);
 
@@ -262,8 +268,12 @@ class Publisher {
     if (connect_timeout == absl::ZeroDuration()) {
       connect_timeout = absl::Seconds(2);
     }
-    return HttpClientConfig{connect_timeout, read_timeout, true,
-                            false,           true,         cfg.verbose_http};
+
+    std::string ssl_cert, ssl_key, ca_info, app_name;
+    std::tie(ssl_cert, ssl_key, ca_info, app_name) = metatron::find_certificate();
+
+    return HttpClientConfig{connect_timeout, read_timeout, true, false, true, cfg.verbose_http,
+                            cfg.external_enabled, ssl_cert, ssl_key, ca_info, app_name};
   }
 
   auto handle_aggr_response(const HttpResponse& http_response,
@@ -272,8 +282,16 @@ class Publisher {
       -> std::pair<size_t, size_t> {
     size_t num_sent = 0U;
     size_t num_err = 0U;
+    const auto& cfg = registry_->GetConfig();
     auto logger = registry_->GetLogger();
-    const auto& uri = registry_->GetConfig().uri;
+
+    std::string uri;
+    if (cfg.external_enabled) {
+      uri = cfg.external_uri;
+    } else {
+      uri = cfg.uri;
+    }
+
     auto http_code = http_response.status;
     if (http_code == 200) {
       num_sent = num_measurements;
@@ -314,14 +332,22 @@ class Publisher {
     return std::make_pair(num_sent, num_err);
   }
 
+  std::string select_uri() {
+    const auto& cfg = registry_->GetConfig();
+    if (cfg.external_enabled) {
+      return cfg.external_uri;
+    } else {
+      return cfg.uri;
+    }
+  }
+
   void send_metrics() {
     auto logger = registry_->GetLogger();
     const auto& cfg = registry_->GetConfig();
     auto http_cfg = get_http_config(cfg);
     auto start = absl::Now();
     HttpClient client{registry_, std::move(http_cfg)};
-    auto batch_size =
-        static_cast<std::vector<Measurement>::difference_type>(cfg.batch_size);
+    auto batch_size = static_cast<std::vector<Measurement>::difference_type>(cfg.batch_size);
     auto measurements = registry_->Measurements();
 
     if (!cfg.is_enabled() || measurements.empty()) {
@@ -338,6 +364,7 @@ class Publisher {
         logger->trace("{}", m);
       }
     }
+
     auto from = measurements.begin();
     auto end = measurements.end();
     std::vector<std::pair<int, HttpResponse>> responses;
@@ -348,9 +375,7 @@ class Publisher {
     std::transform(buffers_.begin(), buffers_.end(),
                    std::back_inserter(avail_buffers),
                    [](auto& b) { return &b; });
-    std::vector<
-        std::pair<Measurements::const_iterator, Measurements::const_iterator>>
-        batches;
+    std::vector<std::pair<Measurements::const_iterator, Measurements::const_iterator>> batches;
 
     while (from != end) {
       auto to_end = std::distance(from, end);
@@ -360,12 +385,12 @@ class Publisher {
       batches.emplace_back(from, to);
       from = to;
     }
-    absl::BlockingCounter batches_to_do{static_cast<int>(batches.size())};
 
+    absl::BlockingCounter batches_to_do{static_cast<int>(batches.size())};
     for (const auto& batch : batches) {
       asio::post(pool_, [this, batch, &batches_to_do, &client, &responses,
                          &buffers_mutex, &avail_buffers, &responses_mutex]() {
-        const auto& uri = this->registry_->GetConfig().uri;
+        const auto& uri = select_uri();
         SmilePayload* payload = nullptr;
         {
           absl::MutexLock lock(&buffers_mutex);
@@ -374,8 +399,7 @@ class Publisher {
         }
 
         measurements_to_json(payload, batch.first, batch.second);
-        auto response =
-            client.Post(uri, HttpClient::kSmileJson, payload->Result());
+        auto response = client.Post(uri, HttpClient::kSmileJson, payload->Result());
         {
           absl::MutexLock lock(&responses_mutex);
           auto batch_size = batch.second - batch.first;

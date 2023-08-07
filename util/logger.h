@@ -19,8 +19,8 @@ LogManager& log_manager() noexcept;
 inline std::shared_ptr<spdlog::logger> Logger() noexcept {
   return log_manager().Logger();
 }
-inline std::shared_ptr<spdlog::logger> GetLogger(
-    const std::string& name) noexcept {
+
+inline std::shared_ptr<spdlog::logger> GetLogger(const std::string& name) noexcept {
   return log_manager().GetLogger(name);
 }
 

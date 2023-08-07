@@ -17,6 +17,7 @@ class SpectatorDConan(ConanFile):
         "libcurl/8.2.1",
         "openssl/3.1.3",
         "poco/1.12.4",
+        "protobuf/3.21.12",
         "rapidjson/1.1.0",
         "spdlog/1.12.0",
         "tsl-hopscotch-map/2.3.1",
@@ -54,15 +55,31 @@ class SpectatorDConan(ConanFile):
         if os.environ.get("NFLX_INTERNAL") != "ON":
             return
         dir_name = "netflix_spectator_cppconf"
-        commit = "cc20c455e182e662f75d38de39d1ffb8f46fb94e"
-        zip_name = f"nflx_spectator_cfg-{commit}.zip"
+        commit = "246d24b72071ae2bb769b13d65f131d72cbbe0b4"
+        zip_name = f"nflx_spectator_cppconf-{commit}.zip"
         download(f"https://stash.corp.netflix.com/rest/api/latest/projects/CLDMTA/repos/netflix-spectator-cppconf/archive?at={commit}&format=zip", zip_name)
-        check_sha256(zip_name, "2a871e8182f371d73d5b6679c04c286ca7f185d87a0cfc535a126fcca3cc9863")
+        check_sha256(zip_name, "93b9f318bccfe256bcf0e9d3ddb7a8baa637c0e374693ac07ebc30a37de9081c")
         unzip(zip_name, destination=dir_name)
         shutil.move(f"{dir_name}/netflix_config.cc", "spectator")
+        os.unlink(zip_name)
+        shutil.rmtree(dir_name)
+
+    @staticmethod
+    def get_spectatord_metatron():
+        if os.environ.get("NFLX_INTERNAL") != "ON":
+            return
+        dir_name = "spectatord_metatron"
+        commit = "0e75a8e4848219f322df4185bbe47bfe97506e8f"
+        zip_name = f"spectatord_metatron-{commit}.zip"
+        download(f"https://stash.corp.netflix.com/rest/api/latest/projects/CLDMTA/repos/spectatord-metatron/archive?at={commit}&format=zip", zip_name)
+        check_sha256(zip_name, "bc0aebc162ea11ab4ba3c6e543db98a6cd3c6093b3fca4bb580bf895f77a7365")
+        unzip(zip_name, destination=dir_name)
+        shutil.move(f"{dir_name}/metatron/auth_context.proto", "metatron")
+        shutil.move(f"{dir_name}/metatron/metatron_config.cc", "metatron")
         os.unlink(zip_name)
         shutil.rmtree(dir_name)
 
     def source(self):
         self.get_flat_hash_map()
         self.get_netflix_spectator_cppconf()
+        self.get_spectatord_metatron()

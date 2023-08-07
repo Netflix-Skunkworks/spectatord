@@ -76,11 +76,11 @@ class CurlHandle {
     curl_easy_cleanup(handle_);
   }
 
-  auto handle() const noexcept -> CURL* { return handle_; }
+  [[nodiscard]] auto handle() const noexcept -> CURL* { return handle_; }
 
-  auto perform() -> CURLcode { return curl_easy_perform(handle()); }
+  [[nodiscard]] auto perform() const -> CURLcode { return curl_easy_perform(handle()); }
 
-  auto set_opt(CURLoption option, const void* param) -> CURLcode {
+  auto set_opt(CURLoption option, const void* param) const -> CURLcode {
     return curl_easy_setopt(handle(), option, param);
   }
 
@@ -99,7 +99,7 @@ class CurlHandle {
 
   void move_headers(HttpHeaders* out) { *out = std::move(resp_headers_); }
 
-  void set_url(const std::string& url) { set_opt(CURLOPT_URL, url.c_str()); }
+  void set_url(const std::string& url) const { set_opt(CURLOPT_URL, url.c_str()); }
 
   void set_headers(std::shared_ptr<CurlHeaders> headers) {
     headers_ = std::move(headers);
@@ -127,6 +127,24 @@ class CurlHandle {
     curl_easy_setopt(handle_, CURLOPT_CUSTOMREQUEST, method);
   }
 
+  void configure_metatron(const HttpClientConfig& config) {
+    // provide metatron client certificate during handshake
+    curl_easy_setopt(handle_, CURLOPT_SSLCERT, config.metatron_ssl_cert.c_str());
+    curl_easy_setopt(handle_, CURLOPT_SSLKEY, config.metatron_ssl_key.c_str());
+    // disable use of system CAs
+    curl_easy_setopt(handle_, CURLOPT_CAPATH, NULL);
+    // perform full trust verification of server based on metatron CAs
+    curl_easy_setopt(handle_, CURLOPT_SSL_VERIFYPEER, 1);
+    curl_easy_setopt(handle_, CURLOPT_CAINFO, config.metatron_ca_info.c_str());
+    // install Metatron verifier and provide application name to check
+    curl_easy_setopt(handle_, CURLOPT_SSL_CTX_FUNCTION, metatron::sslctx_metatron_verify);
+    curl_easy_setopt(handle_, CURLOPT_SSL_CTX_DATA, config.metatron_app_name.c_str());
+    // disable hostname verification, SANs not present in metatron certs
+    curl_easy_setopt(handle_, CURLOPT_SSL_VERIFYHOST, 0);
+    // save any extended error message
+    curl_easy_setopt(handle_, CURLOPT_ERRORBUFFER, errbuf_);
+  }
+
   void ignore_output() {
     curl_easy_setopt(handle_, CURLOPT_WRITEFUNCTION, curl_ignore_output_fun);
   }
@@ -150,18 +168,23 @@ class CurlHandle {
     curl_easy_setopt(handle_, CURLOPT_VERBOSE, 1L);
   }
 
+  char* get_errbuf() {
+    return errbuf_;
+  }
+
  private:
   CURL* handle_;
   std::shared_ptr<CurlHeaders> headers_;
   const void* payload_ = nullptr;
   std::string response_;
   HttpHeaders resp_headers_;
+  char errbuf_[CURL_ERROR_SIZE];
 };
 
 }  // namespace
 
 HttpClient::HttpClient(Registry* registry, HttpClientConfig config)
-    : registry_(registry), config_{config} {}
+    : registry_(registry), config_{std::move(config)} {}
 
 auto HttpClient::Get(const std::string& url) const -> HttpResponse {
   return perform("GET", url, std::make_shared<CurlHeaders>(), nullptr, 0u, 0);
@@ -197,21 +220,27 @@ auto HttpClient::perform(const char* method, const std::string& url,
                          std::shared_ptr<CurlHeaders> headers,
                          const void* payload, size_t size,
                          int attempt_number) const -> HttpResponse {
-  LogEntry entry{registry_, method, url};
-
   CurlHandle curl;
+  LogEntry entry{registry_, method, url};
+  auto logger = registry_->GetLogger();
+
+  curl.set_url(url);
+  curl.set_headers(headers);
+
   auto total_timeout = config_.connect_timeout + config_.read_timeout;
   curl.set_timeout(total_timeout);
   curl.set_connect_timeout(config_.connect_timeout);
 
-  auto logger = registry_->GetLogger();
-  curl.set_url(url);
-  curl.set_headers(headers);
   if (strcmp("POST", method) == 0) {
     curl.post_payload(payload, size);
   } else if (strcmp("GET", method) != 0) {
     curl.custom_request(method);
   }
+
+  if (config_.external_enabled) {
+    curl.configure_metatron(config_);
+  }
+
   if (config_.read_body) {
     curl.capture_output();
   } else {
@@ -225,12 +254,19 @@ auto HttpClient::perform(const char* method, const std::string& url,
   if (config_.verbose_requests) {
     curl.trace_requests();
   }
+
   auto curl_res = curl.perform();
   int http_code;
 
   if (curl_res != CURLE_OK) {
-    logger->error("Failed to {} {}: {}", method, url,
-                  curl_easy_strerror(curl_res));
+    auto errbuff = curl.get_errbuf();
+    if (errbuff[0] == '\0') {
+      logger->error("Failed to {} {}: {}", method, url, curl_easy_strerror(curl_res));
+    } else {
+      logger->error("Failed to {} {}: {} (errbuf={})", method, url, curl_easy_strerror(curl_res),
+                    errbuff);
+    }
+
     switch (curl_res) {
       case CURLE_COULDNT_CONNECT:
         entry.set_error("connection_error");
@@ -241,18 +277,20 @@ auto HttpClient::perform(const char* method, const std::string& url,
       default:
         entry.set_error("unknown");
     }
+
     auto elapsed = absl::Now() - entry.start();
+
     // retry connect timeouts if possible, not read timeouts
     logger->info(
         "HTTP timeout to {}: {}ms elapsed - connect_to={} read_to={}", url,
         absl::ToInt64Milliseconds(elapsed),
         absl::ToInt64Milliseconds(config_.connect_timeout),
         absl::ToInt64Milliseconds(total_timeout - config_.connect_timeout));
+
     if (elapsed < total_timeout && attempt_number < 2) {
       entry.set_attempt(attempt_number, false);
       entry.log();
-      return perform(method, url, std::move(headers), payload, size,
-                     attempt_number + 1);
+      return perform(method, url, std::move(headers), payload, size, attempt_number + 1);
     }
 
     http_code = -1;
@@ -260,23 +298,28 @@ auto HttpClient::perform(const char* method, const std::string& url,
   } else {
     http_code = curl.status_code();
     entry.set_status_code(http_code);
+
     if (http_code / 100 == 2) {
       entry.set_success();
     } else {
       entry.set_error("http_error");
     }
+
     if (is_retryable_error(http_code) && attempt_number < 2) {
       logger->info("Got a retryable http code from {}: {} (attempt {})", url,
                    http_code, attempt_number);
       entry.set_attempt(attempt_number, false);
       entry.log();
+
       auto sleep_ms = uint32_t(200) << attempt_number;  // 200, 400ms
       std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
       return perform(method, url, std::move(headers), payload, size,
                      attempt_number + 1);
     }
+
     logger->debug("{} {} - status code: {}", method, url, http_code);
   }
+
   entry.set_attempt(attempt_number, true);
   entry.log();
 
