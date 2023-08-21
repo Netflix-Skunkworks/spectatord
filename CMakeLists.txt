@@ -12,6 +12,14 @@ include(CTest)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
 
+if (UNIX AND NOT APPLE)
+    message(STATUS "platform is linux")
+    set(BACKWARD_LIBS "-lbfd -ldl")
+else()
+    message(STATUS "platform is NOT linux")
+    set(BACKWARD_LIBS "")
+endif()
+
 add_subdirectory(admin)
 add_subdirectory(bench)
 add_subdirectory(server)
@@ -32,6 +40,7 @@ target_link_libraries(spectator_test
     sample_cfg
     spectator
     util
+    ${BACKWARD_LIBS}
     ${CONAN_LIBS}
 )
 add_test(
@@ -50,7 +59,12 @@ add_executable(spectatord_test
     "spectator/test_utils.h"
 )
 target_include_directories(spectatord_test PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(spectatord_test admin_server spectatord ${CONAN_LIBS})
+target_link_libraries(spectatord_test
+    admin_server
+    spectatord
+    ${BACKWARD_LIBS}
+    ${CONAN_LIBS}
+)
 add_test(
     NAME spectatord_test
     COMMAND spectatord_test
@@ -70,6 +84,7 @@ if(NFLX_INTERNAL)
         netflix_cfg
         spectatord
         admin_server
+        ${BACKWARD_LIBS}
         ${CONAN_LIBS}
     )
 else()
@@ -78,6 +93,7 @@ else()
         sample_cfg
         spectatord
         admin_server
+        ${BACKWARD_LIBS}
         ${CONAN_LIBS}
     )
 endif()
