@@ -1,6 +1,3 @@
-#ifdef __linux__
-#define BACKWARD_HAS_BFD 1
-#endif
 #include "backward.hpp"
 #include <gtest/gtest.h>
 
