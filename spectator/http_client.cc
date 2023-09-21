@@ -251,6 +251,7 @@ auto HttpClient::perform(const char* method, const std::string& url,
     if (elapsed < total_timeout && attempt_number < 2) {
       entry.set_attempt(attempt_number, false);
       entry.log();
+      curl_easy_cleanup(&curl);
       return perform(method, url, std::move(headers), payload, size,
                      attempt_number + 1);
     }
