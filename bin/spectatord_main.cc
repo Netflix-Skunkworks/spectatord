@@ -142,7 +142,10 @@ auto main(int argc, char** argv) -> int {
     logger->info("Unable to load signal handling for stacktraces");
   }
 
-  spectator::Registry registry{std::move(cfg), std::move(spectator_logger)};
+  spectator::Registry internal_registry{cfg, spectator_logger};
+  internal_registry.Start();
+
+  spectator::Registry registry{cfg, spectator_logger};
   registry.Start();
 
   std::optional<std::string> socket_path;

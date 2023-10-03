@@ -1,4 +1,5 @@
 #include <atomic>
+#include <utility>
 #include <gtest/gtest.h>
 #include <zlib.h>
 
@@ -44,7 +45,7 @@ const Timer* find_timer(Registry* registry, const std::string& name,
 
 class TestRegistry : public Registry {
  public:
-  explicit TestRegistry(std::unique_ptr<Config> config)
+  explicit TestRegistry(std::shared_ptr<Config> config)
       : Registry(std::move(config), spectatord::Logger()) {}
 };
 

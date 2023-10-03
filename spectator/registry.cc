@@ -6,7 +6,7 @@
 
 namespace spectator {
 
-Registry::Registry(std::unique_ptr<Config> config,
+Registry::Registry(std::shared_ptr<Config> config,
                    Registry::logger_ptr logger) noexcept
     : should_stop_{true},
       age_gauge_first_warn_{true},

@@ -49,6 +49,6 @@ class Config {
 };
 
 // Get a new spectator configuration.
-auto GetConfiguration() -> std::unique_ptr<Config>;
+auto GetConfiguration() -> std::shared_ptr<Config>;
 
 }  // namespace spectator
