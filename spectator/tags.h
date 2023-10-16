@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <memory>
-#include <fmt/format.h>
+#include <fmt/core.h>
 #include <fmt/ranges.h>
 #include <ostream>
 
@@ -207,17 +207,15 @@ class Tags {
 inline auto operator<<(std::ostream& os, const Tags& tags) -> std::ostream& {
   return os << fmt::format("{}", tags);
 }
+
 }  // namespace spectator
 
-template <>
-struct fmt::formatter<spectator::Tag> {
-  constexpr auto parse(format_parse_context& ctx) -> decltype(ctx.begin()) {
-    return ctx.begin();
-  }
+template <> struct fmt::formatter<spectator::Tag> {
+  constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
 
-  // formatter for Ids
-  template <typename FormatContext>
-  auto format(const spectator::Tag& tag, FormatContext& context) {
-    return fmt::format_to(context.out(), "{}->{}", tag.key, tag.value);
+  // Tag formatter: statistic->count
+  template <typename format_context>
+  constexpr auto format(const spectator::Tag& tag, format_context& ctx) const {
+    return fmt::format_to(ctx.out(), "{}->{}", tag.key, tag.value);
   }
 };

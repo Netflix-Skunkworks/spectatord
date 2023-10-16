@@ -1,5 +1,6 @@
 #pragma once
 
+#include "absl/base/thread_annotations.h"
 #include "absl/synchronization/mutex.h"
 #include "spectator/registry.h"
 #include <chrono>
@@ -62,7 +63,7 @@ class expiring_cache {
  private:
   using table_t = tsl::hopscotch_map<spectator::Id, detail::cache_entry<V>>;
   absl::Mutex cache_mutex_;
-  table_t cache_ GUARDED_BY(cache_mutex_);
+  table_t cache_ ABSL_GUARDED_BY(cache_mutex_);
   supplier_t supplier_;
 };
 

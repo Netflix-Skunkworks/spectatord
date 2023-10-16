@@ -1,6 +1,7 @@
 #pragma once
 
 #include "string_intern.h"
+#include "absl/base/thread_annotations.h"
 #include "absl/synchronization/mutex.h"
 #include "tsl/hopscotch_map.h"
 #include "xxh3.h"
@@ -50,8 +51,8 @@ class StringPool {
   absl::Mutex table_mutex_;
   using table_t =
       tsl::hopscotch_map<String, StrRef, StringHasher, StringComparer>;
-  table_t table_ GUARDED_BY(table_mutex_);
-  StringPoolStats stats_ GUARDED_BY(table_mutex_){};
+  table_t table_ ABSL_GUARDED_BY(table_mutex_);
+  StringPoolStats stats_ ABSL_GUARDED_BY(table_mutex_){};
 };
 
 }  // namespace spectator

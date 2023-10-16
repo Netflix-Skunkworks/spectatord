@@ -8,26 +8,26 @@ from conans.tools import download, unzip, check_sha256
 class SpectatorDConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     requires = (
-        "abseil/20210324.2",
-        "asio/1.18.1",
+        "abseil/20230125.3",
+        "asio/1.28.1",
         "backward-cpp/1.6",
-        "benchmark/1.5.6",
-        "c-ares/1.15.0",
-        "fmt/7.1.3",
-        "gtest/1.10.0",
-        "libcurl/7.87.0",
-        "openssl/1.1.1t",
+        "benchmark/1.8.3",
+        "fmt/10.1.1",
+        "gtest/1.14.0",
+        "libcurl/8.2.1",
+        "openssl/3.1.3",
         "poco/1.12.4",
         "rapidjson/1.1.0",
-        "spdlog/1.8.5",
-        "tsl-hopscotch-map/2.3.0",
-        "xxhash/0.8.0",
-        "zlib/1.2.13"
+        "spdlog/1.12.0",
+        "tsl-hopscotch-map/2.3.1",
+        "xxhash/0.8.2",
+        "zlib/1.3"
     )
     generators = "cmake"
     default_options = {}
 
     def configure(self):
+        self.options["libcurl"].with_c_ares = True
         self.options["poco"].enable_data_mysql = False
         self.options["poco"].enable_data_postgresql = False
         self.options["poco"].enable_data_sqlite = False

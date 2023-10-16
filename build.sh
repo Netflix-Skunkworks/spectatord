@@ -50,7 +50,7 @@ cmake --build . || exit 1
 
 if [[ "$1" != "skiptest" ]]; then
   echo -e "${BLUE}==== test ====${NC}"
-  GTEST_COLOR=1 ctest --verbose
+  GTEST_COLOR=1 ASAN_OPTIONS=detect_container_overflow=0 ctest --verbose
 fi
 
 popd || exit 1

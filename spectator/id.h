@@ -116,15 +116,12 @@ struct equal_to<shared_ptr<spectator::Id>> {
 
 }  // namespace std
 
-template <>
-struct fmt::formatter<spectator::Id> {
-  constexpr auto parse(format_parse_context& ctx) -> decltype(ctx.begin()) {
-    return ctx.begin();
-  }
+template <> struct fmt::formatter<spectator::Id> {
+  constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
 
-  // formatter for Ids
-  template <typename FormatContext>
-  auto format(const spectator::Id& id, FormatContext& context) {
-    return fmt::format_to(context.out(), "Id({}, {})", id.Name(), id.GetTags());
+  // formatter: Id(c, {id->2, statistic->count})
+  template <typename format_context>
+  constexpr auto format(const spectator::Id& id, format_context& ctx) const {
+    return fmt::format_to(ctx.out(), "Id({}, {})", id.Name(), id.GetTags());
   }
 };
