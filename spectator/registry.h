@@ -1,5 +1,6 @@
 #pragma once
 
+#include "absl/base/thread_annotations.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/time/time.h"
 #include "age_gauge.h"
@@ -46,7 +47,7 @@ template <typename M>
 struct meter_map {
   mutable absl::Mutex meters_mutex_{};
   using table_t = tsl::hopscotch_map<Id, std::shared_ptr<M>>;
-  table_t meters_ GUARDED_BY(meters_mutex_);
+  table_t meters_ ABSL_GUARDED_BY(meters_mutex_);
 
   auto size() const noexcept {
     absl::MutexLock lock(&meters_mutex_);

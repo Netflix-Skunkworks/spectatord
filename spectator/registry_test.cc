@@ -14,6 +14,8 @@ TEST(Registry, AgeGauge) {
   Registry r{GetConfiguration(), spectatord::Logger()};
   auto g = r.GetAgeGauge("foo");
   g->UpdateLastSuccess();
+  // apple silicon is so fast that we need to sleep here to allow it to accumulate time
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
   EXPECT_TRUE(g->Value() > 0.0);
 }
 
@@ -97,14 +99,14 @@ TEST(Registry, Meters) {
 
 TEST(Registry, MeasurementTest) {
   Registry r{GetConfiguration(), spectatord::Logger()};
-  auto c = r.GetCounter("c");
+  auto c = r.GetCounter("c", Tags{{"id", "up"}});
   c->Increment();
   spectator::Measurements ms;
   c->Measure(&ms);
   auto m = ms.front();
   // test to string
   auto str = fmt::format("{}", m);
-  EXPECT_EQ(str, "Measurement{Id(c, {statistic->count}),1}");
+  EXPECT_EQ(str, "Measurement{Id(c, [id->up, statistic->count]), 1}");
 
   // test equals
   c->Increment();

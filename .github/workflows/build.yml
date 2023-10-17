@@ -38,7 +38,7 @@ jobs:
           python3 -V
 
           echo "==== conan ===="
-          pip install "conan==1.59.0"
+          pip install "conan==1.61.0"
           conan --version
           if [[ ! -f ~/.conan/profiles/default ]]; then conan profile new default --detect; fi
           conan profile update settings.compiler.libcxx=libstdc++11 default

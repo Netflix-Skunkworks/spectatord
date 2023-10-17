@@ -6,6 +6,7 @@
 #include <memory>
 #include <thread>
 #include <vector>
+#include "absl/base/thread_annotations.h"
 #include "absl/synchronization/mutex.h"
 
 class http_server {
@@ -76,7 +77,7 @@ class http_server {
 
   std::atomic<bool> is_done{false};
   mutable absl::Mutex requests_mutex_{};
-  std::vector<Request> requests_ GUARDED_BY(requests_mutex_);
+  std::vector<Request> requests_ ABSL_GUARDED_BY(requests_mutex_);
 
   std::map<std::string, std::string> path_response_;
 
