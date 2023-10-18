@@ -51,12 +51,14 @@ ABSL_FLAG(PortNumber, statsd_port, PortNumber(8125),
           "Port number for the statsd socket.");
 ABSL_FLAG(PortNumber, admin_port, PortNumber(1234),
           "Port number for the admin server.");
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(_WIN32)
   ABSL_FLAG(bool, enable_socket, false,
-          "Enable UNIX domain socket support. Default is true on Linux and false on MacOS.");
+          "Enable UNIX domain socket support. Default is true on Linux and false "
+          "on MacOS and Windows.");
 #else
   ABSL_FLAG(bool, enable_socket, true,
-          "Enable UNIX domain socket support. Default is true on Linux and false on MacOS.");
+          "Enable UNIX domain socket support. Default is true on Linux and false "
+          "on MacOS and Windows.");
 #endif
 ABSL_FLAG(std::string, socket_path, "/run/spectatord/spectatord.unix",
           "Path to the UNIX domain socket.");
