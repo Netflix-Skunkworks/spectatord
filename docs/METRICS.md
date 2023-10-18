@@ -10,6 +10,7 @@ The number of measurements that have either been sent to an Atlas backend or dro
 
 * `id`: One of `sent` or `dropped`.
 * `error`: The type of error that occurred, one of `http-error`, `validation`, or `other`.
+* `owner`: `spectatord`
 * Common Infrastructure
 
 ### spectator.registrySize
@@ -20,6 +21,7 @@ The number of measurements stored in the registry.
 
 **Dimensions:**
 
+* `owner`: `spectatord`
 * Common Infrastructure
 
 ### spectatord.parsedCount
