@@ -16,7 +16,7 @@ jobs:
       CXX: "g++-11"
       LANG: "en_US.UTF-8"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Conan+Cmake Cache
         uses: actions/cache@v3

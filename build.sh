@@ -8,6 +8,8 @@ NC="\033[0m"
 if [[ "$1" == "clean" ]]; then
   echo -e "${BLUE}==== clean ====${NC}"
   rm -rf $BUILD_DIR
+  rm nflx_spectator_cppconf-*.zip
+  rm -rf ska
   rm spectator/*.inc
   rm spectator/netflix_config.cc
 fi

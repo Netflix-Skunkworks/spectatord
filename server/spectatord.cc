@@ -418,7 +418,9 @@ void Server::upkeep() {
     ds_size_gauge->Set(ds_size);
     timers_expired_ctr->Add(t_expired);
     ds_expired_ctr->Add(ds_expired);
+#ifdef __linux__
     update_network_metrics();
+#endif
     auto pool_stats = spectator::string_pool_stats();
     pool_hits->Set(pool_stats.hits);
     pool_misses->Set(pool_stats.misses);
