@@ -13,7 +13,7 @@ Registry::Registry(std::unique_ptr<Config> config,
       meter_ttl_{absl::ToInt64Nanoseconds(config->meter_ttl)},
       config_{std::move(config)},
       logger_{std::move(logger)},
-      registry_size_{GetDistributionSummary("spectator.registrySize")},
+      registry_size_{GetDistributionSummary("spectator.registrySize", Tags{{"owner", "spectatord"}})},
       publisher_(this) {
   if (meter_ttl_ == 0) {
     meter_ttl_ = int64_t(15) * 60 * 1000 * 1000 * 1000;

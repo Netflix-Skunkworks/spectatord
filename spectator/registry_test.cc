@@ -184,7 +184,7 @@ TEST(Registry, DistSummary_Size) {
   r.GetCounter("bar")->Increment();
   // we have 4 measurements from the timer + 1 from the counter
   r.Measurements();
-  EXPECT_DOUBLE_EQ(r.GetDistributionSummary("spectator.registrySize")->TotalAmount(), 5.0);
+  EXPECT_DOUBLE_EQ(r.GetDistributionSummary("spectator.registrySize", Tags{{"owner", "spectatord"}})->TotalAmount(), 5.0);
 }
 
 TEST(Registry, DeleteMeters) {
