@@ -52,7 +52,7 @@ jobs:
         run: |
           tools/generate_version.sh > spectator/version.h
           cd $BUILD_DIR
-          cmake .. -DCMAKE_BUILD_TYPE=Release
+          cmake .. -DCMAKE_BUILD_TYPE=Debug
           cmake --build .
           echo "==== ldd ===="
           ldd bin/spectatord_main || true

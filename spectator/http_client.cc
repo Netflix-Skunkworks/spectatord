@@ -78,7 +78,12 @@ class CurlHandle {
 
   auto handle() const noexcept -> CURL* { return handle_; }
 
-  auto perform() -> CURLcode { return curl_easy_perform(handle()); }
+  auto perform() -> CURLcode {
+    if (response_.size() > 0) {
+      response_.clear();
+    }
+    return curl_easy_perform(handle());
+  }
 
   auto set_opt(CURLoption option, const void* param) -> CURLcode {
     return curl_easy_setopt(handle(), option, param);
@@ -199,7 +204,7 @@ auto HttpClient::perform(const char* method, const std::string& url,
                          int attempt_number) const -> HttpResponse {
   LogEntry entry{registry_, method, url};
 
-  CurlHandle curl;
+  thread_local CurlHandle curl;
   auto total_timeout = config_.connect_timeout + config_.read_timeout;
   curl.set_timeout(total_timeout);
   curl.set_connect_timeout(config_.connect_timeout);
