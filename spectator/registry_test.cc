@@ -117,7 +117,7 @@ TEST(Registry, MeasurementTest) {
 }
 
 struct ExpRegistry : public Registry {
-  explicit ExpRegistry(std::unique_ptr<spectator::Config> cfg)
+  explicit ExpRegistry(std::shared_ptr<spectator::Config> cfg)
       : Registry(std::move(cfg), spectatord::Logger()) {}
 
   void expire() { remove_expired_meters(); }

@@ -253,7 +253,7 @@ class Registry {
   using measurements_callback =
       std::function<void(const std::vector<Measurement>&)>;
 
-  Registry(std::unique_ptr<Config> config, logger_ptr logger) noexcept;
+  Registry(std::shared_ptr<Config> config, logger_ptr logger) noexcept;
   Registry(const Registry&) = delete;
   Registry(Registry&&) = delete;
   auto operator=(const Registry&) -> Registry& = delete;
@@ -347,7 +347,7 @@ class Registry {
   std::thread expirer_thread_;
   int64_t meter_ttl_;  // in nanos
 
-  std::unique_ptr<Config> config_;
+  std::shared_ptr<Config> config_;
   logger_ptr logger_;
 
   detail::all_meters all_meters_;

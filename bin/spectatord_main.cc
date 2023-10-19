@@ -45,6 +45,8 @@ auto AbslParseFlag(absl::string_view text, PortNumber* p, std::string* error)
 
 ABSL_FLAG(PortNumber, port, PortNumber(1234),
           "Port number for the UDP socket.");
+ABSL_FLAG(bool, enable_external, false,
+          "Enable external publishing.");
 ABSL_FLAG(bool, enable_statsd, false,
           "Enable statsd support.");
 ABSL_FLAG(PortNumber, statsd_port, PortNumber(8125),
@@ -96,10 +98,12 @@ auto main(int argc, char** argv) -> int {
 
   auto maybe_agg_uri = absl::GetFlag(FLAGS_uri);
   if (absl::GetFlag(FLAGS_debug)) {
-    cfg->uri =
-        "https://atlas-aggr-dev.us-east-1.ieptest.netflix.net/api/v4/update";
+    cfg->uri = "https://atlas-aggr-dev.us-east-1.ieptest.netflix.net/api/v4/update";
   } else if (!maybe_agg_uri.empty()) {
     cfg->uri = std::move(maybe_agg_uri);
+  } else if (absl::GetFlag(FLAGS_enable_external)) {
+    // debug and custom uri values should take precedence over external
+    cfg->external_enabled = true;
   }
 
   if (absl::GetFlag(FLAGS_verbose_http)) {
@@ -138,7 +142,10 @@ auto main(int argc, char** argv) -> int {
     logger->info("Unable to load signal handling for stacktraces");
   }
 
-  spectator::Registry registry{std::move(cfg), std::move(spectator_logger)};
+  spectator::Registry internal_registry{cfg, spectator_logger};
+  internal_registry.Start();
+
+  spectator::Registry registry{cfg, spectator_logger};
   registry.Start();
 
   std::optional<std::string> socket_path;

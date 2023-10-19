@@ -27,6 +27,7 @@ class Server {
   std::optional<int> statsd_port_number_;
   std::optional<std::string> socket_path_;
   spectator::Registry* registry_;
+  spectator::Registry* internal_registry_;
   std::shared_ptr<spectator::Counter> parsed_count_;
   std::shared_ptr<spectator::Counter> parse_errors_;
   std::shared_ptr<spdlog::logger> logger_;

@@ -21,6 +21,11 @@ struct HttpClientConfig {
   bool read_headers;
   bool read_body;
   bool verbose_requests;
+  bool external_enabled;
+  std::string metatron_ssl_cert;
+  std::string metatron_ssl_key;
+  std::string metatron_ca_info;
+  std::string metatron_app_name;
 };
 
 using HttpHeaders = std::unordered_map<std::string, std::string>;
