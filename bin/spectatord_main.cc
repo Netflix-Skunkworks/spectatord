@@ -97,7 +97,7 @@ auto main(int argc, char** argv) -> int {
   auto maybe_agg_uri = absl::GetFlag(FLAGS_uri);
   if (absl::GetFlag(FLAGS_debug)) {
     cfg->uri =
-        "http://atlas-aggr-dev.us-east-1.ieptest.netflix.net/api/v4/update";
+        "https://atlas-aggr-dev.us-east-1.ieptest.netflix.net/api/v4/update";
   } else if (!maybe_agg_uri.empty()) {
     cfg->uri = std::move(maybe_agg_uri);
   }
