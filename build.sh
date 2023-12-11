@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 BUILD_DIR=cmake-build
+# Choose: Debug, Release, RelWithDebInfo and MinSizeRel
+BUILD_TYPE=Debug
 
 BLUE="\033[0;34m"
 NC="\033[0m"
@@ -8,10 +10,12 @@ NC="\033[0m"
 if [[ "$1" == "clean" ]]; then
   echo -e "${BLUE}==== clean ====${NC}"
   rm -rf $BUILD_DIR
-  rm nflx_spectator_cppconf-*.zip
+  rm -f nflx_spectator_cppconf-*.zip
   rm -rf ska
-  rm spectator/*.inc
-  rm spectator/netflix_config.cc
+  rm -f spectator/*.inc
+  rm -f spectator/netflix_config.cc
+  # remove all packages and binaries from the local cache, to allow swapping between Debug/Release builds
+  conan remove '*' --force
 fi
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -27,32 +31,35 @@ if [[ ! -d $BUILD_DIR ]]; then
   fi
 
   echo -e "${BLUE}==== install required dependencies ====${NC}"
-  conan install . --build=missing --install-folder $BUILD_DIR
+  if [[ "$BUILD_TYPE" == "Debug" ]]; then
+    conan install . --build --install-folder $BUILD_DIR --profile ./sanitized
+  else
+    conan install . --build=missing --install-folder $BUILD_DIR
+  fi
 
   echo -e "${BLUE}==== install source dependencies ====${NC}"
-  if [[ "$NFLX_INTERNAL" == "ON" ]]; then
-    NFLX_INTERNAL=ON conan source .
-  else
-    conan source .
+  if [[ "$NFLX_INTERNAL" != "ON" ]]; then
+    NFLX_INTERNAL=OFF
   fi
+  NFLX_INTERNAL=$NFLX_INTERNAL conan source .
 fi
 
 pushd $BUILD_DIR || exit 1
 
 echo -e "${BLUE}==== generate build files ====${NC}"
-# Choose: Debug, Release, RelWithDebInfo and MinSizeRel
 if [[ "$NFLX_INTERNAL" == "ON" ]]; then
-  cmake .. -DCMAKE_BUILD_TYPE=Debug -DNFLX_INTERNAL=ON || exit 1
+  NFLX_INTERNAL="-DNFLX_INTERNAL=ON"
 else
-  cmake .. -DCMAKE_BUILD_TYPE=Debug -DNFLX_INTERNAL=OFF || exit 1
+  NFLX_INTERNAL="-DNFLX_INTERNAL=OFF"
 fi
+cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE $NFLX_INTERNAL .. || exit 1
 
 echo -e "${BLUE}==== build ====${NC}"
 cmake --build . || exit 1
 
 if [[ "$1" != "skiptest" ]]; then
   echo -e "${BLUE}==== test ====${NC}"
-  GTEST_COLOR=1 ASAN_OPTIONS=detect_container_overflow=0 ctest --verbose
+  GTEST_COLOR=1 ctest --verbose
 fi
 
 popd || exit 1
