@@ -100,3 +100,8 @@ target_include_directories(metrics_gen PRIVATE
 )
 target_link_libraries(metrics_gen ${CONAN_LIBS})
 target_link_options(metrics_gen PRIVATE -pthread)
+
+#-- multi_test
+add_executable(multi_test "bin/multi_test.cc")
+target_include_directories(multi_test PRIVATE ${CMAKE_SOURCE_DIR})
+target_link_libraries(multi_test ${CONAN_LIBS})
