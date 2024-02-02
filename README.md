@@ -46,8 +46,10 @@ path.
 
 By default, the daemon will listen on the following endpoints:
 
-* UDP port = 1234 *(~430K reqs/sec with 16MB buffers)*
-* Unix domain socket = `/run/spectatord/spectatord.unix` *(~1M reqs/sec with batching)*
+* Metrics Message Protocol
+  * `1234/udp` *(~430K reqs/sec with 16MB buffers)*
+  * `/run/spectatord/spectatord.unix` Domain Socket *(~1M reqs/sec with batching)*
+* Admin Server: `1234/tcp`
 
 The choice of which endpoint to use is determined by your performance and access requirements;
 the Unix domain socket offers higher performance, but requires filesystem access, which may not
