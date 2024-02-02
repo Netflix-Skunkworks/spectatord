@@ -1,7 +1,7 @@
 **/*.inc
 .DS_Store
 .idea/
-cmake-build-debug/
+cmake-build-debug
 cmake-build/
 ska/
 spectator/netflix_config.cc

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# usage: ./build.sh [clean|clean --force|skiptest]
+
 BUILD_DIR=cmake-build
 # Choose: Debug, Release, RelWithDebInfo and MinSizeRel
 BUILD_TYPE=Debug
@@ -14,8 +16,10 @@ if [[ "$1" == "clean" ]]; then
   rm -rf ska
   rm -f spectator/*.inc
   rm -f spectator/netflix_config.cc
-  # remove all packages and binaries from the local cache, to allow swapping between Debug/Release builds
-  conan remove '*' --force
+  if [[ "$2" == "--force" ]]; then
+    # remove all packages and binaries from the local cache, to allow swapping between Debug/Release builds
+    conan remove '*' --force
+  fi
 fi
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then

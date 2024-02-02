@@ -233,11 +233,15 @@ with different kernel settings for UDP sockets.
 ## Local Development
 
 ```shell
+# setup python venv and activate, to gain access to conan cli
 ./setup-venv.sh
 source venv/bin/activate
-./build.sh  # [clean|skiptest]
+
+# link clion default build directory to our build directory
+ln -s cmake-build cmake-build-debug
+
+./build.sh  # [clean|clean --force|skiptest]
 ```
 
 * CLion > Preferences > Plugins > Marketplace > Conan > Install
 * CLion > Preferences > Build, Execution, Deploy > Conan > Conan Executable: $PROJECT_HOME/venv/bin/conan
-* CLion > Bottom Bar: Conan > Left Button: Match Profile > CMake Profile: Debug, Conan Profile: default
