@@ -406,8 +406,13 @@ class Publisher {
     }
 
     auto elapsed = absl::Now() - start;
-    logger->debug("Sent: {} Dropped: {} Total: {}. Elapsed {:.3f}s", num_sent,
-                  num_err, measurements.size(), absl::ToDoubleSeconds(elapsed));
+    if (num_err > 0) {
+      logger->info("Sent: {} Dropped: {} Total: {}. Elapsed {:.3f}s", num_sent,
+                    num_err, measurements.size(), absl::ToDoubleSeconds(elapsed));
+    } else {
+      logger->debug("Sent: {} Dropped: {} Total: {}. Elapsed {:.3f}s", num_sent,
+                    num_err, measurements.size(), absl::ToDoubleSeconds(elapsed));
+    }
     for (const auto& m : err_messages) {
       logger->info("Validation error: {}", m);
     }
