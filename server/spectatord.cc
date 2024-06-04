@@ -217,7 +217,7 @@ auto Server::parse_statsd_line(const char* buffer)
   return {};
 }
 
-auto get_measurement(std::string_view measurement_str, std::string* err_msg)
+auto get_measurement(char type, std::string_view measurement_str, std::string* err_msg)
     -> std::optional<measurement> {
   // get name (tags are specified with , but are optional)
   auto pos = measurement_str.find_first_of(",:");
@@ -246,20 +246,29 @@ auto get_measurement(std::string_view measurement_str, std::string* err_msg)
       pos = v_pos;
     }
   }
+
   ++pos;
   auto value_str = measurement_str.begin() + pos;
   char* last_char = nullptr;
-  auto value = std::strtod(value_str, &last_char);
+  valueT value{};
+  if (type == 'C' || type == 'X') {
+    value.u = std::strtoull(value_str, &last_char, 10);
+  } else {
+    value.d = std::strtod(value_str, &last_char);
+  }
+
   if (last_char == value_str) {
-    // unable to parse a double
     *err_msg = "Unable to parse value for measurement";
     return {};
   }
   if (*last_char != '\0' && std::isspace(*last_char) == 0) {
-    // just a warning
-    *err_msg =
-        fmt::format("Got {} parsing value, ignoring chars starting at {}",
-                    value, last_char);
+    if (type == 'C' || type == 'X') {
+      *err_msg = fmt::format("Got {} parsing value, ignoring chars starting at {}",
+                             value.u, last_char);
+    } else {
+      *err_msg = fmt::format("Got {} parsing value, ignoring chars starting at {}",
+                             value.d, last_char);
+    }
   }
   auto name_ref = spectator::intern_str(name);
   return measurement{spectator::Id{name_ref, tags}, value};
@@ -502,7 +511,7 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string> {
   }
   ++p;
   std::string err_msg;
-  auto measurement = get_measurement(p, &err_msg);
+  auto measurement = get_measurement(type, p, &err_msg);
   if (!measurement) {
     return err_msg;
   }
@@ -515,61 +524,62 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string> {
     case 't':
       // timer, elapsed time is reported in seconds
       {
-        auto nanos = static_cast<int64_t>(measurement->value * 1e9);
+        auto nanos = static_cast<int64_t>(measurement->value.d * 1e9);
         registry_->GetTimer(measurement->id)
             ->Record(std::chrono::nanoseconds(nanos));
       }
       break;
     case 'c':
       // counter
-      registry_->GetCounter(measurement->id)->Add(measurement->value);
+      registry_->GetCounter(measurement->id)->Add(measurement->value.d);
       break;
     case 'C':
       // monotonic counters
-      registry_->GetMonotonicCounter(measurement->id)->Set(measurement->value);
+      registry_->GetMonotonicCounter(measurement->id)->Set(measurement->value.u);
       break;
     case 'g':
       // gauge
       if (extra > 0) {
         registry_->GetGauge(measurement->id, absl::Seconds(extra))
-            ->Set(measurement->value);
+            ->Set(measurement->value.d);
       } else {
         // this preserves the previous Ttl, otherwise we would override it
         // with the default value if we use the previous constructor
-        registry_->GetGauge(measurement->id)->Set(measurement->value);
+        registry_->GetGauge(measurement->id)->Set(measurement->value.d);
       }
       break;
     case 'm':
-      registry_->GetMaxGauge(measurement->id)->Update(measurement->value);
+      registry_->GetMaxGauge(measurement->id)->Update(measurement->value.d);
       break;
     case 'A':
-      if (measurement->value == 0) {
+      if (measurement->value.d == 0) {
         registry_->GetAgeGauge(measurement->id)->UpdateLastSuccess();
       } else {
         registry_->GetAgeGauge(measurement->id)
-            ->UpdateLastSuccess(static_cast<int64_t>(measurement->value * 1e9));
+            ->UpdateLastSuccess(static_cast<int64_t>(measurement->value.d * 1e9));
       }
       break;
     case 'd':
       // dist summary
       registry_->GetDistributionSummary(measurement->id)
-          ->Record(measurement->value);
+          ->Record(measurement->value.d);
       break;
     case 'T': {
-      auto nanos = static_cast<int64_t>(measurement->value * 1e9);
+      auto nanos = static_cast<int64_t>(measurement->value.d * 1e9);
       perc_timers_.get_or_create(registry_, measurement->id)
           ->Record(std::chrono::nanoseconds(nanos));
     } break;
     case 'D':
       perc_ds_.get_or_create(registry_, measurement->id)
-          ->Record(static_cast<int64_t>(measurement->value));
+          ->Record(static_cast<int64_t>(measurement->value.d));
       break;
     case 'X':
       if (extra > 0) {
+        // TODO: do we need to get this to match uint64_t?
         // extra is milliseconds since the epoch
         auto nanos = extra * 1000 * 1000;
         registry_->GetMonotonicSampled(measurement->id)
-            ->Set(measurement->value, nanos);
+            ->Set(measurement->value.u, nanos);
       }
       break;
     default:

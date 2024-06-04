@@ -17,6 +17,7 @@ class Measurement {
   // Measurement(id.withTag(...), value);
   Measurement(Id&& error, double value_param) noexcept = delete;
 
+  // TODO: should this be updated to support uint64_t for `C` and `X`? I don't think so, because deltas go here.
   const Id& id;
   double value;
 

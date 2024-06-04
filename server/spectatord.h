@@ -51,12 +51,17 @@ class Server {
   std::optional<std::string> parse_statsd(char* buffer);
 };
 
-struct measurement {
-  spectator::Id id;
-  double value;
+union valueT {
+  double d;
+  uint64_t u;
 };
 
-std::optional<measurement> get_measurement(std::string_view measurement_str,
+struct measurement {
+  spectator::Id id;
+  valueT value;
+};
+
+std::optional<measurement> get_measurement(char type, std::string_view measurement_str,
                                            std::string* err_msg);
 
 }  // namespace spectatord

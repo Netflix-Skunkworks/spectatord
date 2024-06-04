@@ -192,9 +192,9 @@ TEST(Spectatord, ParseOneTag) {
   auto logger = Logger();
   char_ptr line{strdup("my.name,foo=bar:42.0")};
   std::string err_msg;
-  auto measurement = *(get_measurement(line.get(), &err_msg));
-  logger->info("Got {} = {}", measurement.id, measurement.value);
-  EXPECT_DOUBLE_EQ(measurement.value, 42.0);
+  auto measurement = *(get_measurement('c', line.get(), &err_msg));
+  logger->info("Got {} = {}", measurement.id, measurement.value.d);
+  EXPECT_DOUBLE_EQ(measurement.value.d, 42.0);
   EXPECT_EQ(measurement.id,
             spectator::Id("my.name", spectator::Tags{{"foo", "bar"}}));
   EXPECT_TRUE(err_msg.empty());
@@ -204,9 +204,9 @@ TEST(Spectatord, ParseMultipleTags) {
   auto logger = Logger();
   char_ptr line{strdup("n,foo=bar,k=v1,k2=v2:2")};
   std::string err_msg;
-  auto measurement = *get_measurement(line.get(), &err_msg);
-  logger->info("Got {} = {}", measurement.id, measurement.value);
-  EXPECT_DOUBLE_EQ(measurement.value, 2.0);
+  auto measurement = *get_measurement('c', line.get(), &err_msg);
+  logger->info("Got {} = {}", measurement.id, measurement.value.d);
+  EXPECT_DOUBLE_EQ(measurement.value.d, 2.0);
   EXPECT_EQ(measurement.id,
             spectator::Id("n", spectator::Tags{
                                    {"foo", "bar"}, {"k", "v1"}, {"k2", "v2"}}));
@@ -217,9 +217,9 @@ TEST(Spectatord, ParseNoTags) {
   auto logger = Logger();
   char_ptr line{strdup("n:1")};
   std::string err_msg;
-  auto measurement = *get_measurement(line.get(), &err_msg);
-  logger->info("Got {} = {}", measurement.id, measurement.value);
-  EXPECT_DOUBLE_EQ(measurement.value, 1.0);
+  auto measurement = *get_measurement('c', line.get(), &err_msg);
+  logger->info("Got {} = {}", measurement.id, measurement.value.d);
+  EXPECT_DOUBLE_EQ(measurement.value.d, 1.0);
   EXPECT_EQ(measurement.id, spectator::Id("n", spectator::Tags{}));
 }
 
@@ -227,7 +227,7 @@ TEST(Spectatord, ParseMissingName) {
   auto logger = Logger();
   char_ptr line{strdup(":1")};
   std::string err_msg;
-  auto measurement = get_measurement(line.get(), &err_msg);
+  auto measurement = get_measurement('c', line.get(), &err_msg);
   EXPECT_FALSE(measurement);
   logger->info("Got err_msg = {}", err_msg);
   EXPECT_FALSE(err_msg.empty());
@@ -237,7 +237,7 @@ TEST(Spectatord, ParseMissingValue) {
   auto logger = Logger();
   char_ptr line{strdup("name:")};
   std::string err_msg;
-  auto measurement = get_measurement(line.get(), &err_msg);
+  auto measurement = get_measurement('c', line.get(), &err_msg);
   logger->info("Got err_msg = {}", err_msg);
   EXPECT_FALSE(measurement);
   EXPECT_FALSE(err_msg.empty());
@@ -247,8 +247,8 @@ TEST(Spectatord, ParseIgnoringStuffAtTheEnd) {
   auto logger = Logger();
   char_ptr line{strdup("name:123abc")};
   std::string err_msg;
-  auto measurement = *get_measurement(line.get(), &err_msg);
-  EXPECT_DOUBLE_EQ(measurement.value, 123.0);
+  auto measurement = *get_measurement('c', line.get(), &err_msg);
+  EXPECT_DOUBLE_EQ(measurement.value.d, 123.0);
   EXPECT_EQ(measurement.id, spectator::Id("name", spectator::Tags{}));
   logger->info("Got err_msg = {}", err_msg);
   EXPECT_FALSE(err_msg.empty());
