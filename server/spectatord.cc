@@ -575,7 +575,6 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string> {
       break;
     case 'X':
       if (extra > 0) {
-        // TODO: do we need to get this to match uint64_t?
         // extra is milliseconds since the epoch
         auto nanos = extra * 1000 * 1000;
         registry_->GetMonotonicSampled(measurement->id)

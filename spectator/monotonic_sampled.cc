@@ -13,7 +13,7 @@ MonotonicSampled::MonotonicSampled(Id id) noexcept
       ts_{0},
       prev_ts_{0} {}
 
-void MonotonicSampled::Set(uint64_t amount, uint64_t ts_nanos) noexcept {
+void MonotonicSampled::Set(uint64_t amount, int64_t ts_nanos) noexcept {
   Update();
   absl::MutexLock lock(&mutex_);
 

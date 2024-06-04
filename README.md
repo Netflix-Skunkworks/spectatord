@@ -103,7 +103,8 @@ echo -e "t:server.requestLatency:0.042\nd:server.responseSizes:1024" | nc -u -w0
 | `X`    | Monotonic Counter with Millisecond Timestamps | The value is a monotonically increasing number, sampled at a specified number of milliseconds since the epoch. A minimum of two samples must be received in order for `spectatord` to calculate a delta value and report it to the backend. The value should be a `uint64` data type, and it will handle rollovers. <br><br> This is an experimental metric type that can be used to track monotonic sources that were sampled in the recent past, with the value normalized over the reported time period. <br><br> The timestamp in milliseconds since the epoch when the value was sampled must be included as a metric option: `X,1543160297100:monotonic.Source:42`                                                                                                                                                                    |
 
 The data type for all numbers except `C` and `X` is `double`. The `C` and `X` values are recorded as `uint64_t`, and
-the calculated deltas are passed to the backend as `double`.
+the calculated deltas are passed to the backend as `double`. Passing negative values for `uint64_t` data types will
+cause the parsed string value to rollover.
 
 ### Metric Name and Tags
 
