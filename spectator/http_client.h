@@ -21,6 +21,7 @@ struct HttpClientConfig {
   bool read_headers;
   bool read_body;
   bool verbose_requests;
+  bool status_metrics_enabled;
 };
 
 using HttpHeaders = std::unordered_map<std::string, std::string>;

@@ -250,7 +250,7 @@ auto HttpClient::perform(const char* method, const std::string& url,
         absl::ToInt64Milliseconds(total_timeout - config_.connect_timeout));
     if (elapsed < total_timeout && attempt_number < 2) {
       entry.set_attempt(attempt_number, false);
-      entry.log();
+      entry.log(config_.status_metrics_enabled);
       return perform(method, url, std::move(headers), payload, size,
                      attempt_number + 1);
     }
@@ -269,7 +269,7 @@ auto HttpClient::perform(const char* method, const std::string& url,
       logger->info("Got a retryable http code from {}: {} (attempt {})", url,
                    http_code, attempt_number);
       entry.set_attempt(attempt_number, false);
-      entry.log();
+      entry.log(config_.status_metrics_enabled);
       auto sleep_ms = uint32_t(200) << attempt_number;  // 200, 400ms
       std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
       return perform(method, url, std::move(headers), payload, size,
@@ -278,7 +278,7 @@ auto HttpClient::perform(const char* method, const std::string& url,
     logger->debug("{} {} - status code: {}", method, url, http_code);
   }
   entry.set_attempt(attempt_number, true);
-  entry.log();
+  entry.log(config_.status_metrics_enabled);
 
   std::string resp;
   curl.move_response(&resp);

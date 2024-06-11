@@ -38,6 +38,7 @@ class Config {
   size_t age_gauge_limit{};
   std::string uri;
   bool verbose_http = false;
+  bool status_metrics_enabled = true;
 
   // sub-classes can override this method implementing custom logic
   // that can disable publishing under certain conditions

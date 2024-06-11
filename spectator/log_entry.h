@@ -19,15 +19,15 @@ class LogEntry {
 
   [[nodiscard]] auto start() const -> absl::Time { return start_; }
 
-  void log() {
-    PercentileTimer timer{registry_, std::move(id_), absl::Milliseconds(1),
-                          absl::Seconds(10)};
-    timer.Record(absl::Now() - start_);
+  void log(bool status_metrics_enabled) {
+    if (status_metrics_enabled) {
+      PercentileTimer timer{registry_, std::move(id_), absl::Milliseconds(1), absl::Seconds(10)};
+      timer.Record(absl::Now() - start_);
+    }
   }
 
   void set_status_code(int code) {
-    id_ = id_.WithTag(intern_str("http.status"),
-                      intern_str(fmt::format("{}", code)));
+    id_ = id_.WithTag(intern_str("http.status"), intern_str(fmt::format("{}", code)));
   }
 
   void set_attempt(int attempt_number, bool is_final) {

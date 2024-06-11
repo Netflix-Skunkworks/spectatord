@@ -72,6 +72,11 @@ ABSL_FLAG(std::string, common_tags, "",
           "Common tags: nf.app=app,nf.cluster=cluster. Override the default common "
           "tags. If empty, then spectatord will use the default set. "
           "This flag should only be used by experts who understand the risks.");
+ABSL_FLAG(bool, no_common_tags, false,
+          "No common tags will be provided for metrics. Since no common tags are available, no "
+          "internal status metrics will be recorded. Only use this feature for special cases "
+          "where it is absolutely necessary to override common tags such as nf.app, and only "
+          "use it with a secondary spectatord process.");
 ABSL_FLAG(bool, verbose, false,
           "Use verbose logging.");
 ABSL_FLAG(bool, verbose_http, false,
@@ -134,6 +139,11 @@ auto main(int argc, char** argv) -> int {
     cfg->common_tags = std::move(common_tags);
   }
 
+  if (absl::GetFlag(FLAGS_no_common_tags)) {
+    cfg->common_tags.clear();
+    cfg->status_metrics_enabled = false;
+  }
+
   if (!sh.loaded()) {
     logger->info("Unable to load signal handling for stacktraces");
   }
@@ -143,7 +153,7 @@ auto main(int argc, char** argv) -> int {
 
   std::optional<std::string> socket_path;
   if (absl::GetFlag(FLAGS_enable_socket)) {
-      socket_path = absl::GetFlag(FLAGS_socket_path);
+    socket_path = absl::GetFlag(FLAGS_socket_path);
   }
 
   std::optional<int> statsd_port;
