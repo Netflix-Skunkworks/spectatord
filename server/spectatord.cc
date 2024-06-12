@@ -37,8 +37,9 @@ inline auto add_tag(spectator::Tags* tags, const char* begin_key,
 }
 
 // feed lines into parser
-auto Server::parse_lines(char* buffer, const handler_t& parser)
-    -> std::optional<std::string> {
+auto Server::parse_lines(char* buffer, const handler_t& parser) -> std::optional<std::string> {
+  const auto& cfg = registry_->GetConfig();
+
   char* p = buffer;
   std::string err_msg;
   while (*p != '\0') {
@@ -48,14 +49,16 @@ auto Server::parse_lines(char* buffer, const handler_t& parser)
     }
     auto maybe_err = parser(p);
     if (maybe_err) {
-      parse_errors_->Increment();
+      if (cfg.status_metrics_enabled) {
+        parse_errors_->Increment();
+      }
       if (err_msg.empty()) {
         err_msg = *maybe_err;
       } else {
         err_msg += '\n';
         err_msg += *maybe_err;
       }
-    } else {
+    } else if (cfg.status_metrics_enabled) {
       parsed_count_->Increment();
     }
     if (newline == nullptr) {
@@ -321,7 +324,11 @@ static void prepare_socket_path(const std::string& socket_path) {
 
 void Server::Start() {
   auto logger = Logger();
-  registry_->GetAgeGauge("spectatord.uptime")->UpdateLastSuccess();
+  const auto& cfg = registry_->GetConfig();
+
+  if (cfg.status_metrics_enabled) {
+    registry_->GetAgeGauge("spectatord.uptime")->UpdateLastSuccess();
+  }
 
   logger->info("Starting janitorial tasks");
   upkeep_thread_ = std::thread(&Server::upkeep, this);
@@ -347,8 +354,7 @@ void Server::Start() {
     auto statsd_parser = [this](char* buffer) {
       return this->parse_statsd(buffer);
     };
-    statsd_server = std::make_unique<UdpServer>(io_context, *statsd_port_number_,
-                                                statsd_parser);
+    statsd_server = std::make_unique<UdpServer>(io_context, *statsd_port_number_, statsd_parser);
     logger->info("Starting statsd server on port {}/udp", *statsd_port_number_);
     statsd_server->Start();
   } else {
@@ -380,23 +386,21 @@ void Server::ensure_not_stuck() {
 
   if (cfg.is_enabled() && seconds > 60) {
     logger_->error(
-        "Too long since we were able to send metrics successfully: {} > 60s. "
-        "ABORTING.",
-        seconds);
+        "Too long since we were able to send metrics successfully: {} > 60s. ABORTING.", seconds);
     abort();
   }
 
-  logger_->debug("Last batch of metrics was sent successfully {} seconds ago",
-                 seconds);
+  logger_->debug("Last batch of metrics was sent successfully {} seconds ago", seconds);
 }
 
 // run our background tasks
 void Server::upkeep() {
+  const auto& cfg = registry_->GetConfig();
+
   static auto timers_size_gauge = registry_->GetGauge(
       "spectatord.percentileCacheSize", spectator::Tags{{"id", "timer"}});
-  static auto ds_size_gauge =
-      registry_->GetGauge("spectatord.percentileCacheSize",
-                          spectator::Tags{{"id", "dist-summary"}});
+  static auto ds_size_gauge = registry_->GetGauge(
+      "spectatord.percentileCacheSize", spectator::Tags{{"id", "dist-summary"}});
   static auto timers_expired_ctr = registry_->GetCounter(
       "spectatord.percentileExpired", spectator::Tags{{"id", "timer"}});
   static auto ds_expired_ctr = registry_->GetCounter(
@@ -406,8 +410,10 @@ void Server::upkeep() {
       "spectatord.poolAccess", spectator::Tags{{"id", "hit"}});
   static auto pool_misses = registry_->GetMonotonicCounter(
       "spectatord.poolAccess", spectator::Tags{{"id", "miss"}});
-  static auto pool_alloc_size = registry_->GetGauge("spectatord.poolAllocSize");
-  static auto pool_entries = registry_->GetGauge("spectatord.poolEntries");
+  static auto pool_alloc_size = registry_->GetGauge(
+      "spectatord.poolAllocSize");
+  static auto pool_entries = registry_->GetGauge(
+      "spectatord.poolEntries");
 
   using clock = std::chrono::steady_clock;
   using std::chrono::duration_cast;
@@ -423,29 +429,31 @@ void Server::upkeep() {
 
     std::tie(ds_size, ds_expired) = perc_ds_.expire();
     std::tie(t_size, t_expired) = perc_timers_.expire();
-    timers_size_gauge->Set(t_size);
-    ds_size_gauge->Set(ds_size);
-    timers_expired_ctr->Add(t_expired);
-    ds_expired_ctr->Add(ds_expired);
+    if (cfg.status_metrics_enabled) {
+      timers_size_gauge->Set(t_size);
+      ds_size_gauge->Set(ds_size);
+      timers_expired_ctr->Add(t_expired);
+      ds_expired_ctr->Add(ds_expired);
+    }
 #ifdef __linux__
     update_network_metrics();
 #endif
     auto pool_stats = spectator::string_pool_stats();
-    pool_hits->Set(pool_stats.hits);
-    pool_misses->Set(pool_stats.misses);
-    pool_alloc_size->Set(pool_stats.alloc_size);
-    pool_entries->Set(pool_stats.table_size);
-    logger_->debug("Str Pool: Hits {} Misses {} Size {} Alloc {}",
-                   pool_stats.hits, pool_stats.misses, pool_stats.table_size,
-                   pool_stats.alloc_size);
+    if (cfg.status_metrics_enabled) {
+      pool_hits->Set(pool_stats.hits);
+      pool_misses->Set(pool_stats.misses);
+      pool_alloc_size->Set(pool_stats.alloc_size);
+      pool_entries->Set(pool_stats.table_size);
+    }
+    logger_->debug("Str Pool: Hits {} Misses {} Size {} Alloc {}", pool_stats.hits,
+                   pool_stats.misses, pool_stats.table_size, pool_stats.alloc_size);
 
     auto elapsed = clock::now() - start;
     auto millis = duration_cast<milliseconds>(elapsed);
     if (millis < kFrequency) {
       std::unique_lock<std::mutex> lock{cv_mutex_};
       auto sleep = kFrequency - elapsed;
-      logger->debug("Janitor - sleeping {}ms",
-                    duration_cast<milliseconds>(sleep).count());
+      logger->debug("Janitor - sleeping {}ms", duration_cast<milliseconds>(sleep).count());
       cv_.wait_for(lock, sleep);
     }
   }
@@ -453,12 +461,15 @@ void Server::upkeep() {
 
 void Server::update_network_metrics() {
   // parse /proc/net/udp to get dropped packets for our ports
-  static auto udp_packets_dropped_ctr =
-      registry_->GetMonotonicCounter("spectatord.udpPacketsDropped");
-  static auto udp_queue = registry_->GetMaxGauge("spectatord.udpRxQueue");
+  const auto& cfg = registry_->GetConfig();
+
+  static auto udp_packets_dropped_ctr = registry_->GetMonotonicCounter(
+      "spectatord.udpPacketsDropped");
+  static auto udp_queue = registry_->GetMaxGauge(
+      "spectatord.udpRxQueue");
 
   auto info = udp_info(port_number_);
-  if (info) {
+  if (info && cfg.status_metrics_enabled) {
     udp_packets_dropped_ctr->Set(info->num_dropped);
     udp_queue->Set(info->rx_queue_bytes);
   }
@@ -499,9 +510,7 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string> {
         return fmt::format("Invalid ttl specified for gauge at index {}", idx);
       } else if (type == 'X') {
         return fmt::format(
-            "Invalid timestamp specified for monotonic sampled source at index "
-            "{}",
-            idx);
+            "Invalid timestamp specified for monotonic sampled source at index {}", idx);
       }
     }
     p = end_ttl;

@@ -49,8 +49,8 @@ class TestRegistry : public Registry {
 };
 
 HttpClientConfig get_cfg(int read_to, int connect_to) {
-  return HttpClientConfig{absl::Milliseconds(connect_to),
-                          absl::Milliseconds(read_to), true, true, true};
+  return HttpClientConfig{absl::Milliseconds(connect_to), absl::Milliseconds(read_to),
+                          true, true, true, false, true};
 }
 
 TEST(HttpTest, Post) {

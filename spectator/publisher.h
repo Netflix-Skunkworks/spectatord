@@ -262,8 +262,8 @@ class Publisher {
     if (connect_timeout == absl::ZeroDuration()) {
       connect_timeout = absl::Seconds(2);
     }
-    return HttpClientConfig{connect_timeout, read_timeout, true,
-                            false,           true,         cfg.verbose_http};
+    return HttpClientConfig{connect_timeout, read_timeout, true, false, true, cfg.verbose_http,
+                            cfg.status_metrics_enabled};
   }
 
   auto handle_aggr_response(const HttpResponse& http_response,
@@ -274,6 +274,7 @@ class Publisher {
     size_t num_err = 0U;
     auto logger = registry_->GetLogger();
     const auto& uri = registry_->GetConfig().uri;
+    const auto& status_metrics_enabled = registry_->GetConfig().status_metrics_enabled;
     auto http_code = http_response.status;
     if (http_code == 200) {
       num_sent = num_measurements;
@@ -284,14 +285,18 @@ class Publisher {
         logger->error("Unable to parse JSON response from {} - status {}: {}",
                       uri, http_code, http_response.raw_body);
         num_err = num_measurements;
-        droppedOther_->Add(num_measurements);
+        if (status_metrics_enabled) {
+          droppedOther_->Add(num_measurements);
+        }
       } else {
         if (body.HasMember("errorCount")) {
           auto err_count = body["errorCount"].GetInt();
           num_err = err_count;
           num_sent = num_measurements - err_count;
-          invalidMetrics_->Add(err_count);
-          sentMetrics_->Add(static_cast<double>(num_measurements - err_count));
+          if (status_metrics_enabled) {
+            invalidMetrics_->Add(err_count);
+            sentMetrics_->Add(static_cast<double>(num_measurements - err_count));
+          }
           auto messages = body["message"].GetArray();
           for (auto& msg : messages) {
             err_messages->emplace(
@@ -300,15 +305,21 @@ class Publisher {
         } else {
           logger->error("Missing errorCount field in JSON response from {}: {}",
                         uri, http_code, http_response.raw_body);
-          droppedOther_->Add(num_measurements);
+          if (status_metrics_enabled) {
+            droppedOther_->Add(num_measurements);
+          }
           num_err = num_measurements;
         }
       }
     } else if (http_code == -1) {  // connection error or timeout
       num_err = num_measurements;
-      droppedOther_->Add(num_measurements);
+      if (status_metrics_enabled) {
+        droppedOther_->Add(num_measurements);
+      }
     } else {  // 5xx error
-      droppedHttp_->Add(num_measurements);
+      if (status_metrics_enabled) {
+        droppedHttp_->Add(num_measurements);
+      }
       num_err = num_measurements;
     }
     return std::make_pair(num_sent, num_err);
