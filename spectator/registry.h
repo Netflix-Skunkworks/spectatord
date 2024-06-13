@@ -10,6 +10,7 @@
 #include "gauge.h"
 #include "max_gauge.h"
 #include "monotonic_counter.h"
+#include "monotonic_counter_uint.h"
 #include "publisher.h"
 #include "timer.h"
 #include "spectator/monotonic_sampled.h"
@@ -158,13 +159,14 @@ struct all_meters {
   meter_map<Gauge> gauges_;
   meter_map<MaxGauge> max_gauges_;
   meter_map<MonotonicCounter> mono_counters_;
+  meter_map<MonotonicCounterUint> mono_counters_uint_;
   meter_map<MonotonicSampled> mono_sampled_;
   meter_map<Timer> timers_;
 
   auto size() const -> size_t {
     return age_gauges_.size() + counters_.size() + dist_sums_.size() +
            gauges_.size() + max_gauges_.size() + mono_counters_.size() +
-           timers_.size();
+           mono_counters_uint_.size() + timers_.size();
   }
 
   auto measure(int64_t meter_ttl) const -> std::vector<Measurement> {
@@ -176,6 +178,7 @@ struct all_meters {
     gauges_.measure(&res, meter_ttl);
     max_gauges_.measure(&res, meter_ttl);
     mono_counters_.measure(&res, meter_ttl);
+    mono_counters_uint_.measure(&res, meter_ttl);
     timers_.measure(&res, meter_ttl);
     return res;
   }
@@ -203,6 +206,9 @@ struct all_meters {
     std::tie(expired, count) = mono_counters_.remove_expired(meter_ttl);
     total_expired += expired;
     total_count += count;
+    std::tie(expired, count) = mono_counters_uint_.remove_expired(meter_ttl);
+    total_expired += expired;
+    total_count += count;
     std::tie(expired, count) = timers_.remove_expired(meter_ttl);
     total_expired += expired;
     total_count += count;
@@ -215,6 +221,11 @@ struct all_meters {
 
   auto insert_counter(Id id) {
     return counters_.insert(std::make_shared<Counter>(std::move(id)));
+  }
+
+  auto insert_dist_sum(Id id) {
+    return dist_sums_.insert(
+        std::make_shared<DistributionSummary>(std::move(id)));
   }
 
   auto insert_gauge(Id id, absl::Duration ttl) {
@@ -230,14 +241,14 @@ struct all_meters {
         std::make_shared<MonotonicCounter>(std::move(id)));
   }
 
+  auto insert_mono_counter_uint(Id id) {
+    return mono_counters_uint_.insert(
+        std::make_shared<MonotonicCounterUint>(std::move(id)));
+  }
+
   auto insert_mono_sampled(Id id) {
     return mono_sampled_.insert(
         std::make_shared<MonotonicSampled>(std::move(id)));
-  }
-
-  auto insert_dist_sum(Id id) {
-    return dist_sums_.insert(
-        std::make_shared<DistributionSummary>(std::move(id)));
   }
 
   auto insert_timer(Id id) {
@@ -264,37 +275,50 @@ class Registry {
 
   void OnMeasurements(measurements_callback fn) noexcept;
 
-  auto GetCounter(Id id) noexcept -> std::shared_ptr<Counter>;
-  auto GetCounter(std::string_view name, Tags tags = {}) noexcept
-      -> std::shared_ptr<Counter>;
-
-  auto GetMonotonicCounter(Id id) noexcept -> std::shared_ptr<MonotonicCounter>;
-  auto GetMonotonicCounter(std::string_view name, Tags tags = {}) noexcept
-      -> std::shared_ptr<MonotonicCounter>;
-
-  auto GetAgeGauge(Id id) noexcept -> std::shared_ptr<AgeGauge>;
+  auto GetAgeGauge(Id id) noexcept
+      -> std::shared_ptr<AgeGauge>;
   auto GetAgeGauge(std::string_view name, Tags tags = {}) noexcept
       -> std::shared_ptr<AgeGauge>;
 
-  auto GetMonotonicSampled(Id id) noexcept -> std::shared_ptr<MonotonicSampled>;
-  auto GetMonotonicSampled(std::string_view name, Tags tags = {}) noexcept
-      -> std::shared_ptr<MonotonicSampled>;
+  auto GetCounter(Id id) noexcept
+      -> std::shared_ptr<Counter>;
+  auto GetCounter(std::string_view name, Tags tags = {}) noexcept
+      -> std::shared_ptr<Counter>;
 
   auto GetDistributionSummary(Id id) noexcept
       -> std::shared_ptr<DistributionSummary>;
   auto GetDistributionSummary(std::string_view name, Tags tags = {}) noexcept
       -> std::shared_ptr<DistributionSummary>;
 
-  auto GetGauge(Id id) noexcept -> std::shared_ptr<Gauge>;
-  auto GetGauge(Id id, absl::Duration ttl) noexcept -> std::shared_ptr<Gauge>;
+  auto GetGauge(Id id) noexcept
+      -> std::shared_ptr<Gauge>;
+  auto GetGauge(Id id, absl::Duration ttl) noexcept
+      -> std::shared_ptr<Gauge>;
   auto GetGauge(std::string_view name, Tags tags = {}) noexcept
       -> std::shared_ptr<Gauge>;
 
-  auto GetMaxGauge(Id id) noexcept -> std::shared_ptr<MaxGauge>;
+  auto GetMaxGauge(Id id) noexcept
+      -> std::shared_ptr<MaxGauge>;
   auto GetMaxGauge(std::string_view name, Tags tags = {}) noexcept
       -> std::shared_ptr<MaxGauge>;
 
-  auto GetTimer(Id id) noexcept -> std::shared_ptr<Timer>;
+  auto GetMonotonicCounter(Id id) noexcept
+      -> std::shared_ptr<MonotonicCounter>;
+  auto GetMonotonicCounter(std::string_view name, Tags tags = {}) noexcept
+      -> std::shared_ptr<MonotonicCounter>;
+
+  auto GetMonotonicCounterUint(Id id) noexcept
+      -> std::shared_ptr<MonotonicCounterUint>;
+  auto GetMonotonicCounterUint(std::string_view name, Tags tags = {}) noexcept
+      -> std::shared_ptr<MonotonicCounterUint>;
+
+  auto GetMonotonicSampled(Id id) noexcept
+      ->std::shared_ptr<MonotonicSampled>;
+  auto GetMonotonicSampled(std::string_view name, Tags tags = {}) noexcept
+      -> std::shared_ptr<MonotonicSampled>;
+
+  auto GetTimer(Id id) noexcept
+      -> std::shared_ptr<Timer>;
   auto GetTimer(std::string_view name, Tags tags = {}) noexcept
       -> std::shared_ptr<Timer>;
 
@@ -314,26 +338,29 @@ class Registry {
   void DeleteAllMeters(const std::string& type);
 
   // for debugging / testing
-  auto Timers() const -> std::vector<const Timer*> {
-    return all_meters_.timers_.get_values();
+  auto AgeGauges() const -> std::vector<const AgeGauge*> {
+    return all_meters_.age_gauges_.get_values();
   }
   auto Counters() const -> std::vector<const Counter*> {
     return all_meters_.counters_.get_values();
   }
-  auto MonotonicCounters() const -> std::vector<const MonotonicCounter*> {
-    return all_meters_.mono_counters_.get_values();
+  auto DistSummaries() const -> std::vector<const DistributionSummary*> {
+    return all_meters_.dist_sums_.get_values();
   }
   auto Gauges() const -> std::vector<const Gauge*> {
     return all_meters_.gauges_.get_values();
   }
-  auto AgeGauges() const -> std::vector<const AgeGauge*> {
-    return all_meters_.age_gauges_.get_values();
-  }
   auto MaxGauges() const -> std::vector<const MaxGauge*> {
     return all_meters_.max_gauges_.get_values();
   }
-  auto DistSummaries() const -> std::vector<const DistributionSummary*> {
-    return all_meters_.dist_sums_.get_values();
+  auto MonotonicCounters() const -> std::vector<const MonotonicCounter*> {
+    return all_meters_.mono_counters_.get_values();
+  }
+  auto MonotonicCountersUint() const -> std::vector<const MonotonicCounterUint*> {
+    return all_meters_.mono_counters_uint_.get_values();
+  }
+  auto Timers() const -> std::vector<const Timer*> {
+    return all_meters_.timers_.get_values();
   }
   auto GetLastSuccessTime() const -> int64_t {
     return publisher_.GetLastSuccessTime();

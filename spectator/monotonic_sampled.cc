@@ -3,42 +3,41 @@
 namespace spectator {
 
 static constexpr auto kNaN = std::numeric_limits<double>::quiet_NaN();
-static constexpr auto kMax = std::numeric_limits<uint64_t>::max();
 
 MonotonicSampled::MonotonicSampled(Id id) noexcept
     : Meter{std::move(id)},
-      init_{false},
-      value_{0},
-      prev_value_{0},
+      value_{kNaN},
+      prev_value_{kNaN},
       ts_{0},
       prev_ts_{0} {}
 
-void MonotonicSampled::Set(uint64_t amount, int64_t ts_nanos) noexcept {
+void MonotonicSampled::Set(double amount, int64_t ts_nanos) noexcept {
   Update();
-  absl::MutexLock lock(&mutex_);
 
-  // ignore out-of-order points, overflows are not expected for timestamps
+  absl::MutexLock lock(&mutex_);
+  // ignore out of order points, or wrap arounds
   if (ts_nanos < ts_) {
     return;
   }
-
-  if (init_) {
+  // only update prev values at most once per reporting interval
+  if (std::isnan(prev_value_)) {
     prev_value_ = value_;
     prev_ts_ = ts_;
   }
-
   value_ = amount;
   ts_ = ts_nanos;
 }
 
 void MonotonicSampled::Measure(Measurements* results) const noexcept {
   auto sampled_delta = SampledRate();
+  if (std::isnan(sampled_delta)) {
+    return;
+  }
 
   {
     absl::MutexLock lock(&mutex_);
     prev_value_ = value_;
     prev_ts_ = ts_;
-    init_ = true;
   }
 
   if (sampled_delta > 0) {
@@ -51,14 +50,8 @@ void MonotonicSampled::Measure(Measurements* results) const noexcept {
 
 auto MonotonicSampled::SampledRate() const noexcept -> double {
   absl::MutexLock lock(&mutex_);
-  if (!init_) return kNaN;
   auto delta_t = (ts_ - prev_ts_) / 1e9;
-
-  if (value_ < prev_value_) {
-    return (kMax - prev_value_ + value_ + 1) / delta_t;
-  } else {
-    return (value_ - prev_value_) / delta_t;
-  }
+  return (value_ - prev_value_) / delta_t;
 }
 
 }  // namespace spectator

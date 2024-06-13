@@ -1,5 +1,5 @@
 #include "common_refs.h"
-#include "monotonic_counter.h"
+#include "monotonic_counter_uint.h"
 #include <gtest/gtest.h>
 
 namespace {
@@ -7,12 +7,12 @@ namespace {
 using spectator::Id;
 using spectator::refs;
 
-auto getMonotonicCounter(std::string_view name) -> spectator::MonotonicCounter {
-  return spectator::MonotonicCounter(Id::Of(name));
+auto getMonotonicCounterUint(std::string_view name) -> spectator::MonotonicCounterUint {
+  return spectator::MonotonicCounterUint(spectator::Id::Of(name));
 }
 
-TEST(MonotonicCounter, Init) {
-  auto c = getMonotonicCounter("foo");
+TEST(MonotonicCounterUint, Init) {
+  auto c = getMonotonicCounterUint("foo");
   EXPECT_TRUE(std::isnan(c.Delta()));
 
   c.Set(42);
@@ -26,39 +26,47 @@ TEST(MonotonicCounter, Init) {
   EXPECT_DOUBLE_EQ(c.Delta(), 42.0);
 }
 
-TEST(MonotonicCounter, NegativeDelta) {
-  auto c = getMonotonicCounter("neg");
+TEST(MonotonicCounterUint, Overflow) {
+  auto max = std::numeric_limits<uint64_t>::max();
+  auto c = getMonotonicCounterUint("overflow");
   EXPECT_TRUE(std::isnan(c.Delta()));
 
+  // initialize overflow condition
   spectator::Measurements ms;
-  c.Set(100.0);
+  c.Set(max - 5);
   c.Measure(&ms);
   EXPECT_TRUE(ms.empty());
 
-  c.Set(99.0);
-  c.Measure(&ms);
-  EXPECT_TRUE(ms.empty());
-
-  c.Set(98.0);
-  c.Measure(&ms);
-  EXPECT_TRUE(ms.empty());
-
-  c.Set(100.0);
+  // trigger overflow condition
+  c.Set(max + 1);
   c.Measure(&ms);
   EXPECT_EQ(ms.size(), 1);
   auto id = c.MeterId().WithStat(refs().count());
-  auto expected = spectator::Measurement{id, 2.0};
-  EXPECT_EQ(expected, ms.front());
+  auto expected1 = spectator::Measurement{id, 6.0};
+  EXPECT_EQ(expected1, ms.back());
+
+  // normal increment conditions
+  c.Set(max + 2);
+  c.Measure(&ms);
+  EXPECT_EQ(ms.size(), 2);
+  auto expected2 = spectator::Measurement{id, 1.0};
+  EXPECT_EQ(expected2, ms.back());
+
+  c.Set(5);
+  c.Measure(&ms);
+  EXPECT_EQ(ms.size(), 3);
+  auto expected3 = spectator::Measurement{id, 4.0};
+  EXPECT_EQ(expected3, ms.back());
 }
 
-TEST(MonotonicCounter, Id) {
-  auto c = getMonotonicCounter("id");
-  auto id = Id("id", spectator::Tags{});
+TEST(MonotonicCounterUint, Id) {
+  auto c = getMonotonicCounterUint("id");
+  auto id = spectator::Id("id", spectator::Tags{});
   EXPECT_EQ(c.MeterId(), id);
 }
 
-TEST(MonotonicCounter, Measure) {
-  auto c = getMonotonicCounter("measure");
+TEST(MonotonicCounterUint, Measure) {
+  auto c = getMonotonicCounterUint("measure");
   c.Set(42);
   spectator::Measurements measures;
   c.Measure(&measures);
@@ -79,9 +87,9 @@ TEST(MonotonicCounter, Measure) {
       << "MonotonicCounters should not report delta=0";
 }
 
-TEST(MonotonicCounter, DefaultStatistic) {
+TEST(MonotonicCounterUint, DefaultStatistic) {
   spectator::Measurements measures;
-  auto c = spectator::MonotonicCounter(Id::Of("foo", {{"statistic", "totalAmount"}}));
+  auto c = spectator::MonotonicCounterUint(Id::Of("foo", {{"statistic", "totalAmount"}}));
   c.Set(42);
   c.Measure(&measures);
   c.Set(84.0);
@@ -91,8 +99,8 @@ TEST(MonotonicCounter, DefaultStatistic) {
   EXPECT_EQ(expected, measures);
 }
 
-TEST(MonotonicCounter, Update) {
-  auto counter = getMonotonicCounter("m");
+TEST(MonotonicCounterUint, Update) {
+  auto counter = getMonotonicCounterUint("m");
   counter.Set(1);
 
   auto t1 = counter.Updated();

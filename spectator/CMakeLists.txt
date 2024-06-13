@@ -37,6 +37,8 @@ add_library(spectator OBJECT
     "meter.h"
     "monotonic_counter.cc"
     "monotonic_counter.h"
+    "monotonic_counter_uint.cc"
+    "monotonic_counter_uint.h"
     "monotonic_sampled.cc"
     "monotonic_sampled.h"
     "percentile_bucket_tags.inc"
