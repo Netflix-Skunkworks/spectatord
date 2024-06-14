@@ -207,6 +207,14 @@ void GET_metrics(HTTPServerRequest& req, HTTPServerResponse& res, spectator::Reg
   }
   obj->set("mono_counters", mono_counters);
 
+  Poco::JSON::Array::Ptr mono_counters_uint = new Poco::JSON::Array(true);
+  for (auto it : registry.MonotonicCountersUint()) {
+    auto meter = fmt_meter_object((spectator::Meter*)it);
+    meter->set("value", fmt::format("{}", it->Delta()));
+    mono_counters_uint->add(meter);
+  }
+  obj->set("mono_counters_uint", mono_counters_uint);
+
   Poco::JSON::Array::Ptr timers = new Poco::JSON::Array(true);
   for (auto it : registry.Timers()) {
     auto meter = fmt_meter_object((spectator::Meter*)it);
@@ -214,6 +222,28 @@ void GET_metrics(HTTPServerRequest& req, HTTPServerResponse& res, spectator::Reg
     timers->add(meter);
   }
   obj->set("timers", timers);
+
+  Object::Ptr stats = new Object(true);
+  auto age_gauges_size = registry.AgeGauges().size();
+  auto counters_size = registry.Counters().size();
+  auto dist_summaries_size = registry.DistSummaries().size();
+  auto gauges_size = registry.Gauges().size();
+  auto max_gauges_size = registry.MaxGauges().size();
+  auto mono_counters_size = registry.MonotonicCounters().size();
+  auto mono_counters_uint_size = registry.MonotonicCountersUint().size();
+  auto timers_size = registry.Timers().size();
+  auto total = age_gauges_size + counters_size + dist_summaries_size + gauges_size +
+               max_gauges_size + mono_counters_size + mono_counters_uint_size + timers_size;
+  stats->set("age_gauges.size", age_gauges_size);
+  stats->set("counters.size", counters_size);
+  stats->set("dist_summaries.size", dist_summaries_size);
+  stats->set("gauges.size", gauges_size);
+  stats->set("max_gauges.size", max_gauges_size);
+  stats->set("mono_counters.size", mono_counters_size);
+  stats->set("mono_counters_uint.size", mono_counters_uint_size);
+  stats->set("timers.size", timers_size);
+  stats->set("total.size", total);
+  obj->set("stats", stats);
 
   res.setStatus(HTTPResponse::HTTP_OK);
   res.setContentType("application/json");

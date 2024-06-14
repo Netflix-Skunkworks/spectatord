@@ -110,19 +110,27 @@ static void update_statsd_metric(spectator::Registry* registry,
   }
 }
 
-// parse a single line of the form:
-// <METRIC_NAME>:<VALUE>|<TYPE>|@<SAMPLE_RATE>|#<TAG_KEY_1>:<TAG_VALUE_1>,<TAG_2>
-// See:
-// https://docs.datadoghq.com/developers/dogstatsd/datagram_shell/?tab=metrics
-// examples:
-//  custom_metric:60|g|#shell - Set the custom_metric gauge to 60 and tag it
-//  with 'shell' page.views:1|c - Increment the page.views COUNT metric.
-//  fuel.level:0.5|g -  Record the fuel tank is half-empty.
-//  song.length:240|h|@0.5 -  Sample the song.length histogram half of the time.
-//  users.uniques:1234|s -  Track unique visitors to the site.
-//  users.online:1|c|#country:china - Increment the active users COUNT metric
-//  and tag by country of origin. users.online:1|c|@0.5|#country:china - Track
-//  active China users and use a sample rate.
+/* StatsD Protocol Parser Specification
+ *
+ * Parse a single line, of the following form:
+ *
+ *   <METRIC_NAME>:<VALUE>|<TYPE>|@<SAMPLE_RATE>|#<TAG_KEY_1>:<TAG_VALUE_1>,<TAG_2>
+ *
+ * Reference Link:
+ *
+ *   https://docs.datadoghq.com/developers/dogstatsd/datagram_shell/?tab=metrics
+ *
+ * Examples:
+ *
+ *   custom_metric:60|g|#shell            - Set the custom_metric gauge to 60 and tag it
+ *   with 'shell' page.views:1|c          - Increment the page.views COUNT metric.
+ *   fuel.level:0.5|g                     - Record the fuel tank is half-empty.
+ *   song.length:240|h|@0.5               - Sample the song.length histogram half of the time.
+ *   users.uniques:1234|s                 - Track unique visitors to the site.
+ *   users.online:1|c|#country:china      - Increment the active users COUNT metric and tag by
+ *                                          country of origin.
+ *   users.online:1|c|@0.5|#country:china - Track active China users and use a sample rate.
+ */
 auto Server::parse_statsd_line(const char* buffer)
     -> std::optional<std::string> {
   assert(buffer != nullptr);
@@ -151,7 +159,6 @@ auto Server::parse_statsd_line(const char* buffer)
   char char_type = *p;
   switch (char_type) {
     case 'c':
-      // counter
       type = StatsdMetricType::Counter;
       break;
     case 'g':
@@ -254,7 +261,7 @@ auto get_measurement(char type, std::string_view measurement_str, std::string* e
   auto value_str = measurement_str.begin() + pos;
   char* last_char = nullptr;
   valueT value{};
-  if (type == 'C' || type == 'X') {
+  if (type == 'U') {
     value.u = std::strtoull(value_str, &last_char, 10);
   } else {
     value.d = std::strtod(value_str, &last_char);
@@ -265,7 +272,7 @@ auto get_measurement(char type, std::string_view measurement_str, std::string* e
     return {};
   }
   if (*last_char != '\0' && std::isspace(*last_char) == 0) {
-    if (type == 'C' || type == 'X') {
+    if (type == 'U') {
       *err_msg = fmt::format("Got {} parsing value, ignoring chars starting at {}",
                              value.u, last_char);
     } else {
@@ -307,8 +314,7 @@ Server::Server(int port_number, std::optional<int> statsd_port_number,
 static void prepare_socket_path(const std::string& socket_path) {
   ::unlink(socket_path.c_str());
 
-  // TODO: Migrate to std::filesystem after we verify it works on all
-  // our platforms
+  // TODO: Migrate to std::filesystem after we verify it works on all our platforms
   auto last = socket_path.rfind('/');
   if (last != std::string::npos) {
     auto dir = socket_path.substr(0, last);
@@ -317,8 +323,7 @@ static void prepare_socket_path(const std::string& socket_path) {
     ::mkdir(dir.c_str(), 0777);
   }
 
-  // We don't want to restrict the permissions on the socket path
-  // so any user can send metrics
+  // We don't want to restrict the permissions on the socket path so any user can send metrics
   umask(0);
 }
 
@@ -530,57 +535,54 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string> {
     Logger()->info("While parsing {}: {}", p, err_msg);
   }
   switch (type) {
-    case 't':
-      // timer, elapsed time is reported in seconds
-      {
-        auto nanos = static_cast<int64_t>(measurement->value.d * 1e9);
-        registry_->GetTimer(measurement->id)
-            ->Record(std::chrono::nanoseconds(nanos));
+    case 'A':
+      if (measurement->value.d == 0) {
+        registry_->GetAgeGauge(measurement->id)->UpdateLastSuccess();
+      } else {
+        registry_->GetAgeGauge(measurement->id)->UpdateLastSuccess(
+            static_cast<int64_t>(measurement->value.d * 1e9));
       }
       break;
     case 'c':
-      // counter
       registry_->GetCounter(measurement->id)->Add(measurement->value.d);
       break;
     case 'C':
-      // monotonic counters
-      registry_->GetMonotonicCounter(measurement->id)->Set(measurement->value.u);
+      registry_->GetMonotonicCounter(measurement->id)->Set(measurement->value.d);
+      break;
+    case 'd':
+      registry_->GetDistributionSummary(measurement->id)->Record(measurement->value.d);
+      break;
+    case 'D':
+      perc_ds_.get_or_create(registry_, measurement->id)->Record(
+          static_cast<int64_t>(measurement->value.d));
       break;
     case 'g':
-      // gauge
       if (extra > 0) {
-        registry_->GetGauge(measurement->id, absl::Seconds(extra))
-            ->Set(measurement->value.d);
+        registry_->GetGauge(measurement->id, absl::Seconds(extra))->Set(measurement->value.d);
       } else {
-        // this preserves the previous Ttl, otherwise we would override it
-        // with the default value if we use the previous constructor
+        // this preserves the previous ttl, otherwise we would override it
+        // with the default value, if we use the previous constructor
         registry_->GetGauge(measurement->id)->Set(measurement->value.d);
       }
       break;
     case 'm':
       registry_->GetMaxGauge(measurement->id)->Update(measurement->value.d);
       break;
-    case 'A':
-      if (measurement->value.d == 0) {
-        registry_->GetAgeGauge(measurement->id)->UpdateLastSuccess();
-      } else {
-        registry_->GetAgeGauge(measurement->id)
-            ->UpdateLastSuccess(static_cast<int64_t>(measurement->value.d * 1e9));
+    case 't':  // elapsed time is reported in seconds
+      {
+        auto nanos = static_cast<int64_t>(measurement->value.d * 1e9);
+        registry_->GetTimer(measurement->id)->Record(std::chrono::nanoseconds(nanos));
       }
       break;
-    case 'd':
-      // dist summary
-      registry_->GetDistributionSummary(measurement->id)
-          ->Record(measurement->value.d);
+    case 'T':
+      {
+        auto nanos = static_cast<int64_t>(measurement->value.d * 1e9);
+        perc_timers_.get_or_create(registry_, measurement->id)->Record(
+            std::chrono::nanoseconds(nanos));
+      }
       break;
-    case 'T': {
-      auto nanos = static_cast<int64_t>(measurement->value.d * 1e9);
-      perc_timers_.get_or_create(registry_, measurement->id)
-          ->Record(std::chrono::nanoseconds(nanos));
-    } break;
-    case 'D':
-      perc_ds_.get_or_create(registry_, measurement->id)
-          ->Record(static_cast<int64_t>(measurement->value.d));
+    case 'U':
+      registry_->GetMonotonicCounterUint(measurement->id)->Set(measurement->value.u);
       break;
     case 'X':
       if (extra > 0) {

@@ -108,6 +108,16 @@ auto Registry::GetMonotonicCounter(std::string_view name, Tags tags) noexcept
   return GetMonotonicCounter(Id::Of(name, std::move(tags)));
 }
 
+auto Registry::GetMonotonicCounterUint(Id id) noexcept
+    -> std::shared_ptr<MonotonicCounterUint> {
+  return all_meters_.insert_mono_counter_uint(std::move(id));
+}
+
+auto Registry::GetMonotonicCounterUint(std::string_view name, Tags tags) noexcept
+    -> std::shared_ptr<MonotonicCounterUint> {
+  return GetMonotonicCounterUint(Id::Of(name, std::move(tags)));
+}
+
 auto Registry::GetMonotonicSampled(Id id) noexcept
     -> std::shared_ptr<MonotonicSampled> {
   return all_meters_.insert_mono_sampled(std::move(id));

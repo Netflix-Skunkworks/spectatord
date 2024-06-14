@@ -87,14 +87,6 @@ void test_statsd(char* buffer, const std::map<std::string, double>& expected) {
   }
 }
 
-TEST(Spectatord, Statsd_Ctr) {
-  char_ptr ctr{strdup("page.views:1|c\n")};
-  std::map<std::string, double> expected{
-      {"spectatord.parsedCount|statistic=count", 1},
-      {"page.views|statistic=count", 1.0}};
-  test_statsd(ctr.get(), expected);
-}
-
 TEST(Spectatord, Statsd_Multiline) {
   // end without a newline
   char_ptr ctr{strdup("page.views:1|c\npage.views:3|c\npage.views:5|c")};
@@ -112,6 +104,22 @@ TEST(Spectatord, Statsd_Multiline) {
   test_statsd(ctr.get(), expected);
 }
 
+TEST(Spectatord, Statsd_Counter) {
+  char_ptr ctr{strdup("page.views:1|c\n")};
+  std::map<std::string, double> expected{
+      {"spectatord.parsedCount|statistic=count", 1},
+      {"page.views|statistic=count", 1.0}};
+  test_statsd(ctr.get(), expected);
+}
+
+TEST(Spectatord, Statsd_CounterTags) {
+  char_ptr c{strdup("users.online:10|c|#country:china")};
+  std::map<std::string, double> expected{
+      {"spectatord.parsedCount|statistic=count", 1},
+      {"users.online|country=china|statistic=count", 10}};
+  test_statsd(c.get(), expected);
+}
+
 TEST(Spectatord, Statsd_GaugeNoTags) {
   char_ptr g{strdup("fuel.level:0.5|g")};
   std::map<std::string, double> expected{
@@ -120,7 +128,7 @@ TEST(Spectatord, Statsd_GaugeNoTags) {
   test_statsd(g.get(), expected);
 }
 
-TEST(Spectatord, Statsd_GaugeTagsDlft) {
+TEST(Spectatord, Statsd_GaugeDefaultTags) {
   char_ptr g{strdup("custom.metric:60|g|#shell")};
   std::map<std::string, double> expected{
       {"spectatord.parsedCount|statistic=count", 1},
@@ -128,7 +136,7 @@ TEST(Spectatord, Statsd_GaugeTagsDlft) {
   test_statsd(g.get(), expected);
 }
 
-TEST(Spectatord, Statsd_HistogramAsDs) {
+TEST(Spectatord, Statsd_HistogramAsDistSummary) {
   char_ptr h{strdup("song.length:240|h|#region:east")};
   std::map<std::string, double> expected{
       {"spectatord.parsedCount|statistic=count", 1},
@@ -150,20 +158,12 @@ TEST(Spectatord, Statsd_SampledHistogram) {
   test_statsd(h.get(), expected);
 }
 
-TEST(Spectatord, DISABLED_SetCardinality) {
+TEST(Spectatord, DISABLED_Statsd_SetCardinality) {
   char_ptr s{strdup("users.uniques:1234|s")};
   std::map<std::string, double> expected{
       {"spectatord.parsedCount|statistic=count", 1},
       {"users.uniques|statistic=gauge", 1}};
   test_statsd(s.get(), expected);
-}
-
-TEST(Spectatord, Statsd_CounterTags) {
-  char_ptr c{strdup("users.online:10|c|#country:china")};
-  std::map<std::string, double> expected{
-      {"spectatord.parsedCount|statistic=count", 1},
-      {"users.online|country=china|statistic=count", 10}};
-  test_statsd(c.get(), expected);
 }
 
 TEST(Spectatord, Statsd_Timer) {
@@ -186,6 +186,16 @@ TEST(Spectatord, Statsd_SampledTimer) {
       {"req.latency|country=us|statistic=totalTime", 3.5},
       {"req.latency|country=us|statistic=max", 0.35}};
   test_statsd(timer.get(), expected);
+}
+
+TEST(Spectatord, ParseNoTags) {
+  auto logger = Logger();
+  char_ptr line{strdup("n:1")};
+  std::string err_msg;
+  auto measurement = *get_measurement('c', line.get(), &err_msg);
+  logger->info("Got {} = {}", measurement.id, measurement.value.d);
+  EXPECT_DOUBLE_EQ(measurement.value.d, 1.0);
+  EXPECT_EQ(measurement.id, spectator::Id("n", spectator::Tags{}));
 }
 
 TEST(Spectatord, ParseOneTag) {
@@ -211,16 +221,6 @@ TEST(Spectatord, ParseMultipleTags) {
             spectator::Id("n", spectator::Tags{
                                    {"foo", "bar"}, {"k", "v1"}, {"k2", "v2"}}));
   EXPECT_TRUE(err_msg.empty());
-}
-
-TEST(Spectatord, ParseNoTags) {
-  auto logger = Logger();
-  char_ptr line{strdup("n:1")};
-  std::string err_msg;
-  auto measurement = *get_measurement('c', line.get(), &err_msg);
-  logger->info("Got {} = {}", measurement.id, measurement.value.d);
-  EXPECT_DOUBLE_EQ(measurement.value.d, 1.0);
-  EXPECT_EQ(measurement.id, spectator::Id("n", spectator::Tags{}));
 }
 
 TEST(Spectatord, ParseMissingName) {
@@ -254,21 +254,6 @@ TEST(Spectatord, ParseIgnoringStuffAtTheEnd) {
   EXPECT_FALSE(err_msg.empty());
 }
 
-TEST(Spectatord, ParseCounter) {
-  auto logger = Logger();
-  spectator::Registry registry{GetConfiguration(), logger};
-  test_server server{&registry};
-
-  char_ptr line1{strdup("c:counter.name:10")};
-  char_ptr line2{strdup("c:counter.name:10")};
-  server.parse_msg(line1.get());
-  server.parse_msg(line2.get());
-
-  auto map = server.measurements();
-  EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 2);
-  EXPECT_DOUBLE_EQ(map["counter.name|statistic=count"], 20);
-}
-
 TEST(Spectatord, ParseMultiline) {
   auto logger = Logger();
   spectator::Registry registry{GetConfiguration(), logger};
@@ -281,23 +266,6 @@ TEST(Spectatord, ParseMultiline) {
   auto map = server.measurements();
   EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 3);
   EXPECT_DOUBLE_EQ(map["counter.name|statistic=count"], 42);
-}
-
-TEST(Spectatord, ParseTimer) {
-  auto logger = Logger();
-  spectator::Registry registry{GetConfiguration(), logger};
-  test_server server{&registry};
-
-  char_ptr line1{strdup("t:timer.name:.001")};
-  char_ptr line2{strdup("t:timer.name:.001")};
-  server.parse_msg(line1.get());
-  server.parse_msg(line2.get());
-
-  auto map = server.measurements();
-  EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 2);
-  EXPECT_DOUBLE_EQ(map["timer.name|statistic=count"], 2);
-  EXPECT_DOUBLE_EQ(map["timer.name|statistic=totalTime"], 0.002);
-  EXPECT_DOUBLE_EQ(map["timer.name|statistic=max"], 0.001);
 }
 
 TEST(Spectatord, ParseAgeGauge) {
@@ -353,6 +321,39 @@ TEST(Spectatord, TooManyAgeGauges) {
   EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 1);
 }
 
+TEST(Spectatord, ParseCounter) {
+  auto logger = Logger();
+  spectator::Registry registry{GetConfiguration(), logger};
+  test_server server{&registry};
+
+  char_ptr line1{strdup("c:counter.name:10")};
+  char_ptr line2{strdup("c:counter.name:10")};
+  server.parse_msg(line1.get());
+  server.parse_msg(line2.get());
+
+  auto map = server.measurements();
+  EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 2);
+  EXPECT_DOUBLE_EQ(map["counter.name|statistic=count"], 20);
+}
+
+TEST(Spectatord, ParseDistSummary) {
+  auto logger = Logger();
+  spectator::Registry registry{GetConfiguration(), logger};
+  test_server server{&registry};
+
+  char_ptr line{strdup("d:dist.summary:1")};
+  server.parse_msg(line.get());
+
+  char_ptr line2{strdup("d:dist.summary:2")};
+  server.parse_msg(line2.get());
+
+  auto map = server.measurements();
+  EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 2);
+  EXPECT_DOUBLE_EQ(map["dist.summary|statistic=count"], 2);
+  EXPECT_DOUBLE_EQ(map["dist.summary|statistic=totalAmount"], 3);
+  EXPECT_DOUBLE_EQ(map["dist.summary|statistic=max"], 2);
+}
+
 TEST(Spectatord, ParseGauge) {
   auto logger = Logger();
   spectator::Registry registry{GetConfiguration(), logger};
@@ -394,21 +395,68 @@ TEST(Spectatord, ParseGaugeTtl) {
   EXPECT_EQ(registry.GetGauge("gauge.name")->GetTtl(), absl::Seconds(15));
 }
 
-TEST(Spectatord, ParseDistSummary) {
+TEST(Spectatord, ParseMonoCounter) {
   auto logger = Logger();
   spectator::Registry registry{GetConfiguration(), logger};
   test_server server{&registry};
 
-  char_ptr line{strdup("d:dist.summary:1")};
-  server.parse_msg(line.get());
+  char_ptr line1{strdup("C:mono_counter.name:10.5")};
+  server.parse_msg(line1.get());
 
-  char_ptr line2{strdup("d:dist.summary:2")};
+  auto map = server.measurements();
+  EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 1);
+  EXPECT_DOUBLE_EQ(map["mono_counter.name|statistic=count"], 0);
+
+  char_ptr line2{strdup("C:mono_counter.name:20.75")};
+  server.parse_msg(line2.get());
+
+  map = server.measurements();
+  EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 1);
+  EXPECT_DOUBLE_EQ(map["mono_counter.name|statistic=count"], 10.25);
+}
+
+TEST(Spectatord, ParseMonoCounterUint) {
+  auto logger = Logger();
+  spectator::Registry registry{GetConfiguration(), logger};
+  test_server server{&registry};
+
+  char_ptr line1{strdup("U:mono_counter_uint.name:10")};
+  server.parse_msg(line1.get());
+
+  auto map = server.measurements();
+  EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 1);
+  EXPECT_DOUBLE_EQ(map["mono_counter_uint.name|statistic=count"], 0);
+
+  char_ptr line2{strdup("U:mono_counter_uint.name:20")};
+  server.parse_msg(line2.get());
+
+  map = server.measurements();
+  EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 1);
+  EXPECT_DOUBLE_EQ(map["mono_counter_uint.name|statistic=count"], 10);
+
+  // fractional numbers are truncated
+  char_ptr line3{strdup("U:mono_counter_uint.name:21.5")};
+  server.parse_msg(line3.get());
+
+  map = server.measurements();
+  EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 1);
+  EXPECT_DOUBLE_EQ(map["mono_counter_uint.name|statistic=count"], 1);
+}
+
+TEST(Spectatord, ParseTimer) {
+  auto logger = Logger();
+  spectator::Registry registry{GetConfiguration(), logger};
+  test_server server{&registry};
+
+  char_ptr line1{strdup("t:timer.name:.001")};
+  char_ptr line2{strdup("t:timer.name:.001")};
+  server.parse_msg(line1.get());
   server.parse_msg(line2.get());
 
   auto map = server.measurements();
   EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 2);
-  EXPECT_DOUBLE_EQ(map["dist.summary|statistic=count"], 2);
-  EXPECT_DOUBLE_EQ(map["dist.summary|statistic=totalAmount"], 3);
-  EXPECT_DOUBLE_EQ(map["dist.summary|statistic=max"], 2);
+  EXPECT_DOUBLE_EQ(map["timer.name|statistic=count"], 2);
+  EXPECT_DOUBLE_EQ(map["timer.name|statistic=totalTime"], 0.002);
+  EXPECT_DOUBLE_EQ(map["timer.name|statistic=max"], 0.001);
 }
 }  // namespace

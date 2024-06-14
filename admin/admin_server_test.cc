@@ -203,16 +203,17 @@ TEST_F(AdminServerTest, GET_metrics) {
   Var result {parser.parse(rr)};
   Object::Ptr object = result.extract<Object::Ptr>();
 
-  int count = 0;
-  std::vector<std::string> expected_keys {"age_gauges", "counters", "dist_summaries",
-                                         "gauges", "max_gauges", "mono_counters", "timers"};
-  for (auto &it : *object) {
-    if (contains(expected_keys, it.first)) {
-      count += 1;
-    }
-  }
+  std::vector<std::string> expected_keys {"age_gauges", "counters", "dist_summaries", "gauges",
+                                         "max_gauges", "mono_counters", "mono_counters_uint",
+                                         "stats", "timers"};
+  std::vector<std::string> found_keys;
 
-  EXPECT_EQ(count, expected_keys.size());
+  for (auto &it : *object) {
+    found_keys.emplace_back(it.first);
+  }
+  std::sort(found_keys.begin(), found_keys.end());
+
+  EXPECT_EQ(found_keys, expected_keys);
 }
 
 TEST_F(AdminServerTest, GET_undefined_route) {
