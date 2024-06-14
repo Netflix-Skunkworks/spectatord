@@ -18,7 +18,8 @@ class Config {
 
   Config(std::map<std::string, std::string> c_tags, int read_to_ms,
          int connect_to_ms, int batch_sz, int freq_ms, int exp_freq_ms,
-         int meter_ttl_ms, size_t age_gauge_limit, std::string publish_uri)
+         int meter_ttl_ms, size_t age_gauge_limit, std::string publish_uri,
+         std::string external_publish_uri)
       : common_tags{std::move(c_tags)},
         read_timeout{absl::Milliseconds(read_to_ms)},
         connect_timeout{absl::Milliseconds(connect_to_ms)},
@@ -27,7 +28,8 @@ class Config {
         expiration_frequency{absl::Milliseconds(exp_freq_ms)},
         meter_ttl{absl::Milliseconds(meter_ttl_ms)},
         age_gauge_limit{age_gauge_limit},
-        uri{std::move(publish_uri)} {}
+        uri{std::move(publish_uri)},
+        external_uri{std::move(external_publish_uri)} {}
   std::map<std::string, std::string> common_tags;
   absl::Duration read_timeout;
   absl::Duration connect_timeout;
@@ -37,6 +39,7 @@ class Config {
   absl::Duration meter_ttl;
   size_t age_gauge_limit{};
   std::string uri;
+  std::string external_uri;
   bool verbose_http = false;
   bool status_metrics_enabled = true;
 
