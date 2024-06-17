@@ -158,7 +158,9 @@ void Registry::Stop() noexcept {
 
 auto Registry::Measurements() const noexcept -> std::vector<Measurement> {
   auto res = all_meters_.measure(meter_ttl_);
-  registry_size_->Record(res.size());
+  if (config_->status_metrics_enabled) {
+    registry_size_->Record(res.size());
+  }
   for (const auto& callback : ms_callbacks_) {
     callback(res);
   }
