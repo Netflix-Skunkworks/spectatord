@@ -43,14 +43,19 @@ auto AbslParseFlag(absl::string_view text, PortNumber* p, std::string* error)
   return true;
 }
 
-ABSL_FLAG(PortNumber, port, PortNumber(1234),
-          "Port number for the UDP socket.");
-ABSL_FLAG(bool, enable_statsd, false,
-          "Enable statsd support.");
-ABSL_FLAG(PortNumber, statsd_port, PortNumber(8125),
-          "Port number for the statsd socket.");
 ABSL_FLAG(PortNumber, admin_port, PortNumber(1234),
           "Port number for the admin server.");
+ABSL_FLAG(size_t, age_gauge_limit, 1000,
+          "The maximum number of age gauges that may be reported by this process.");
+ABSL_FLAG(std::string, common_tags, "",
+          "Common tags: nf.app=app,nf.cluster=cluster. Override the default common "
+          "tags. If empty, then spectatord will use the default set. "
+          "This flag should only be used by experts who understand the risks.");
+ABSL_FLAG(bool, debug, false,
+          "Debug spectatord. All values will be sent to a dev aggregator and "
+          "dropped.");
+ABSL_FLAG(bool, enable_external, false,
+          "Enable external publishing.");
 #ifdef __linux__
 ABSL_FLAG(bool, enable_socket, true,
           "Enable UNIX domain socket support. Default is true on Linux and false "
@@ -60,30 +65,31 @@ ABSL_FLAG(bool, enable_socket, false,
           "Enable UNIX domain socket support. Default is true on Linux and false "
           "on MacOS and Windows.");
 #endif
-ABSL_FLAG(std::string, socket_path, "/run/spectatord/spectatord.unix",
-          "Path to the UNIX domain socket.");
-ABSL_FLAG(std::string, uri, "",
-          "Optional override URI for the aggregator.");
+ABSL_FLAG(bool, enable_statsd, false,
+          "Enable statsd support.");
+ABSL_FLAG(std::string, metatron_dir, "",
+          "Path to the Metatron certificates, which are used for external publishing. A number "
+          "of well-known directories are searched by default. This option is only necessary "
+          "if your certificates are in an unusual location.");
 ABSL_FLAG(absl::Duration, meter_ttl, absl::Minutes(15),
           "Meter TTL: expire meters after this period of inactivity.");
-ABSL_FLAG(size_t, age_gauge_limit, 1000,
-          "The maximum number of age gauges that may be reported by this process.");
-ABSL_FLAG(std::string, common_tags, "",
-          "Common tags: nf.app=app,nf.cluster=cluster. Override the default common "
-          "tags. If empty, then spectatord will use the default set. "
-          "This flag should only be used by experts who understand the risks.");
 ABSL_FLAG(bool, no_common_tags, false,
           "No common tags will be provided for metrics. Since no common tags are available, no "
           "internal status metrics will be recorded. Only use this feature for special cases "
           "where it is absolutely necessary to override common tags such as nf.app, and only "
           "use it with a secondary spectatord process.");
+ABSL_FLAG(PortNumber, port, PortNumber(1234),
+          "Port number for the UDP socket.");
+ABSL_FLAG(std::string, socket_path, "/run/spectatord/spectatord.unix",
+          "Path to the UNIX domain socket.");
+ABSL_FLAG(PortNumber, statsd_port, PortNumber(8125),
+          "Port number for the statsd socket.");
+ABSL_FLAG(std::string, uri, "",
+          "Optional override URI for the aggregator.");
 ABSL_FLAG(bool, verbose, false,
           "Use verbose logging.");
 ABSL_FLAG(bool, verbose_http, false,
           "Output debug info for HTTP requests.");
-ABSL_FLAG(bool, debug, false,
-          "Debug spectatord. All values will be sent to a dev aggregator and "
-          "dropped.");
 
 auto main(int argc, char** argv) -> int {
   auto logger = Logger();
@@ -93,18 +99,20 @@ auto main(int argc, char** argv) -> int {
                 signals.end());
   backward::SignalHandling sh{signals};
 
-  absl::SetProgramUsageMessage(
-      "A daemon that listens for metrics and reports them to Atlas.");
+  absl::SetProgramUsageMessage("A daemon that listens for metrics and reports them to Atlas.");
   absl::ParseCommandLine(argc, argv);
 
   auto cfg = GetSpectatorConfig();
 
   auto maybe_agg_uri = absl::GetFlag(FLAGS_uri);
   if (absl::GetFlag(FLAGS_debug)) {
-    cfg->uri =
-        "https://atlas-aggr-dev.us-east-1.ieptest.netflix.net/api/v4/update";
+    cfg->uri = "https://atlas-aggr-dev.us-east-1.ieptest.netflix.net/api/v4/update";
   } else if (!maybe_agg_uri.empty()) {
     cfg->uri = std::move(maybe_agg_uri);
+  } else if (absl::GetFlag(FLAGS_enable_external)) {
+    cfg->external_enabled = true;
+    cfg->metatron_dir = absl::GetFlag(FLAGS_metatron_dir);
+    cfg->uri = cfg->external_uri;
   }
 
   if (absl::GetFlag(FLAGS_verbose_http)) {

@@ -65,7 +65,7 @@ add_library(spectator OBJECT
     "version.h"
 )
 target_include_directories(spectator PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(spectator util ${CONAN_LIBS})
+target_link_libraries(spectator metatron util ${CONAN_LIBS})
 
 #-- file generators, must exist where the outputs are referenced
 add_custom_command(

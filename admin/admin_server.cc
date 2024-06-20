@@ -49,18 +49,21 @@ void GET_config(HTTPServerRequest& req, HTTPServerResponse& res,
   Object::Ptr obj = new Object(true);
 
   Object::Ptr common_tags = new Object(true);
-  for (auto& pair : config.common_tags)
+  for (auto& pair : config.common_tags) {
     common_tags->set(pair.first, pair.second);
-  obj->set("common_tags", common_tags);
+  }
 
-  obj->set("read_timeout", ToDoubleMilliseconds(config.read_timeout));
-  obj->set("connect_timeout", ToDoubleMilliseconds(config.connect_timeout));
-  obj->set("batch_size", config.batch_size);
-  obj->set("frequency", ToDoubleMilliseconds(config.frequency));
-  obj->set("expiration_frequency",
-           ToDoubleMilliseconds(config.expiration_frequency));
-  obj->set("meter_ttl", ToDoubleMilliseconds(config.meter_ttl));
   obj->set("age_gauge_limit", config.age_gauge_limit);
+  obj->set("batch_size", config.batch_size);
+  obj->set("common_tags", common_tags);
+  obj->set("connect_timeout", ToDoubleMilliseconds(config.connect_timeout));
+  obj->set("expiration_frequency", ToDoubleMilliseconds(config.expiration_frequency));
+  obj->set("external_enabled", config.external_enabled);
+  obj->set("frequency", ToDoubleMilliseconds(config.frequency));
+  obj->set("metatron_dir", config.metatron_dir);
+  obj->set("meter_ttl", ToDoubleMilliseconds(config.meter_ttl));
+  obj->set("read_timeout", ToDoubleMilliseconds(config.read_timeout));
+  obj->set("status_metrics_enabled", config.status_metrics_enabled);
   obj->set("uri", config.uri);
 
   res.setStatus(HTTPResponse::HTTP_OK);

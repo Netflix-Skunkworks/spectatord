@@ -3,6 +3,10 @@
 .idea/
 cmake-build-debug
 cmake-build/
+metatron/auth_context.pb.cc
+metatron/auth_context.pb.h
+metatron/auth_context.proto
+metatron/metatron_config.cc
 ska/
 spectator/netflix_config.cc
 venv/

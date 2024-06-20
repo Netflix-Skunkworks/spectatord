@@ -2,6 +2,7 @@
 
 #include "absl/time/time.h"
 #include "compressed_buffer.h"
+#include "metatron/metatron_config.h"
 #include <chrono>
 #include <map>
 #include <memory>
@@ -22,6 +23,8 @@ struct HttpClientConfig {
   bool read_body;
   bool verbose_requests;
   bool status_metrics_enabled;
+  bool external_enabled;
+  metatron::CertInfo cert_info;
 };
 
 using HttpHeaders = std::unordered_map<std::string, std::string>;
@@ -53,12 +56,10 @@ class HttpClient {
 
   [[nodiscard]] auto Get(const std::string& url) const -> HttpResponse;
   [[nodiscard]] auto Get(const std::string& url,
-                         const std::vector<std::string>& headers) const
-      -> HttpResponse;
+                         const std::vector<std::string>& headers) const -> HttpResponse;
 
   [[nodiscard]] auto Put(const std::string& url,
-                         const std::vector<std::string>& headers) const
-      -> HttpResponse;
+                         const std::vector<std::string>& headers) const -> HttpResponse;
 
   static void GlobalInit() noexcept;
   static void GlobalShutdown() noexcept;
@@ -72,8 +73,7 @@ class HttpClient {
                size_t size, int attempt_number) const -> HttpResponse;
 
   auto method_header(const char* method, const std::string& url,
-                     const std::vector<std::string>& headers) const
-      -> HttpResponse;
+                     const std::vector<std::string>& headers) const -> HttpResponse;
 };
 
 }  // namespace spectator

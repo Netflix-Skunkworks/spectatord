@@ -17,6 +17,7 @@ class SpectatorDConan(ConanFile):
         "libcurl/8.4.0",
         "openssl/3.2.0",
         "poco/1.12.5p2",
+        "protobuf/3.21.12",
         "rapidjson/cci.20230929",
         "spdlog/1.12.0",
         "tsl-hopscotch-map/2.3.1",
@@ -28,6 +29,7 @@ class SpectatorDConan(ConanFile):
 
     def configure(self):
         self.options["libcurl"].with_c_ares = True
+        self.options["libcurl"].with_ssl = "openssl"
         self.options["poco"].enable_data_mysql = False
         self.options["poco"].enable_data_postgresql = False
         self.options["poco"].enable_data_sqlite = False
@@ -55,7 +57,7 @@ class SpectatorDConan(ConanFile):
             return
         dir_name = "netflix_spectator_cppconf"
         commit = "d44c6513f52fba019181e8c59c4c306bd6451b8d"
-        zip_name = f"nflx_spectator_cfg-{commit}.zip"
+        zip_name = f"netflix_spectator_cppconf-{commit}.zip"
         download(f"https://stash.corp.netflix.com/rest/api/latest/projects/CLDMTA/repos/netflix-spectator-cppconf/archive?at={commit}&format=zip", zip_name)
         check_sha256(zip_name, "87cafb9306c2cd96477aea2d26ef311ff0b4342a3fa57fd29432411ce355cf6a")
         unzip(zip_name, destination=dir_name)
@@ -63,6 +65,22 @@ class SpectatorDConan(ConanFile):
         os.unlink(zip_name)
         shutil.rmtree(dir_name)
 
+    @staticmethod
+    def get_spectatord_metatron():
+        if os.environ.get("NFLX_INTERNAL") != "ON":
+            return
+        dir_name = "spectatord_metatron"
+        commit = "07f0cbcf2d606561d636a1e22931aa8d23bcb7a3"
+        zip_name = f"spectatord_metatron-{commit}.zip"
+        download(f"https://stash.corp.netflix.com/rest/api/latest/projects/CLDMTA/repos/spectatord-metatron/archive?at={commit}&format=zip", zip_name)
+        check_sha256(zip_name, "a367d20d62d1ec57622fa325268e7be67b99e58b36ea22dd2e71eba2af853a6c")
+        unzip(zip_name, destination=dir_name)
+        shutil.move(f"{dir_name}/metatron/auth_context.proto", "metatron")
+        shutil.move(f"{dir_name}/metatron/metatron_config.cc", "metatron")
+        os.unlink(zip_name)
+        shutil.rmtree(dir_name)
+
     def source(self):
         self.get_flat_hash_map()
         self.get_netflix_spectator_cppconf()
+        self.get_spectatord_metatron()
