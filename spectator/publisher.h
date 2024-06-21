@@ -8,6 +8,7 @@
 #include "http_client.h"
 #include "util/logger.h"
 #include "measurement.h"
+#include "metatron/metatron_config.h"
 #include "smile.h"
 
 #include <asio/post.hpp>
@@ -262,8 +263,10 @@ class Publisher {
     if (connect_timeout == absl::ZeroDuration()) {
       connect_timeout = absl::Seconds(2);
     }
-    return HttpClientConfig{connect_timeout, read_timeout, true, false, true, cfg.verbose_http,
-                            cfg.status_metrics_enabled};
+    auto cert_info = metatron::find_certificate(cfg.external_enabled, cfg.metatron_dir);
+    return HttpClientConfig{connect_timeout, read_timeout, true, false, true,
+                            cfg.verbose_http, cfg.status_metrics_enabled,
+                            cfg.external_enabled, cert_info};
   }
 
   auto handle_aggr_response(const HttpResponse& http_response,
@@ -331,8 +334,7 @@ class Publisher {
     auto http_cfg = get_http_config(cfg);
     auto start = absl::Now();
     HttpClient client{registry_, std::move(http_cfg)};
-    auto batch_size =
-        static_cast<std::vector<Measurement>::difference_type>(cfg.batch_size);
+    auto batch_size = static_cast<std::vector<Measurement>::difference_type>(cfg.batch_size);
     auto measurements = registry_->Measurements();
 
     if (!cfg.is_enabled() || measurements.empty()) {
@@ -343,12 +345,13 @@ class Publisher {
     }
 
     if (logger->should_log(spdlog::level::trace)) {
-      logger->trace("Sending {} measurements to {}", measurements.size(),
-                    registry_->GetConfig().uri);
+      logger->trace("Sending {} measurements to {}",
+                    measurements.size(), registry_->GetConfig().uri);
       for (const auto& m : measurements) {
         logger->trace("{}", m);
       }
     }
+
     auto from = measurements.begin();
     auto end = measurements.end();
     std::vector<std::pair<int, HttpResponse>> responses;
@@ -359,9 +362,7 @@ class Publisher {
     std::transform(buffers_.begin(), buffers_.end(),
                    std::back_inserter(avail_buffers),
                    [](auto& b) { return &b; });
-    std::vector<
-        std::pair<Measurements::const_iterator, Measurements::const_iterator>>
-        batches;
+    std::vector<std::pair<Measurements::const_iterator, Measurements::const_iterator>> batches;
 
     while (from != end) {
       auto to_end = std::distance(from, end);
@@ -385,8 +386,7 @@ class Publisher {
         }
 
         measurements_to_json(payload, batch.first, batch.second);
-        auto response =
-            client.Post(uri, HttpClient::kSmileJson, payload->Result());
+        auto response = client.Post(uri, HttpClient::kSmileJson, payload->Result());
         {
           absl::MutexLock lock(&responses_mutex);
           auto batch_size = batch.second - batch.first;

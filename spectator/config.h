@@ -40,8 +40,11 @@ class Config {
   size_t age_gauge_limit{};
   std::string uri;
   std::string external_uri;
-  bool verbose_http = false;
+
+  std::string metatron_dir;
+  bool external_enabled = false;
   bool status_metrics_enabled = true;
+  bool verbose_http = false;
 
   // sub-classes can override this method implementing custom logic
   // that can disable publishing under certain conditions

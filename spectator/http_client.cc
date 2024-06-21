@@ -28,21 +28,19 @@ class CurlHeaders {
 
 namespace {
 
-auto curl_ignore_output_fun(char* /*unused*/, size_t size, size_t nmemb, void *
-                            /*unused*/) -> size_t {
+auto curl_ignore_output_fun(char* /*unused*/, size_t size, size_t nmemb, void * /*unused*/)
+    -> size_t {
   return size * nmemb;
 }
 
-auto curl_capture_output_fun(char* contents, size_t size, size_t nmemb,
-                             void* userp) -> size_t {
+auto curl_capture_output_fun(char* contents, size_t size, size_t nmemb, void* userp) -> size_t {
   auto real_size = size * nmemb;
   auto* resp = static_cast<std::string*>(userp);
   resp->append(contents, real_size);
   return real_size;
 }
 
-auto curl_capture_headers_fun(char* contents, size_t size, size_t nmemb,
-                              void* userp) -> size_t {
+auto curl_capture_headers_fun(char* contents, size_t size, size_t nmemb, void* userp) -> size_t {
   auto real_size = size * nmemb;
   auto end = contents + real_size;
   auto* headers = static_cast<HttpHeaders*>(userp);
@@ -76,11 +74,11 @@ class CurlHandle {
     curl_easy_cleanup(handle_);
   }
 
-  auto handle() const noexcept -> CURL* { return handle_; }
+  [[nodiscard]] auto handle() const noexcept -> CURL* { return handle_; }
 
-  auto perform() -> CURLcode { return curl_easy_perform(handle()); }
+  [[nodiscard]] auto perform() const -> CURLcode { return curl_easy_perform(handle()); }
 
-  auto set_opt(CURLoption option, const void* param) -> CURLcode {
+  auto set_opt(CURLoption option, const void* param) const -> CURLcode {
     return curl_easy_setopt(handle(), option, param);
   }
 
@@ -99,7 +97,7 @@ class CurlHandle {
 
   void move_headers(HttpHeaders* out) { *out = std::move(resp_headers_); }
 
-  void set_url(const std::string& url) { set_opt(CURLOPT_URL, url.c_str()); }
+  void set_url(const std::string& url) const { set_opt(CURLOPT_URL, url.c_str()); }
 
   void set_headers(std::shared_ptr<CurlHeaders> headers) {
     headers_ = std::move(headers);
@@ -127,19 +125,35 @@ class CurlHandle {
     curl_easy_setopt(handle_, CURLOPT_CUSTOMREQUEST, method);
   }
 
+  void configure_metatron(const HttpClientConfig& config) {
+    // provide metatron client certificate during handshake
+    curl_easy_setopt(handle_, CURLOPT_SSLCERT, config.cert_info.ssl_cert.c_str());
+    curl_easy_setopt(handle_, CURLOPT_SSLKEY, config.cert_info.ssl_key.c_str());
+    // disable use of system CAs
+    curl_easy_setopt(handle_, CURLOPT_CAPATH, NULL);
+    // perform full trust verification of server based on metatron CAs
+    curl_easy_setopt(handle_, CURLOPT_SSL_VERIFYPEER, 1);
+    curl_easy_setopt(handle_, CURLOPT_CAINFO, config.cert_info.ca_info.c_str());
+    // install Metatron verifier and provide application name to check
+    curl_easy_setopt(handle_, CURLOPT_SSL_CTX_FUNCTION, metatron::sslctx_metatron_verify);
+    curl_easy_setopt(handle_, CURLOPT_SSL_CTX_DATA, config.cert_info.app_name.c_str());
+    // disable hostname verification, SANs not present in metatron certs
+    curl_easy_setopt(handle_, CURLOPT_SSL_VERIFYHOST, 0);
+    // save any extended error message
+    curl_easy_setopt(handle_, CURLOPT_ERRORBUFFER, errbuf_);
+  }
+
   void ignore_output() {
     curl_easy_setopt(handle_, CURLOPT_WRITEFUNCTION, curl_ignore_output_fun);
   }
 
   void capture_output() {
     curl_easy_setopt(handle_, CURLOPT_WRITEFUNCTION, curl_capture_output_fun);
-    curl_easy_setopt(handle_, CURLOPT_WRITEDATA,
-                     static_cast<void*>(&response_));
+    curl_easy_setopt(handle_, CURLOPT_WRITEDATA, static_cast<void*>(&response_));
   }
 
   void capture_headers() {
-    curl_easy_setopt(handle_, CURLOPT_HEADERDATA,
-                     static_cast<void*>(&resp_headers_));
+    curl_easy_setopt(handle_, CURLOPT_HEADERDATA, static_cast<void*>(&resp_headers_));
     curl_easy_setopt(handle_, CURLOPT_HEADERFUNCTION, curl_capture_headers_fun);
   }
 
@@ -150,38 +164,41 @@ class CurlHandle {
     curl_easy_setopt(handle_, CURLOPT_VERBOSE, 1L);
   }
 
+  char* get_errbuf() {
+    return errbuf_;
+  }
+
  private:
   CURL* handle_;
   std::shared_ptr<CurlHeaders> headers_;
   const void* payload_ = nullptr;
   std::string response_;
   HttpHeaders resp_headers_;
+  char errbuf_[CURL_ERROR_SIZE]{};
 };
 
 }  // namespace
 
 HttpClient::HttpClient(Registry* registry, HttpClientConfig config)
-    : registry_(registry), config_{config} {}
+    : registry_(registry), config_{std::move(config)} {}
 
 auto HttpClient::Get(const std::string& url) const -> HttpResponse {
   return perform("GET", url, std::make_shared<CurlHeaders>(), nullptr, 0u, 0);
 }
 
-auto HttpClient::Get(const std::string& url,
-                     const std::vector<std::string>& headers) const
-    -> HttpResponse {
+auto HttpClient::Get(const std::string& url, const std::vector<std::string>& headers)
+    const -> HttpResponse {
   return method_header("GET", url, headers);
 }
 
-auto HttpClient::Put(const std::string& url,
-                     const std::vector<std::string>& headers) const
-    -> HttpResponse {
+auto HttpClient::Put(const std::string& url, const std::vector<std::string>& headers)
+    const -> HttpResponse {
   return method_header("PUT", url, headers);
 }
 
 auto HttpClient::method_header(const char* method, const std::string& url,
-                               const std::vector<std::string>& headers) const
-    -> HttpResponse {
+                               const std::vector<std::string>& headers)
+    const -> HttpResponse {
   auto curl_headers = std::make_shared<CurlHeaders>();
   for (const auto& h : headers) {
     curl_headers->append(h);
@@ -207,30 +224,40 @@ auto HttpClient::perform(const char* method, const std::string& url,
   auto logger = registry_->GetLogger();
   curl.set_url(url);
   curl.set_headers(headers);
+
   if (strcmp("POST", method) == 0) {
     curl.post_payload(payload, size);
   } else if (strcmp("GET", method) != 0) {
     curl.custom_request(method);
+  }
+  if (config_.external_enabled) {
+    curl.configure_metatron(config_);
   }
   if (config_.read_body) {
     curl.capture_output();
   } else {
     curl.ignore_output();
   }
-
   if (config_.read_headers) {
     curl.capture_headers();
   }
-
   if (config_.verbose_requests) {
     curl.trace_requests();
   }
+
   auto curl_res = curl.perform();
   int http_code;
 
   if (curl_res != CURLE_OK) {
-    logger->error("Failed to {} {}: {}", method, url,
-                  curl_easy_strerror(curl_res));
+    auto errbuff = curl.get_errbuf();
+    if (errbuff[0] == '\0') {
+      logger->error("Failed to {} {}: {}",
+                    method, url, curl_easy_strerror(curl_res));
+    } else {
+      logger->error("Failed to {} {}: {} (errbuf={})",
+                    method, url, curl_easy_strerror(curl_res), errbuff);
+    }
+
     switch (curl_res) {
       case CURLE_COULDNT_CONNECT:
         entry.set_error("connection_error");
@@ -241,6 +268,7 @@ auto HttpClient::perform(const char* method, const std::string& url,
       default:
         entry.set_error("unknown");
     }
+
     auto elapsed = absl::Now() - entry.start();
     // retry connect timeouts if possible, not read timeouts
     logger->info(
@@ -248,11 +276,11 @@ auto HttpClient::perform(const char* method, const std::string& url,
         absl::ToInt64Milliseconds(elapsed),
         absl::ToInt64Milliseconds(config_.connect_timeout),
         absl::ToInt64Milliseconds(total_timeout - config_.connect_timeout));
+
     if (elapsed < total_timeout && attempt_number < 2) {
       entry.set_attempt(attempt_number, false);
       entry.log(config_.status_metrics_enabled);
-      return perform(method, url, std::move(headers), payload, size,
-                     attempt_number + 1);
+      return perform(method, url, std::move(headers), payload, size, attempt_number + 1);
     }
 
     http_code = -1;
@@ -260,11 +288,13 @@ auto HttpClient::perform(const char* method, const std::string& url,
   } else {
     http_code = curl.status_code();
     entry.set_status_code(http_code);
+
     if (http_code / 100 == 2) {
       entry.set_success();
     } else {
       entry.set_error("http_error");
     }
+
     if (is_retryable_error(http_code) && attempt_number < 2) {
       logger->info("Got a retryable http code from {}: {} (attempt {})", url,
                    http_code, attempt_number);
@@ -272,8 +302,7 @@ auto HttpClient::perform(const char* method, const std::string& url,
       entry.log(config_.status_metrics_enabled);
       auto sleep_ms = uint32_t(200) << attempt_number;  // 200, 400ms
       std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
-      return perform(method, url, std::move(headers), payload, size,
-                     attempt_number + 1);
+      return perform(method, url, std::move(headers), payload, size, attempt_number + 1);
     }
     logger->debug("{} {} - status code: {}", method, url, http_code);
   }
@@ -296,8 +325,7 @@ auto HttpClient::Post(const std::string& url, const char* content_type,
   headers->append(content_type);
   headers->append(kGzipEncoding);
 
-  return perform("POST", url, std::move(headers), payload.data, payload.size,
-                 0);
+  return perform("POST", url, std::move(headers), payload.data, payload.size, 0);
 }
 
 auto HttpClient::Post(const std::string& url, const char* content_type,
@@ -305,25 +333,24 @@ auto HttpClient::Post(const std::string& url, const char* content_type,
   auto logger = registry_->GetLogger();
   auto headers = std::make_shared<CurlHeaders>();
   headers->append(content_type);
+
   if (config_.compress) {
     headers->append(kGzipEncoding);
     auto compressed_size = compressBound(size) + kGzipHeaderSize;
-    auto compressed_payload =
-        std::unique_ptr<char[]>(new char[compressed_size]);
+    auto compressed_payload = std::unique_ptr<char[]>(new char[compressed_size]);
     auto compress_res = gzip_compress(compressed_payload.get(),
                                       &compressed_size, payload, size);
+
     if (compress_res != Z_OK) {
       logger->error(
-          "Failed to compress payload: {}, while posting to {} - uncompressed "
-          "size: {}",
+          "Failed to compress payload: {}, while posting to {} - uncompressed size: {}",
           compress_res, url, size);
       HttpResponse err{};
       err.status = -1;
       return err;
     }
 
-    return perform("POST", url, std::move(headers), compressed_payload.get(),
-                   compressed_size, 0);
+    return perform("POST", url, std::move(headers), compressed_payload.get(), compressed_size, 0);
   }
 
   // no compression

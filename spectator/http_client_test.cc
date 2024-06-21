@@ -49,8 +49,9 @@ class TestRegistry : public Registry {
 };
 
 HttpClientConfig get_cfg(int read_to, int connect_to) {
+  auto cert_info = metatron::CertInfo{"ssl_cert", "ssl_key", "ca_info", "app_name"};
   return HttpClientConfig{absl::Milliseconds(connect_to), absl::Milliseconds(read_to),
-                          true, true, true, false, true};
+                          true, true, true, false, true, false, cert_info};
 }
 
 TEST(HttpTest, Post) {

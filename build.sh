@@ -12,7 +12,14 @@ NC="\033[0m"
 if [[ "$1" == "clean" ]]; then
   echo -e "${BLUE}==== clean ====${NC}"
   rm -rf $BUILD_DIR
-  rm -f nflx_spectator_cppconf-*.zip
+  # intermediate download files
+  rm -f netflix_spectator_cppconf-*.zip
+  rm -f spectatord_metatron-*.zip
+  # extracted and generated files
+  rm -f metatron/auth_context.pb.cc
+  rm -f metatron/auth_context.pb.h
+  rm -f metatron/auth_context.proto
+  rm -f metatron/metatron_config.cc
   rm -rf ska
   rm -f spectator/*.inc
   rm -f spectator/netflix_config.cc

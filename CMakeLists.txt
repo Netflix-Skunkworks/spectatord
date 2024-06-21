@@ -14,6 +14,7 @@ conan_basic_setup()
 
 add_subdirectory(admin)
 add_subdirectory(bench)
+add_subdirectory(metatron)
 add_subdirectory(server)
 add_subdirectory(spectator)
 add_subdirectory(tools)

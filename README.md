@@ -24,9 +24,14 @@ spectatord: A daemon that listens for metrics and reports them to Atlas.
       default: "";
     --debug (Debug spectatord. All values will be sent to a dev aggregator and
       dropped.); default: false;
+    --enable_external (Enable external publishing.); default: false;
     --enable_socket (Enable UNIX domain socket support. Default is true on Linux
       and false on MacOS.); default: true;
     --enable_statsd (Enable statsd support.); default: false;
+    --metatron_dir (Path to the Metatron certificates, which are used for
+      external publishing. A number of well-known directories are searched by
+      default. This option is only necessary if your certificates are in an
+      unusual location.); default: "";
     --meter_ttl (Meter TTL: expire meters after this period of inactivity.);
       default: 15m;
     --no_common_tags (No common tags will be provided for metrics. Since no
