@@ -59,6 +59,38 @@ TEST(MonotonicCounterUint, Overflow) {
   EXPECT_EQ(expected3, ms.back());
 }
 
+TEST(MonotonicCounterUint, UnexpectedOverflow) {
+  auto c = getMonotonicCounterUint("overflow");
+  EXPECT_TRUE(std::isnan(c.Delta()));
+
+  // initialize overflow condition
+  spectator::Measurements ms;
+  c.Set(0);
+  c.Measure(&ms);
+  EXPECT_TRUE(ms.empty());
+
+  c.Set(100000);
+  c.Measure(&ms);
+  EXPECT_EQ(ms.size(), 1);
+  auto id = c.MeterId().WithStat(refs().count());
+  auto expected1 = spectator::Measurement{id, 100000};
+  EXPECT_EQ(expected1, ms.back());
+
+  // trigger overflow condition
+  c.Set(0);
+  c.Measure(&ms);
+  EXPECT_EQ(ms.size(), 2);
+  auto expected2 = spectator::Measurement{id, 0};
+  EXPECT_EQ(expected2, ms.back());
+
+  // normal increment condition
+  c.Set(5);
+  c.Measure(&ms);
+  EXPECT_EQ(ms.size(), 3);
+  auto expected3 = spectator::Measurement{id, 5};
+  EXPECT_EQ(expected3, ms.back());
+}
+
 TEST(MonotonicCounterUint, Id) {
   auto c = getMonotonicCounterUint("id");
   auto id = spectator::Id("id", spectator::Tags{});
