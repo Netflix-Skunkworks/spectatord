@@ -3,6 +3,7 @@
 
 namespace spectator {
 
+static constexpr auto kOverflow = 9.223372e+18;  // 2^63
 static constexpr auto kNaN = std::numeric_limits<double>::quiet_NaN();
 static constexpr auto kMax = std::numeric_limits<uint64_t>::max();
 
@@ -36,7 +37,12 @@ void MonotonicCounterUint::Measure(Measurements* results) const noexcept {
     if (!count_id_) {
       count_id_ = std::make_unique<Id>(MeterId().WithDefaultStat(refs().count()));
     }
-    results->emplace_back(*count_id_, delta);
+    if (delta > kOverflow) {
+      // deltas that appear to be unexpected overflows will be reported as zeroes instead
+      results->emplace_back(*count_id_, 0);
+    } else {
+      results->emplace_back(*count_id_, delta);
+    }
   }
 }
 
