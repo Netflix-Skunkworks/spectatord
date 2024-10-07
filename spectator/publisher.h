@@ -263,7 +263,7 @@ class Publisher {
     if (connect_timeout == absl::ZeroDuration()) {
       connect_timeout = absl::Seconds(2);
     }
-    auto cert_info = metatron::find_certificate(cfg.external_enabled, cfg.metatron_dir);
+    auto static cert_info = metatron::find_certificate(cfg.external_enabled, cfg.metatron_dir);
     return HttpClientConfig{connect_timeout, read_timeout, true, false, true,
                             cfg.verbose_http, cfg.status_metrics_enabled,
                             cfg.external_enabled, cert_info};
