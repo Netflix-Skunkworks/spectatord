@@ -39,3 +39,13 @@ ln -s cmake-build cmake-build-debug
 
 * CLion > Preferences > Plugins > Marketplace > Conan > Install
 * CLion > Preferences > Build, Execution, Deploy > Conan > Conan Executable: $PROJECT_HOME/venv/bin/conan
+
+## Errata
+
+When building locally on MacOS, you may see the following errors when running binaries compiled with ASAN:
+
+```
+malloc: nano zone abandoned due to inability to reserve vm space.
+```
+
+This warning can be turned off with `export MallocNanoZone=0` ([link](https://stackoverflow.com/a/70209891/1382138)).

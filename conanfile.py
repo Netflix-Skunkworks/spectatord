@@ -1,9 +1,18 @@
 import os
 import shutil
+import subprocess
+from dataclasses import dataclass
 
 from conans import ConanFile
 from conans.tools import download, unzip, check_sha256
 
+
+@dataclass
+class NflxConfig:
+    internal: str = os.getenv("NFLX_INTERNAL")
+    source_host: str = os.getenv("NFLX_SOURCE_HOST")
+    ssl_cert: str = os.getenv("NFLX_SSL_CERT")
+    ssl_key: str = os.getenv("NFLX_SSL_KEY")
 
 class SpectatorDConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
@@ -39,48 +48,94 @@ class SpectatorDConan(ConanFile):
         self.options["poco"].enable_activerecord = False
 
     @staticmethod
-    def get_flat_hash_map():
-        dir_name = "ska"
-        commit = "2c4687431f978f02a3780e24b8b701d22aa32d9c"
-        if os.path.isdir(dir_name):
-            shutil.rmtree(dir_name)
-        zip_name = f"flat_hash_map-{commit}.zip"
-        download(f"https://github.com/skarupke/flat_hash_map/archive/{commit}.zip", zip_name)
-        check_sha256(zip_name, "513efb9c2f246b6df9fa16c5640618f09804b009e69c8f7bd18b3099a11203d5")
-        unzip(zip_name)
-        shutil.move(f"flat_hash_map-{commit}", dir_name)
-        os.unlink(zip_name)
+    def maybe_remove_dir(path: str):
+        if os.path.isdir(path):
+            shutil.rmtree(path)
 
     @staticmethod
-    def get_netflix_spectator_cppconf():
-        if os.environ.get("NFLX_INTERNAL") != "ON":
-            return
-        dir_name = "netflix_spectator_cppconf"
-        commit = "d44c6513f52fba019181e8c59c4c306bd6451b8d"
-        zip_name = f"netflix_spectator_cppconf-{commit}.zip"
-        download(f"https://stash.corp.netflix.com/rest/api/latest/projects/CLDMTA/repos/netflix-spectator-cppconf/archive?at={commit}&format=zip", zip_name)
-        check_sha256(zip_name, "87cafb9306c2cd96477aea2d26ef311ff0b4342a3fa57fd29432411ce355cf6a")
-        unzip(zip_name, destination=dir_name)
+    def maybe_remove_file(path: str):
+        if os.path.isfile(path):
+            os.unlink(path)
+
+    @staticmethod
+    def download(nflx_cfg: NflxConfig, repo: str, commit: str, zip_name: str) -> None:
+        subprocess.run([
+            "curl", "-s", "-k", "-L",
+            "--cert", nflx_cfg.ssl_cert,
+            "--key", nflx_cfg.ssl_key,
+            "-H", "Accept: application/vnd.github+json",
+            "-H", "X-GitHub-Api-Version: 2022-11-28",
+            "-o", zip_name,
+            f"https://{nflx_cfg.source_host}/api/v3/repos/{repo}/zipball/{commit}"
+        ], check=True)
+
+    def get_flat_hash_map(self):
+        repo = "skarupke/flat_hash_map"
+        commit = "2c4687431f978f02a3780e24b8b701d22aa32d9c"
+        zip_name = repo.replace("skarupke/", "") + f"-{commit}.zip"
+
+        self.maybe_remove_file(zip_name)
+        download(f"https://github.com/{repo}/archive/{commit}.zip", zip_name)
+        check_sha256(zip_name, "513efb9c2f246b6df9fa16c5640618f09804b009e69c8f7bd18b3099a11203d5")
+
+        dir_name = "ska"
+        self.maybe_remove_dir(dir_name)
+        unzip(zip_name, destination=dir_name, strip_root=True)
+
+        os.unlink(zip_name)
+
+    def get_netflix_spectator_cppconf(self, nflx_cfg: NflxConfig) -> None:
+        repo = "corp/cldmta-netflix-spectator-cppconf"
+        commit = "190785a2205e96c71646a4f3dd6b8f5154e9a9ba"
+        zip_name = repo.replace("corp/", "") + f"-{commit}.zip"
+
+        self.maybe_remove_file(zip_name)
+        self.download(nflx_cfg, repo, commit, zip_name)
+        check_sha256(zip_name, "50d8641f2a38d4682c33fbb4a073f9e6679589e635ced09caadc54a7f55c26a5")
+
+        dir_name = repo.replace("corp/", "")
+        self.maybe_remove_dir(dir_name)
+        unzip(zip_name, destination=dir_name, strip_root=True)
+        self.maybe_remove_file("spectator/netflix_config.cc")
         shutil.move(f"{dir_name}/netflix_config.cc", "spectator")
+
         os.unlink(zip_name)
         shutil.rmtree(dir_name)
 
-    @staticmethod
-    def get_spectatord_metatron():
-        if os.environ.get("NFLX_INTERNAL") != "ON":
-            return
-        dir_name = "spectatord_metatron"
-        commit = "07f0cbcf2d606561d636a1e22931aa8d23bcb7a3"
-        zip_name = f"spectatord_metatron-{commit}.zip"
-        download(f"https://stash.corp.netflix.com/rest/api/latest/projects/CLDMTA/repos/spectatord-metatron/archive?at={commit}&format=zip", zip_name)
-        check_sha256(zip_name, "a367d20d62d1ec57622fa325268e7be67b99e58b36ea22dd2e71eba2af853a6c")
-        unzip(zip_name, destination=dir_name)
+    def get_spectatord_metatron(self, nflx_cfg: NflxConfig) -> None:
+        repo = "corp/cldmta-spectatord-metatron"
+        commit = "544fec6b794e46da0af174062a35567a9d462e5f"
+        zip_name = repo.replace("corp/", "") + f"-{commit}.zip"
+
+        self.maybe_remove_file(zip_name)
+        self.download(nflx_cfg, repo, commit, zip_name)
+        check_sha256(zip_name, "edb0aebd7b391f72242fae0ee08c7a0ae86170743dffc49166f2f3e8a7062185")
+
+        dir_name = repo.replace("corp/", "")
+        self.maybe_remove_dir(dir_name)
+        unzip(zip_name, destination=dir_name, strip_root=True)
+        self.maybe_remove_file("metatron/auth_context.proto")
+        self.maybe_remove_file("metatron/metatron_config.cc")
         shutil.move(f"{dir_name}/metatron/auth_context.proto", "metatron")
         shutil.move(f"{dir_name}/metatron/metatron_config.cc", "metatron")
+
         os.unlink(zip_name)
         shutil.rmtree(dir_name)
 
-    def source(self):
+    def source(self) -> None:
         self.get_flat_hash_map()
-        self.get_netflix_spectator_cppconf()
-        self.get_spectatord_metatron()
+
+        nflx_cfg = NflxConfig()
+
+        if nflx_cfg.internal == "ON":
+            if nflx_cfg.source_host is None:
+                raise ValueError("NFLX_SOURCE_HOST must be set when NFLX_INTERNAL is ON")
+            if nflx_cfg.ssl_cert is None:
+                raise ValueError("NFLX_SSL_CERT must be set when NFLX_INTERNAL is ON")
+            if nflx_cfg.ssl_key is None:
+                raise ValueError("NFLX_SSL_KEY must be set when NFLX_INTERNAL is ON")
+        else:
+            return
+
+        self.get_netflix_spectator_cppconf(nflx_cfg)
+        self.get_spectatord_metatron(nflx_cfg)

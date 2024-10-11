@@ -4,6 +4,8 @@ project(spectatord)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+#-- Conan 1.x support for MacOS >= 14.7 compilers is not ready yet
+set(CONAN_DISABLE_CHECK_COMPILER True)
 
 add_compile_options(-fno-omit-frame-pointer "$<$<CONFIG:Debug>:-fsanitize=address>")
 add_link_options(-fno-omit-frame-pointer "$<$<CONFIG:Debug>:-fsanitize=address>")
