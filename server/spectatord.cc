@@ -299,9 +299,10 @@ static auto create_perc_ds(spectator::Registry* registry, spectator::Id id) {
       registry, std::move(id), min_ds, max_ds);
 }
 
-Server::Server(int port_number, std::optional<int> statsd_port_number,
+Server::Server(bool ipv4_only, int port_number, std::optional<int> statsd_port_number,
                std::optional<std::string> socket_path, spectator::Registry* registry)
-    : port_number_{port_number},
+    : ipv4_only_{ipv4_only},
+      port_number_{port_number},
       statsd_port_number_{statsd_port_number},
       socket_path_{std::move(socket_path)},
       registry_{registry},
@@ -350,8 +351,8 @@ void Server::Start() {
 
   logger->info("Using receive buffer size = {}", max_buffer_size());
   auto parser = [this](char* buffer) { return this->parse(buffer); };
-  UdpServer udp_server{io_context, port_number_, parser};
-  logger->info("Starting spectatord server on port {}/udp", port_number_);
+  UdpServer udp_server{io_context, ipv4_only_, port_number_, parser};
+  logger->info("Starting spectatord server on port {}/udp (ipv4_only={})", port_number_, ipv4_only_);
   udp_server.Start();
 
   std::unique_ptr<UdpServer> statsd_server;
@@ -359,8 +360,8 @@ void Server::Start() {
     auto statsd_parser = [this](char* buffer) {
       return this->parse_statsd(buffer);
     };
-    statsd_server = std::make_unique<UdpServer>(io_context, *statsd_port_number_, statsd_parser);
-    logger->info("Starting statsd server on port {}/udp", *statsd_port_number_);
+    statsd_server = std::make_unique<UdpServer>(io_context, ipv4_only_, *statsd_port_number_, statsd_parser);
+    logger->info("Starting statsd server on port {}/udp (ipv4_only={})", *statsd_port_number_, ipv4_only_);
     statsd_server->Start();
   } else {
     logger->info("statsd support is not enabled");

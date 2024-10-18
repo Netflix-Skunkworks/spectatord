@@ -10,8 +10,8 @@ namespace spectatord {
 
 class Server {
  public:
-  Server(int port_number, std::optional<int> statsd_port_number, std::optional<std::string> socket_path,
-         spectator::Registry* registry);
+  Server(bool ipv4_only, int port_number, std::optional<int> statsd_port_number,
+         std::optional<std::string> socket_path, spectator::Registry* registry);
   Server(const Server&) = delete;
   Server(Server&&) = delete;
   Server& operator=(const Server&) = delete;
@@ -23,6 +23,7 @@ class Server {
   void Stop();
 
  private:
+  bool ipv4_only_;
   int port_number_;
   std::optional<int> statsd_port_number_;
   std::optional<std::string> socket_path_;

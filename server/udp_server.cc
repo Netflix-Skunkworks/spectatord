@@ -7,9 +7,11 @@ using asio::ip::udp;
 namespace spectatord {
 
 // NOLINTNEXTLINE(google-runtime-references)
-UdpServer::UdpServer(asio::io_context& io_context, int port_number,
+UdpServer::UdpServer(asio::io_context& io_context, bool ipv4_only, int port_number,
                      handler_t message_handler)
-    : udp_socket_{io_context, udp::endpoint(udp::v6(), port_number)},
+    : udp_socket_{io_context, udp::endpoint([&ipv4_only]() -> udp {
+                    if (ipv4_only) return udp::v4(); else return udp::v6();
+                  }() , port_number)},
       message_handler_(std::move(message_handler)) {
   asio::socket_base::receive_buffer_size option{max_buffer_size()};
   try {

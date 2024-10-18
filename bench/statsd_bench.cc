@@ -6,7 +6,7 @@
 class dummy_server : public spectatord::Server {
  public:
   explicit dummy_server(spectator::Registry* registry)
-      : spectatord::Server(0, 0, "", registry) {}
+      : spectatord::Server(false, 0, 0, "", registry) {}
   void parse_line(char* line) { parse_statsd(line); }
 };
 

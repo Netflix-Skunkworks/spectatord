@@ -41,7 +41,7 @@ std::map<std::string, double> measurements_to_map(
 class test_server : public spectatord::Server {
  public:
   explicit test_server(spectator::Registry* registry)
-      : Server(0, 0, spectatord::kSocketNameDgram, registry),
+      : Server(false, 0, 0, spectatord::kSocketNameDgram, registry),
         registry_{registry} {}
   std::optional<std::string> parse_msg(char* msg) { return parse(msg); }
   std::optional<std::string> test_parse_statsd(char* buffer) {
