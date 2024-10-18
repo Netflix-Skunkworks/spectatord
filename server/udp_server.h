@@ -7,7 +7,7 @@ namespace spectatord {
 class UdpServer {
  public:
   // NOLINTNEXTLINE(google-runtime-references)
-  UdpServer(asio::io_context& io_context, int port_number,
+  UdpServer(asio::io_context& io_context, bool ipv4_only, int port_number,
             handler_t message_handler);
 
   void Start() { start_udp_receive(); }

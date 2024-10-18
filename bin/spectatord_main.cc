@@ -67,6 +67,9 @@ ABSL_FLAG(bool, enable_socket, false,
 #endif
 ABSL_FLAG(bool, enable_statsd, false,
           "Enable statsd support.");
+ABSL_FLAG(bool, ipv4_only, false,
+          "Enable IPv4-only UDP listeners. This option should only be used in environments "
+          "where it is impossible to run IPv6.");
 ABSL_FLAG(std::string, metatron_dir, "",
           "Path to the Metatron certificates, which are used for external publishing. A number "
           "of well-known directories are searched by default. This option is only necessary "
@@ -173,7 +176,8 @@ auto main(int argc, char** argv) -> int {
   admin::AdminServer admin_server(registry, absl::GetFlag(FLAGS_admin_port).port);
   admin_server.Start();
 
-  spectatord::Server server{absl::GetFlag(FLAGS_port).port, statsd_port, socket_path, &registry};
+  spectatord::Server server{absl::GetFlag(FLAGS_ipv4_only), absl::GetFlag(FLAGS_port).port,
+                            statsd_port, socket_path, &registry};
   server.Start();
 
   return 0;
