@@ -513,21 +513,27 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string> {
     if (extra <= 0) {
       auto idx = p - buffer;
       if (type == 'g') {
-        return fmt::format("Invalid ttl specified for gauge at index {}", idx);
+        auto msg = fmt::format("Invalid ttl specified for gauge at index {}", idx);
+        Logger()->info(fmt::format("Parse error for '{}': {}", buffer, msg));
+        return msg;
       } else if (type == 'X') {
-        return fmt::format(
-            "Invalid timestamp specified for monotonic sampled source at index {}", idx);
+        auto msg = fmt::format("Invalid timestamp specified for monotonic sampled source at index {}", idx);
+        Logger()->info(fmt::format("Parse error for '{}': {}", buffer, msg));
+        return msg;
       }
     }
     p = end_ttl;
   }
   if (*p != ':') {
-    return fmt::format("Expecting separator ':' at index {}", p - buffer);
+    auto msg = fmt::format("Expecting separator ':' at index {}", p - buffer);
+    Logger()->info(fmt::format("Parse error for '{}': {}", buffer, msg));
+    return msg;
   }
   ++p;
   std::string err_msg;
   auto measurement = get_measurement(type, p, &err_msg);
   if (!measurement) {
+    Logger()->info(fmt::format("Parse error for '{}': {}", buffer, err_msg));
     return err_msg;
   }
 
