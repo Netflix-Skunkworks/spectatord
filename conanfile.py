@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 from dataclasses import dataclass
+from typing import Optional
 
 from conans import ConanFile
 from conans.tools import download, unzip, check_sha256
@@ -9,10 +10,10 @@ from conans.tools import download, unzip, check_sha256
 
 @dataclass
 class NflxConfig:
-    internal: str = os.getenv("NFLX_INTERNAL")
-    source_host: str = os.getenv("NFLX_SOURCE_HOST")
-    ssl_cert: str = os.getenv("NFLX_SSL_CERT")
-    ssl_key: str = os.getenv("NFLX_SSL_KEY")
+    internal: Optional[str] = os.getenv("NFLX_INTERNAL")
+    source_host: Optional[str] = os.getenv("NFLX_SOURCE_HOST")
+    ssl_cert: Optional[str] = os.getenv("NFLX_SSL_CERT")
+    ssl_key: Optional[str] = os.getenv("NFLX_SSL_KEY")
 
 class SpectatorDConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
@@ -86,12 +87,12 @@ class SpectatorDConan(ConanFile):
 
     def get_netflix_spectator_cppconf(self, nflx_cfg: NflxConfig) -> None:
         repo = "corp/cldmta-netflix-spectator-cppconf"
-        commit = "190785a2205e96c71646a4f3dd6b8f5154e9a9ba"
+        commit = "a225b1aa20b74ecffa8c1cdb5f884b2d792809d2"
         zip_name = repo.replace("corp/", "") + f"-{commit}.zip"
 
         self.maybe_remove_file(zip_name)
         self.download(nflx_cfg, repo, commit, zip_name)
-        check_sha256(zip_name, "50d8641f2a38d4682c33fbb4a073f9e6679589e635ced09caadc54a7f55c26a5")
+        check_sha256(zip_name, "b8a202ccafb5389dbda02cb9750cb0bfcd44369c69e015eb55a10b5f8759d73a")
 
         dir_name = repo.replace("corp/", "")
         self.maybe_remove_dir(dir_name)

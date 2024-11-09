@@ -35,6 +35,18 @@ source venv/bin/activate
 ln -s cmake-build cmake-build-debug
 
 ./build.sh  # [clean|clean --force|skiptest]
+
+# run the binary locally
+./cmake-build/bin/spectatord_main --enable_external --no_common_tags
+
+# test publish
+echo "c:server.numRequests,nf.app=spectatord_$USER,id=failed:1" | nc -u -w0 localhost 1234
+echo "c:server.numRequests,nf.app=spectatord_$USER,id=success:1" | nc -u -w0 localhost 1234
+
+# parse errors
+echo ":server.numRequests,nf.app=spectatord_$USER,id=failed:1" | nc -u -w0 localhost 1234
+echo "c:server.numRequests,nf.app=spectatord_$USER,id=failed" | nc -u -w0 localhost 1234
+echo "c::1" | nc -u -w0 localhost 1234
 ```
 
 * CLion > Preferences > Plugins > Marketplace > Conan > Install
