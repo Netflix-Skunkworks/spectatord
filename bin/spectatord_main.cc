@@ -2,10 +2,13 @@
 #include "util/logger.h"
 #include "spectatord.h"
 #include "spectator/registry.h"
+#include "spectator/version.h"
 #include <cstdlib>
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
+#include "absl/flags/internal/program_name.h"
 #include "absl/flags/usage.h"
+#include "absl/flags/usage_config.h"
 #include "absl/strings/str_split.h"
 #include "absl/time/time.h"
 #include "admin/admin_server.h"
@@ -96,12 +99,15 @@ ABSL_FLAG(bool, verbose_http, false,
 
 auto main(int argc, char** argv) -> int {
   auto logger = Logger();
+
   auto signals = backward::SignalHandling::make_default_signals();
   // default signals except SIGABRT
-  signals.erase(std::remove(signals.begin(), signals.end(), SIGABRT),
-                signals.end());
+  signals.erase(std::remove(signals.begin(), signals.end(), SIGABRT), signals.end());
   backward::SignalHandling sh{signals};
 
+  auto usage_config = absl::flags_internal::GetUsageConfig();
+  usage_config.version_string = []() { return fmt::format("spectatord/{}\n", VERSION); };
+  absl::SetFlagsUsageConfig(usage_config);
   absl::SetProgramUsageMessage("A daemon that listens for metrics and reports them to Atlas.");
   absl::ParseCommandLine(argc, argv);
 

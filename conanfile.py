@@ -61,7 +61,8 @@ class SpectatorDConan(ConanFile):
     @staticmethod
     def download(nflx_cfg: NflxConfig, repo: str, commit: str, zip_name: str) -> None:
         subprocess.run([
-            "curl", "-s", "-k", "-L",
+            "curl", "-s", "-L",
+            "--connect-timeout", "5",
             "--cert", nflx_cfg.ssl_cert,
             "--key", nflx_cfg.ssl_key,
             "-H", "Accept: application/vnd.github+json",
@@ -105,12 +106,12 @@ class SpectatorDConan(ConanFile):
 
     def get_spectatord_metatron(self, nflx_cfg: NflxConfig) -> None:
         repo = "corp/cldmta-spectatord-metatron"
-        commit = "544fec6b794e46da0af174062a35567a9d462e5f"
+        commit = "0adc171544dd4f30d445a8463176082a98be8070"
         zip_name = repo.replace("corp/", "") + f"-{commit}.zip"
 
         self.maybe_remove_file(zip_name)
         self.download(nflx_cfg, repo, commit, zip_name)
-        check_sha256(zip_name, "edb0aebd7b391f72242fae0ee08c7a0ae86170743dffc49166f2f3e8a7062185")
+        check_sha256(zip_name, "a8be6a7ac2c8704f4b0c6d121de64db96855354eea2ef463d3e3c629c459fc04")
 
         dir_name = repo.replace("corp/", "")
         self.maybe_remove_dir(dir_name)
