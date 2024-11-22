@@ -1,6 +1,6 @@
 #include "counter.h"
 #include "atomicnumber.h"
-#include "spectator/common_refs.h"
+#include "common_refs.h"
 
 namespace spectator {
 

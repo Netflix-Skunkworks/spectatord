@@ -1,7 +1,7 @@
+#include "../server/spectatord.h"
 #include <benchmark/benchmark.h>
 #include <fmt/format.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#include "spectatord.h"
 
 static std::vector<std::string> get_measurements() {
   std::vector<std::string> measurements;

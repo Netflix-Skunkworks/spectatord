@@ -1,10 +1,9 @@
-#include "http_server.h"
+#include "../util/logger.h"
 #include "absl/strings/ascii.h"
-#include "spectator/gzip.h"
-#include "util/logger.h"
+#include "gzip.h"
+#include "http_server.h"
 
 #include <fmt/format.h>
-#include <fstream>
 #include <gtest/gtest.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -224,7 +223,7 @@ void http_server::accept_request(int client) {
     std::this_thread::sleep_for(read_sleep_);
   }
 
-  // TODO handle 404s
+  // TODO: handle 404s
   const auto& response = path_response_[path];
 
   // hack for /getheader - just echo the headers that start with X- back

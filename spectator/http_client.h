@@ -2,7 +2,7 @@
 
 #include "absl/time/time.h"
 #include "compressed_buffer.h"
-#include "metatron/metatron_config.h"
+#include "../metatron/metatron_config.h"
 #include <chrono>
 #include <map>
 #include <memory>

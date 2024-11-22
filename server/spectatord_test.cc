@@ -1,10 +1,9 @@
-#include <fmt/ostream.h>
-#include "local.h"
-#include "util/logger.h"
-#include "spectatord.h"
-#include "spectator/test_utils.h"
-
+#include "../spectator/test_utils.h"
 #include "gtest/gtest.h"
+#include "local.h"
+#include "spectatord.h"
+
+#include <fmt/ostream.h>
 
 namespace {
 

@@ -60,12 +60,14 @@ void SmilePayload::Append(size_t n) {
   buffer_.Append(kByteInt32, static_cast<uint8_t>(i >> 7U), b3, b2, b1, b0);
 }
 
+union LongDouble {
+  double d;
+  uint64_t l;
+};
+
 void SmilePayload::Append(double value) {
   buffer_.Append(kByteFloat64);
-  union LongDouble {
-    double d;
-    uint64_t l;
-  } ld = {.d = value};
+  LongDouble ld{value};
   auto l = ld.l;
 
   // Handle first 29 bits (single bit first, then 4 x 7 bits)

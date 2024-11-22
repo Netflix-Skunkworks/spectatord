@@ -4,4 +4,4 @@ add_library(util OBJECT
     "logger.cc"
     "logger.h"
 )
-target_link_libraries(util ${CONAN_LIBS})
+target_link_libraries(util spdlog::spdlog)

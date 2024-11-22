@@ -15,7 +15,7 @@ void output_array(std::ostream& os, size_t size, char prefix,
     } else {
       first = false;
     }
-    sprintf(tag, "\"%c%04zX\"", prefix, i);
+    snprintf(tag, sizeof tag, "\"%c%04zX\"", prefix, i);
     os << tag;
   }
   os << "}};\n";

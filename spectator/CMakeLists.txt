@@ -64,8 +64,19 @@ add_library(spectator OBJECT
     "valid_chars.inc"
     "version.h"
 )
-target_include_directories(spectator PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(spectator metatron util ${CONAN_LIBS})
+target_link_libraries(spectator
+    metatron
+    util
+    abseil::abseil
+    asio::asio
+    CURL::libcurl
+    fmt::fmt
+    rapidjson
+    spdlog::spdlog
+    tsl::hopscotch_map
+    xxHash::xxhash
+    ZLIB::ZLIB
+)
 
 #-- file generators, must exist where the outputs are referenced
 add_custom_command(

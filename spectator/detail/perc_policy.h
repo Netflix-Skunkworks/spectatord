@@ -1,11 +1,12 @@
 #pragma once
+
 #include "../percentile_buckets.h"
 #include "../registry.h"
 #include <array>
 
 namespace spectator::detail {
 
-#include "spectator/percentile_bucket_tags.inc"
+#include "../percentile_bucket_tags.inc"
 
 using counters_t =
     std::array<std::shared_ptr<Counter>, PercentileBucketsLength()>;

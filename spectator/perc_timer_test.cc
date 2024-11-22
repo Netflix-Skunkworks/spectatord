@@ -15,20 +15,29 @@ std::unique_ptr<T> getTimer(Registry* r) {
 
 using Implementations = testing::Types<PercentileTimer>;
 
+// satisfy -Wgnu-zero-variadic-macro-arguments in TYPED_TEST_SUITE
+class NameGenerator {
+ public:
+  template <typename T>
+  static std::string GetName(int) {
+    if constexpr (std::is_same_v<T, PercentileTimer>) return "PercentileTimer";
+    return "unknownType";
+  }
+};
+
 template <class T>
 class PercentileTimerTest : public ::testing::Test {
  protected:
   PercentileTimerTest()
       : r{GetConfiguration(), spectatord::Logger()},
         timer{getTimer<T>(&r)},
-        restricted_timer{&r, Id::Of("t2"), absl::Milliseconds(5),
-                         absl::Seconds(2)} {}
+        restricted_timer{&r, Id::Of("t2"), absl::Milliseconds(5), absl::Seconds(2)} {}
   Registry r;
   std::unique_ptr<T> timer;
   T restricted_timer;
 };
 
-TYPED_TEST_SUITE(PercentileTimerTest, Implementations);
+TYPED_TEST_SUITE(PercentileTimerTest, Implementations, NameGenerator);
 
 TYPED_TEST(PercentileTimerTest, Percentile) {
   for (auto i = 0; i < 100000; ++i) {
@@ -53,8 +62,7 @@ TYPED_TEST(PercentileTimerTest, Measure) {
   auto expected = std::map<std::string, double>{};
 
   auto percentileTag = kTimerTags.at(PercentileBucketIndexOf(elapsed_nanos));
-  expected[fmt::format("t|percentile={}|statistic=percentile", percentileTag)] =
-      1;
+  expected[fmt::format("t|percentile={}|statistic=percentile", percentileTag)] = 1;
 
   expected["t|statistic=count"] = 1;
   auto elapsed_secs = elapsed_nanos / 1e9;
@@ -64,8 +72,7 @@ TYPED_TEST(PercentileTimerTest, Measure) {
 
   ASSERT_EQ(expected.size(), actual.size());
   for (const auto& expected_m : expected) {
-    EXPECT_DOUBLE_EQ(expected_m.second, actual[expected_m.first])
-        << expected_m.first;
+    EXPECT_DOUBLE_EQ(expected_m.second, actual[expected_m.first]) << expected_m.first;
   }
 }
 
@@ -75,8 +82,7 @@ TYPED_TEST(PercentileTimerTest, CountTotal) {
   }
 
   EXPECT_EQ(this->timer->Count(), 100);
-  EXPECT_EQ(this->timer->TotalTime(),
-            100 * 99 / 2);  // sum(1,n) = n * (n - 1) / 2
+  EXPECT_EQ(this->timer->TotalTime(), 100 * 99 / 2);  // sum(1,n) = n * (n - 1) / 2
 }
 
 TYPED_TEST(PercentileTimerTest, Restrict) {
@@ -87,8 +93,7 @@ TYPED_TEST(PercentileTimerTest, Restrict) {
   t.Record(absl::Milliseconds(10));
 
   // not restricted here
-  auto total =
-      absl::Milliseconds(1) + absl::Seconds(10) + absl::Milliseconds(10);
+  auto total = absl::Milliseconds(1) + absl::Seconds(10) + absl::Milliseconds(10);
   EXPECT_EQ(t.TotalTime(), absl::ToInt64Nanoseconds(total));
   EXPECT_EQ(t.Count(), 3);
 
@@ -99,18 +104,14 @@ TYPED_TEST(PercentileTimerTest, Restrict) {
   // 5ms
   auto minPercTag = kTimerTags.at(PercentileBucketIndexOf(5l * 1000 * 1000));
   // 2s
-  auto maxPercTag =
-      kTimerTags.at(PercentileBucketIndexOf(2l * 1000 * 1000 * 1000));
+  auto maxPercTag = kTimerTags.at(PercentileBucketIndexOf(2l * 1000 * 1000 * 1000));
   // 10ms --> not restricted
   auto percTag = kTimerTags.at(PercentileBucketIndexOf(10l * 1000 * 1000));
   std::string name = t.MeterId().Name().Get();
 
-  expected[fmt::format("{}|percentile={}|statistic=percentile", name,
-                       minPercTag)] = 1;
-  expected[fmt::format("{}|percentile={}|statistic=percentile", name,
-                       maxPercTag)] = 1;
-  expected[fmt::format("{}|percentile={}|statistic=percentile", name,
-                       percTag)] = 1;
+  expected[fmt::format("{}|percentile={}|statistic=percentile", name, minPercTag)] = 1;
+  expected[fmt::format("{}|percentile={}|statistic=percentile", name, maxPercTag)] = 1;
+  expected[fmt::format("{}|percentile={}|statistic=percentile", name, percTag)] = 1;
 
   expected[fmt::format("{}|statistic=count", name)] = 3;
   auto elapsed_secs = absl::ToDoubleSeconds(total);
@@ -121,8 +122,7 @@ TYPED_TEST(PercentileTimerTest, Restrict) {
 
   ASSERT_EQ(expected.size(), actual.size());
   for (const auto& expected_m : expected) {
-    EXPECT_DOUBLE_EQ(expected_m.second, actual[expected_m.first])
-        << expected_m.first;
+    EXPECT_DOUBLE_EQ(expected_m.second, actual[expected_m.first]) << expected_m.first;
   }
 }
 }  // namespace

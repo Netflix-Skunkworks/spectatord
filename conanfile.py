@@ -4,8 +4,8 @@ import subprocess
 from dataclasses import dataclass
 from typing import Optional
 
-from conans import ConanFile
-from conans.tools import download, unzip, check_sha256
+from conan import ConanFile
+from conan.tools.files import download, unzip, check_sha256
 
 
 @dataclass
@@ -18,24 +18,26 @@ class NflxConfig:
 class SpectatorDConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     requires = (
-        "abseil/20230125.3",
-        "asio/1.28.1",
+        "abseil/20240116.2",
+        "asio/1.32.0",
         "backward-cpp/1.6",
         "benchmark/1.8.3",
-        "fmt/10.1.1",
-        "gtest/1.14.0",
-        "libcurl/8.4.0",
-        "openssl/3.2.0",
-        "poco/1.12.5p2",
-        "protobuf/3.21.12",
+        "fmt/11.0.2",
+        "gtest/1.15.0",
+        "libcurl/8.10.1",
+        "openssl/3.3.2",
+        "poco/1.13.3",
+        "protobuf/5.27.0",
         "rapidjson/cci.20230929",
-        "spdlog/1.12.0",
+        "spdlog/1.15.0",
         "tsl-hopscotch-map/2.3.1",
         "xxhash/0.8.2",
-        "zlib/1.3"
+        "zlib/1.3.1",
     )
-    generators = "cmake"
-    default_options = {}
+    tool_requires = (
+        "protobuf/5.27.0",
+    )
+    generators = "CMakeDeps", "CMakeToolchain"
 
     def configure(self):
         self.options["libcurl"].with_c_ares = True
@@ -77,27 +79,27 @@ class SpectatorDConan(ConanFile):
         zip_name = repo.replace("skarupke/", "") + f"-{commit}.zip"
 
         self.maybe_remove_file(zip_name)
-        download(f"https://github.com/{repo}/archive/{commit}.zip", zip_name)
-        check_sha256(zip_name, "513efb9c2f246b6df9fa16c5640618f09804b009e69c8f7bd18b3099a11203d5")
+        download(self, f"https://github.com/{repo}/archive/{commit}.zip", zip_name)
+        check_sha256(self, zip_name, "513efb9c2f246b6df9fa16c5640618f09804b009e69c8f7bd18b3099a11203d5")
 
         dir_name = "ska"
         self.maybe_remove_dir(dir_name)
-        unzip(zip_name, destination=dir_name, strip_root=True)
+        unzip(self, zip_name, destination=dir_name, strip_root=True)
 
         os.unlink(zip_name)
 
     def get_netflix_spectator_cppconf(self, nflx_cfg: NflxConfig) -> None:
         repo = "corp/cldmta-netflix-spectator-cppconf"
-        commit = "a225b1aa20b74ecffa8c1cdb5f884b2d792809d2"
+        commit = "1c1596a8ac2a77ed425192879b8853a68b585aeb"
         zip_name = repo.replace("corp/", "") + f"-{commit}.zip"
 
         self.maybe_remove_file(zip_name)
         self.download(nflx_cfg, repo, commit, zip_name)
-        check_sha256(zip_name, "b8a202ccafb5389dbda02cb9750cb0bfcd44369c69e015eb55a10b5f8759d73a")
+        check_sha256(self, zip_name, "a032349b43d7f1345078e33b5871f9f5b8ac4fa09f0a06d71332b30891734d1f")
 
         dir_name = repo.replace("corp/", "")
         self.maybe_remove_dir(dir_name)
-        unzip(zip_name, destination=dir_name, strip_root=True)
+        unzip(self, zip_name, destination=dir_name, strip_root=True)
         self.maybe_remove_file("spectator/netflix_config.cc")
         shutil.move(f"{dir_name}/netflix_config.cc", "spectator")
 
@@ -106,16 +108,16 @@ class SpectatorDConan(ConanFile):
 
     def get_spectatord_metatron(self, nflx_cfg: NflxConfig) -> None:
         repo = "corp/cldmta-spectatord-metatron"
-        commit = "0adc171544dd4f30d445a8463176082a98be8070"
+        commit = "2247fd57fd2b098d295eb1e09411a9ae1969097b"
         zip_name = repo.replace("corp/", "") + f"-{commit}.zip"
 
         self.maybe_remove_file(zip_name)
         self.download(nflx_cfg, repo, commit, zip_name)
-        check_sha256(zip_name, "a8be6a7ac2c8704f4b0c6d121de64db96855354eea2ef463d3e3c629c459fc04")
+        check_sha256(self, zip_name, "6bb8a5239ad3016d681342759e2807b05848027711810ad24b858d9b05179677")
 
         dir_name = repo.replace("corp/", "")
         self.maybe_remove_dir(dir_name)
-        unzip(zip_name, destination=dir_name, strip_root=True)
+        unzip(self, zip_name, destination=dir_name, strip_root=True)
         self.maybe_remove_file("metatron/auth_context.proto")
         self.maybe_remove_file("metatron/metatron_config.cc")
         shutil.move(f"{dir_name}/metatron/auth_context.proto", "metatron")

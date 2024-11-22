@@ -1,6 +1,6 @@
 #pragma once
 
-#include "util/logger.h"
+#include "logger.h"
 #include <cstdio>
 
 namespace spectatord {

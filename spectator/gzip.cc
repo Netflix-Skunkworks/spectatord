@@ -1,7 +1,5 @@
 #include "gzip.h"
 
-#include <string>
-
 #ifndef z_const
 #define z_const
 #endif

@@ -1,7 +1,9 @@
 **/*.inc
 .DS_Store
 .idea/
-cmake-build-debug
+.newt-cache/
+CMakeUserPresets.json
+cmake-build-debug/
 cmake-build/
 metatron/auth_context.pb.cc
 metatron/auth_context.pb.h

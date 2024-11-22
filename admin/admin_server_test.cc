@@ -1,8 +1,7 @@
+#include "../spectator/config.h"
+#include "../spectator/registry.h"
 #include "admin_server.h"
-#include "util/logger.h"
 #include "gtest/gtest.h"
-#include "spectator/config.h"
-#include "spectator/registry.h"
 #include <Poco/JSON/Parser.h>
 #include <Poco/Net/HTTPClientSession.h>
 #include <Poco/Net/HTTPServerRequest.h>
@@ -290,7 +289,7 @@ Object::Ptr get_common_tags() {
 
   Parser parser;
   Var result {parser.parse(rr)};
-  Object::Ptr object = result.extract<Object::Ptr>();
+  const auto& object = result.extract<Object::Ptr>();
   Var common_tags = object->get("common_tags");
   return common_tags.extract<Object::Ptr>();
 }
@@ -298,22 +297,13 @@ Object::Ptr get_common_tags() {
 TEST_F(AdminServerTest, set_common_tags) {
   // start with zero common tags
   Object::Ptr subObject = get_common_tags();
-
-  int count = 0;
-  for (auto &it : *subObject) {
-    count += 1;
-  }
-  EXPECT_EQ(count, 0);
+  EXPECT_EQ(subObject->size(), 0);
 
   // set three common tags
   post("/config/common_tags", R"({"mantisJobId": "foo", "mantisJobName": "bar", "mantisUser": "baz"})");
   subObject = get_common_tags();
 
-  count = 0;
-  for (auto &it : *subObject) {
-    count += 1;
-  }
-  EXPECT_EQ(count, 3);
+  EXPECT_EQ(subObject->size(), 3);
   EXPECT_EQ("foo", subObject->get("mantisJobId"));
   EXPECT_EQ("bar", subObject->get("mantisJobName"));
   EXPECT_EQ("baz", subObject->get("mantisUser"));
@@ -322,11 +312,7 @@ TEST_F(AdminServerTest, set_common_tags) {
   post("/config/common_tags", R"({"mantisJobName": "quux", "mantisUser": ""})");
   subObject = get_common_tags();
 
-  count = 0;
-  for (auto &it : *subObject) {
-    count += 1;
-  }
-  EXPECT_EQ(count, 2);
+  EXPECT_EQ(subObject->size(), 2);
   EXPECT_EQ("foo", subObject->get("mantisJobId"));
   EXPECT_EQ("quux", subObject->get("mantisJobName"));
 
@@ -334,11 +320,7 @@ TEST_F(AdminServerTest, set_common_tags) {
   post("/config/common_tags", R"({"mantisJobId": "", "mantisJobName": ""})");
   subObject = get_common_tags();
 
-  count = 0;
-  for (auto &it : *subObject) {
-    count += 1;
-  }
-  EXPECT_EQ(count, 0);
+  EXPECT_EQ(subObject->size(), 0);
 }
 
 Poco::JSON::Array::Ptr get_metrics(const std::string& type) {
@@ -350,7 +332,7 @@ Poco::JSON::Array::Ptr get_metrics(const std::string& type) {
 
   Parser parser;
   Var result {parser.parse(rr)};
-  Object::Ptr object = result.extract<Object::Ptr>();
+  const auto& object = result.extract<Object::Ptr>();
   Var metrics;
   if (type == "A") {
     metrics = object->get("age_gauges");
@@ -382,11 +364,7 @@ HTTPResponse delete_age_gauge(const std::string& id) {
 TEST_F(AdminServerTest, delete_meters) {
   // start with three pre-populated age gauges
   Poco::JSON::Array::Ptr subArr = get_metrics("A");
-  int count = 0;
-  for (auto &it : *subArr) {
-    count += 1;
-  }
-  EXPECT_EQ(count, 3);
+  EXPECT_EQ(subArr->size(), 3);
 
   HTTPResponse res;
 
@@ -408,11 +386,7 @@ TEST_F(AdminServerTest, delete_meters) {
   EXPECT_EQ(200, res.getStatus());
 
   subArr = get_metrics("A");
-  count = 0;
-  for (auto &it : *subArr) {
-    count += 1;
-  }
-  EXPECT_EQ(count, 0);
+  EXPECT_EQ(subArr->size(), 0);
 }
 
 }

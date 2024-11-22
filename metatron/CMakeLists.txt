@@ -12,15 +12,15 @@ else()
         "metatron_sample.cc"
     )
 endif()
-
-target_include_directories(metatron PRIVATE
-    ${CMAKE_SOURCE_DIR}
+target_link_libraries(metatron util
+    CURL::libcurl
+    openssl::openssl
+    protobuf::protobuf
 )
-target_link_libraries(metatron util ${CONAN_LIBS})
 
 #-- protobuf generated files must exist in both the SOURCE_DIR and the BINARY_DIR
 add_custom_command(
     OUTPUT auth_context.pb.cc auth_context.pb.h
-    COMMAND ${CONAN_PROTOBUF_ROOT}/bin/protoc --proto_path=${CMAKE_CURRENT_SOURCE_DIR} --cpp_out=${CMAKE_CURRENT_SOURCE_DIR} auth_context.proto
-    COMMAND ${CONAN_PROTOBUF_ROOT}/bin/protoc --proto_path=${CMAKE_CURRENT_SOURCE_DIR} --cpp_out=${CMAKE_CURRENT_BINARY_DIR} auth_context.proto
+    COMMAND protoc --proto_path=${CMAKE_CURRENT_SOURCE_DIR} --cpp_out=${CMAKE_CURRENT_SOURCE_DIR} auth_context.proto
+    COMMAND protoc --proto_path=${CMAKE_CURRENT_SOURCE_DIR} --cpp_out=${CMAKE_CURRENT_BINARY_DIR} auth_context.proto
 )

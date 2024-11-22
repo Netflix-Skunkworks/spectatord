@@ -1,5 +1,5 @@
-#include <benchmark/benchmark.h>
 #include <array>
+#include <benchmark/benchmark.h>
 
 static constexpr std::array<char, 128> kAtlasChars128 = {
     {'_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',

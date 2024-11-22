@@ -11,14 +11,15 @@
 #include "max_gauge.h"
 #include "monotonic_counter.h"
 #include "monotonic_counter_uint.h"
+#include "monotonic_sampled.h"
 #include "publisher.h"
 #include "timer.h"
-#include "spectator/monotonic_sampled.h"
+
 #include <condition_variable>
+#include <iostream>
 #include <mutex>
 #include <spdlog/spdlog.h>
 #include <tsl/hopscotch_map.h>
-#include <iostream>
 
 namespace spectator {
 

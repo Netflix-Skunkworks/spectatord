@@ -1,5 +1,5 @@
 #include "metatron_config.h"
-#include "util/logger.h"
+#include "../util/logger.h"
 
 namespace metatron {
 
