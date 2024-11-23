@@ -5,7 +5,7 @@ set -e
 # usage: ./build.sh [clean|clean --confirm|skiptest]
 
 BUILD_DIR=cmake-build
-# Choose: Debug, Release, RelWithDebInfo and MinSizeRel
+# Choose: Debug, Release, RelWithDebInfo and MinSizeRel. Use Debug for asan checking locally.
 BUILD_TYPE=Debug
 
 BLUE="\033[0;34m"
