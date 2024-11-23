@@ -20,8 +20,9 @@ bench_get_measurement_orig       4036 ns         4032 ns       169057
 bench_get_measurement_new        3951 ns         3947 ns       176396
 */
 
+#include "../server/spectatord.h"
 #include <benchmark/benchmark.h>
-#include "spectatord.h"
+
 using spectator::Id;
 using spectatord::measurement;
 

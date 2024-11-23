@@ -1,17 +1,16 @@
-#include "backward.hpp"
-#include "util/logger.h"
-#include "spectatord.h"
-#include "spectator/registry.h"
-#include "spectator/version.h"
-#include <cstdlib>
+#include "../admin/admin_server.h"
+#include "../server/spectatord.h"
+#include "../spectator/version.h"
 #include "absl/flags/flag.h"
-#include "absl/flags/parse.h"
 #include "absl/flags/internal/program_name.h"
+#include "absl/flags/parse.h"
 #include "absl/flags/usage.h"
 #include "absl/flags/usage_config.h"
 #include "absl/strings/str_split.h"
 #include "absl/time/time.h"
-#include "admin/admin_server.h"
+#include "backward.hpp"
+
+#include <cstdlib>
 #include <fmt/ranges.h>
 
 auto GetSpectatorConfig() -> std::unique_ptr<spectator::Config>;
@@ -33,8 +32,7 @@ auto AbslUnparseFlag(PortNumber p) -> std::string {
 // Parses a PortNumber from the command line flag value `text`.
 // Returns true and sets `*p` on success; returns false and sets `*error`
 // on failure.
-auto AbslParseFlag(absl::string_view text, PortNumber* p, std::string* error)
-    -> bool {
+auto AbslParseFlag(absl::string_view text, PortNumber* p, std::string* error) -> bool {
   // Convert from text to int using the int-flag parser.
   if (!absl::ParseFlag(text, &p->port, error)) {
     return false;

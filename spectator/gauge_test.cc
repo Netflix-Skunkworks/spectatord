@@ -1,5 +1,5 @@
-#include "../spectator/gauge.h"
-#include "spectator/common_refs.h"
+#include "gauge.h"
+#include "common_refs.h"
 #include <gtest/gtest.h>
 
 namespace {

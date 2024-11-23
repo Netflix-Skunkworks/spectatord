@@ -50,11 +50,9 @@ struct hash<spectator::StrRef> {
 };
 }  // namespace std
 
-template <>
-struct fmt::formatter<spectator::StrRef> : fmt::formatter<std::string_view> {
-  template <typename FormatContext>
-  auto format(const spectator::StrRef& s, FormatContext& context) {
+template <> struct fmt::formatter<spectator::StrRef>: formatter<std::string_view> {
+  auto format(const spectator::StrRef& s, format_context& ctx) const -> format_context::iterator {
     std::string_view str_view{s.Get(), s.Length()};
-    return fmt::formatter<std::string_view>::format(str_view, context);
+    return fmt::formatter<std::string_view>::format(str_view, ctx);
   }
 };

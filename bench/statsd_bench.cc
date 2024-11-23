@@ -1,7 +1,7 @@
+#include "../server/spectatord.h"
 #include <benchmark/benchmark.h>
 #include <fmt/format.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
-#include "spectatord.h"
 
 class dummy_server : public spectatord::Server {
  public:

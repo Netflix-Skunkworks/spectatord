@@ -1,6 +1,8 @@
 #pragma once
+
 #include "gzip.h"
 #include <cassert>
+#include <cstdint>
 #include <string_view>
 #include <vector>
 

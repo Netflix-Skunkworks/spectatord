@@ -1,4 +1,4 @@
-#include "spectator/tags.h"
+#include "tags.h"
 #include <gtest/gtest.h>
 #include <fmt/format.h>
 
@@ -52,14 +52,14 @@ TEST(Tags, At) {
 }
 
 // add n tags of the form K<num> = V<num>
-auto prepare_tags(Tags* tags, int n) -> void {
+auto prepare_tags(Tags* tags) -> void {
   for (auto i = 0; i < 16; ++i) {
     tags->add(fmt::format("K{}", i), fmt::format("V{}", i));
   }
 }
 
 auto verify_tags(const Tags& tags, int n) -> void {
-  ASSERT_TRUE(tags.capacity() >= n);
+  ASSERT_TRUE(tags.capacity() >= (size_t)n);
   for (auto i = n - 1; i >= 0; --i) {
     auto k = spectator::intern_str(fmt::format("K{}", i));
     auto v = spectator::intern_str(fmt::format("V{}", i));
@@ -70,7 +70,7 @@ auto verify_tags(const Tags& tags, int n) -> void {
 TEST(Tags, Copy) {
   for (auto size = 1; size < 16; ++size) {
     Tags t;
-    prepare_tags(&t, size);
+    prepare_tags(&t);
 
     Tags t2{t};
     ASSERT_EQ(t2.size(), t.size());
@@ -84,7 +84,7 @@ TEST(Tags, Copy_Add) {
   using spectator::intern_str;
   for (auto size = 15; size < 16; ++size) {
     Tags t;
-    prepare_tags(&t, size);
+    prepare_tags(&t);
     Tags t2{t};
 
     // add to the end

@@ -1,10 +1,6 @@
 #include "spectatord.h"
 #include "local_server.h"
-#include "util/logger.h"
 #include "proc_utils.h"
-#include "spectator/percentile_distribution_summary.h"
-#include "spectator/percentile_timer.h"
-#include "spectator/registry.h"
 #include "udp_server.h"
 
 #include <asio.hpp>

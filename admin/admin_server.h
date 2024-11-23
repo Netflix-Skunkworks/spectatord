@@ -1,6 +1,7 @@
 #pragma once
 
-#include "spectator/registry.h"
+#include "../spectator/registry.h"
+#include "../util/logger.h"
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/HTTPRequestHandler.h>
 
@@ -43,12 +44,12 @@ class RequestHandlerFactory: public HTTPRequestHandlerFactory {
 
 class AdminServer {
   std::shared_ptr<HTTPServer> instance;
-  Registry &registry;
+//  Registry &registry;
 
  public:
   AdminServer(Registry &r, int p):
-    registry{r},
     instance{std::make_shared<HTTPServer>(new RequestHandlerFactory(r), SocketAddress("localhost", p), new HTTPServerParams)} {}
+//    registry{r} {}
   void Start() { instance->start(); }
   void Stop() { instance->stop(); }
 };

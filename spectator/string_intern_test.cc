@@ -1,8 +1,9 @@
+#include "string_intern.h"
 #include <gtest/gtest.h>
 #include <fmt/format.h>
-#include "spectator/string_intern.h"
 
 namespace {
+
 using spectator::intern_str;
 using spectator::StrRef;
 

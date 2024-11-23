@@ -14,6 +14,16 @@ std::unique_ptr<T> getDS(Registry* r) {
 
 using Implementations = testing::Types<PercentileDistributionSummary>;
 
+// satisfy -Wgnu-zero-variadic-macro-arguments in TYPED_TEST_SUITE
+class NameGenerator {
+ public:
+  template <typename T>
+  static std::string GetName(int) {
+    if constexpr (std::is_same_v<T, PercentileDistributionSummary>) return "PercentileDistributionSummary";
+    return "unknownType";
+  }
+};
+
 template <class T>
 class PercentileDistributionSummaryTest : public ::testing::Test {
  protected:
@@ -27,7 +37,7 @@ class PercentileDistributionSummaryTest : public ::testing::Test {
   T restricted_ds;
 };
 
-TYPED_TEST_SUITE(PercentileDistributionSummaryTest, Implementations);
+TYPED_TEST_SUITE(PercentileDistributionSummaryTest, Implementations, NameGenerator);
 
 TYPED_TEST(PercentileDistributionSummaryTest, Percentile) {
   auto& ds = this->ds;
@@ -51,9 +61,7 @@ TYPED_TEST(PercentileDistributionSummaryTest, Measure) {
   auto expected = std::map<std::string, double>{};
 
   auto percentileTag = kDistTags.at(PercentileBucketIndexOf(42));
-  expected[fmt::format("ds|percentile={}|statistic=percentile",
-                       percentileTag)] = 1;
-
+  expected[fmt::format("ds|percentile={}|statistic=percentile", percentileTag)] = 1;
   expected["ds|statistic=count"] = 1;
   expected["ds|statistic=max"] = 42;
   expected["ds|statistic=totalAmount"] = 42;
@@ -71,8 +79,7 @@ TYPED_TEST(PercentileDistributionSummaryTest, CountTotal) {
   }
 
   EXPECT_EQ(this->ds->Count(), 100);
-  EXPECT_EQ(this->ds->TotalAmount(),
-            100 * 99 / 2);  // sum(1,n) = n * (n - 1) / 2
+  EXPECT_EQ(this->ds->TotalAmount(), 100 * 99 / 2);  // sum(1,n) = n * (n - 1) / 2
 }
 
 TYPED_TEST(PercentileDistributionSummaryTest, Restrict) {
@@ -96,12 +103,9 @@ TYPED_TEST(PercentileDistributionSummaryTest, Restrict) {
   auto percTag = kDistTags.at(PercentileBucketIndexOf(10));
 
   auto name = ds.MeterId().Name().Get();
-  expected[fmt::format("{}|percentile={}|statistic=percentile", name,
-                       minPercTag)] = 1;
-  expected[fmt::format("{}|percentile={}|statistic=percentile", name,
-                       maxPercTag)] = 1;
-  expected[fmt::format("{}|percentile={}|statistic=percentile", name,
-                       percTag)] = 1;
+  expected[fmt::format("{}|percentile={}|statistic=percentile", name, minPercTag)] = 1;
+  expected[fmt::format("{}|percentile={}|statistic=percentile", name, maxPercTag)] = 1;
+  expected[fmt::format("{}|percentile={}|statistic=percentile", name, percTag)] = 1;
 
   expected[fmt::format("{}|statistic=count", name)] = 3;
   auto totalSq = 10 * 10 + 10000 * 10000;
@@ -111,8 +115,7 @@ TYPED_TEST(PercentileDistributionSummaryTest, Restrict) {
 
   ASSERT_EQ(expected.size(), actual.size());
   for (const auto& expected_m : expected) {
-    EXPECT_DOUBLE_EQ(expected_m.second, actual[expected_m.first])
-        << expected_m.first;
+    EXPECT_DOUBLE_EQ(expected_m.second, actual[expected_m.first]) << expected_m.first;
   }
 }
 }  // namespace

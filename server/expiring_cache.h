@@ -2,7 +2,7 @@
 
 #include "absl/base/thread_annotations.h"
 #include "absl/synchronization/mutex.h"
-#include "spectator/registry.h"
+#include "../spectator/registry.h"
 #include <chrono>
 #include <memory>
 

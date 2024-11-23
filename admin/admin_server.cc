@@ -1,6 +1,6 @@
 #include "admin_server.h"
-#include "server/spectatord.h"
-#include "spectator/version.h"
+#include "../server/spectatord.h"
+#include "../spectator/version.h"
 #include <Poco/JSON/Parser.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
@@ -265,7 +265,7 @@ spectator::Id parse_id(const std::string& id_str) {
 
   // optionally get tags
   if (id_str[pos] == ',') {
-    while (id_str[pos] != std::string_view::npos) {
+    while (pos != std::string_view::npos) {
       ++pos;
       auto k_pos = id_str.find('=', pos);
       if (k_pos == std::string_view::npos) break;

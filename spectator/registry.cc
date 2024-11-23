@@ -1,7 +1,6 @@
 #include "registry.h"
-#include "util/logger.h"
-#include <fmt/ostream.h>
 
+#include <fmt/ostream.h>
 #include <utility>
 
 namespace spectator {
