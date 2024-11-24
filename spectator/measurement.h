@@ -33,12 +33,9 @@ using Measurements = std::vector<Measurement>;
 
 }  // namespace spectator
 
-template <> struct fmt::formatter<spectator::Measurement> {
-  constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
-
-  // formatter: Measurement{Id(c, {id->2, statistic->count}),1}
-  template <typename format_context>
-  constexpr auto format(const spectator::Measurement& m, format_context& ctx) const {
+// formatter: Measurement{Id(c, {id->2, statistic->count}),1}
+template <> struct fmt::formatter<spectator::Measurement>: formatter<std::string_view> {
+  static auto format(const spectator::Measurement& m, format_context& ctx) -> format_context::iterator {
     return fmt::format_to(ctx.out(), "Measurement{{{}, {}}}", m.id, m.value);
   }
 };

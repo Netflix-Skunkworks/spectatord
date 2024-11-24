@@ -116,12 +116,9 @@ struct equal_to<shared_ptr<spectator::Id>> {
 
 }  // namespace std
 
-template <> struct fmt::formatter<spectator::Id> {
-  constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
-
-  // formatter: Id(c, {id->2, statistic->count})
-  template <typename format_context>
-  constexpr auto format(const spectator::Id& id, format_context& ctx) const {
+// formatter: Id(c, {id->2, statistic->count})
+template <> struct fmt::formatter<spectator::Id>: formatter<std::string_view> {
+  static auto format(const spectator::Id& id, format_context& ctx) -> format_context::iterator {
     return fmt::format_to(ctx.out(), "Id({}, {})", id.Name(), id.GetTags());
   }
 };
