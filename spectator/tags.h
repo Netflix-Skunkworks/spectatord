@@ -210,12 +210,9 @@ inline auto operator<<(std::ostream& os, const Tags& tags) -> std::ostream& {
 
 }  // namespace spectator
 
-template <> struct fmt::formatter<spectator::Tag> {
-  constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
-
-  // Tag formatter: statistic->count
-  template <typename format_context>
-  constexpr auto format(const spectator::Tag& tag, format_context& ctx) const {
-    return fmt::format_to(ctx.out(), "{}->{}", tag.key, tag.value);
+// formatter: statistic->count
+template <> struct fmt::formatter<spectator::Tag>: formatter<std::string_view> {
+  static auto format(const spectator::Tag& tag, format_context& ctx) -> format_context::iterator {
+      return fmt::format_to(ctx.out(), "{}->{}", tag.key, tag.value);
   }
 };
