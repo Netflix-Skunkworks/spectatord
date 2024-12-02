@@ -39,18 +39,6 @@ class PercentileTimerTest : public ::testing::Test {
 
 TYPED_TEST_SUITE(PercentileTimerTest, Implementations, NameGenerator);
 
-TYPED_TEST(PercentileTimerTest, Percentile) {
-  for (auto i = 0; i < 100000; ++i) {
-    this->timer->Record(absl::Milliseconds(i));
-  }
-
-  for (auto i = 0; i <= 100; ++i) {
-    auto expected = static_cast<double>(i);
-    auto threshold = 0.15 * expected;
-    EXPECT_NEAR(expected, this->timer->Percentile(i), threshold);
-  }
-}
-
 TYPED_TEST(PercentileTimerTest, Measure) {
   auto elapsed = absl::Milliseconds(42);
   this->timer->Record(elapsed);

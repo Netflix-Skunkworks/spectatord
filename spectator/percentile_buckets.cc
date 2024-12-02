@@ -1,9 +1,8 @@
+#include "percentile_bucket_values.inc"
 #include "percentile_buckets.h"
 #include <limits>
 
 namespace spectator {
-
-#include "percentile_bucket_values.inc"
 
 auto GetPercBucketValue(size_t i) -> int64_t { return kBucketValues.at(i); }
 
