@@ -4,16 +4,21 @@ set -e
 
 # usage: ./build.sh [clean|clean --confirm|skiptest]
 
-BUILD_DIR=cmake-build
-# Choose: Debug, Release, RelWithDebInfo and MinSizeRel. Use Debug for asan checking locally.
-BUILD_TYPE=Debug
+if [[ -z "$BUILD_DIR" ]]; then
+  BUILD_DIR="cmake-build"
+fi
+
+if [[ -z "$BUILD_TYPE" ]]; then
+  # Choose: Debug, Release, RelWithDebInfo and MinSizeRel. Use Debug for asan checking locally.
+  BUILD_TYPE="Debug"
+fi
 
 BLUE="\033[0;34m"
 NC="\033[0m"
 
 if [[ "$1" == "clean" ]]; then
   echo -e "${BLUE}==== clean ====${NC}"
-  rm -rf $BUILD_DIR
+  rm -rf "$BUILD_DIR"
   # extracted and generated files
   rm -f metatron/auth_context.pb.cc
   rm -f metatron/auth_context.pb.h
