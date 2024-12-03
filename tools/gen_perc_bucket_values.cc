@@ -1,5 +1,5 @@
-#include <fstream>
 #include <limits>
+#include <fstream>
 #include <vector>
 
 // Number of positions of base-2 digits to shift when iterating over the long
@@ -39,9 +39,14 @@ int main(int argc, char* argv[]) {
   } else {
     of.open("/dev/stdout");
   }
-  of << "// Do not modify - auto-generated\n//\n"
+
+  of << "#pragma once\n\n"
+     << "#include <array>\n"
+     << "#include <cstddef>\n"
+     << "#include <cstdint>\n\n"
+     << "namespace spectator {\n\n"
      << "static constexpr std::array<int64_t, " << bucketValues.size()
-     << "> kBucketValues = {{";
+     << "> kBucketValues = {{\n";
   bool first = true;
   for (auto v : bucketValues) {
     if (!first) {
@@ -51,7 +56,7 @@ int main(int argc, char* argv[]) {
     }
     of << "  " << v << "LL";
   }
-  of << "}};\n";
+  of << "}};\n\n";
 
   of << "static constexpr std::array<size_t, " << powerOf4Index.size()
      << "> kPowerOf4Index = {{\n";
@@ -64,5 +69,6 @@ int main(int argc, char* argv[]) {
     }
     of << "  " << v << "u";
   }
-  of << "\n}};\n";
+  of << "\n}};\n"
+     << "\n}  // namespace spectator\n";
 }

@@ -1,24 +1,28 @@
 #pragma once
 
-#include "detail/perc_policy.h"
 #include "id.h"
+#include "percentile_bucket_tags.inc"
 #include "percentile_buckets.h"
 #include "registry.h"
 #include "util.h"
 
 namespace spectator {
 
-template <typename policy>
-class percentile_distribution_summary {
+class PercentileDistributionSummary {
  public:
-  percentile_distribution_summary(Registry* registry, Id id, int64_t min,
-                                  int64_t max) noexcept
+  PercentileDistributionSummary(Registry* registry, Id id, int64_t min, int64_t max) noexcept
       : registry_{registry},
         id_{std::move(id)},
         min_{min},
         max_{max},
         dist_summary_{registry->GetDistributionSummary(id_)} {
-    policy::init(registry_, id_, &counters_, detail::kDistTags.begin());
+  }
+
+  auto get_counter(size_t index, const std::string* perc_tags) -> std::shared_ptr<Counter> {
+    using spectator::refs;
+    auto counterId = id_.WithTags(refs().statistic(), refs().percentile(), refs().percentile(),
+                                  intern_str(perc_tags[index]));
+    return registry_->GetCounter(std::move(counterId));
   }
 
   void Record(int64_t amount) noexcept {
@@ -29,26 +33,13 @@ class percentile_distribution_summary {
     dist_summary_->Record(amount);
     auto restricted = restrict(amount, min_, max_);
     auto index = PercentileBucketIndexOf(restricted);
-    auto c = policy::get_counter(registry_, id_, &counters_, index,
-                                 detail::kDistTags.begin());
+    auto c = get_counter(index, kDistTags.begin());
     c->Increment();
   }
 
   auto MeterId() const noexcept -> const Id& { return id_; }
   auto Count() const noexcept -> int64_t { return dist_summary_->Count(); }
-  auto TotalAmount() const noexcept -> double {
-    return dist_summary_->TotalAmount();
-  }
-  auto Percentile(double p) const noexcept -> double {
-    std::array<int64_t, PercentileBucketsLength()> counts{};
-    for (size_t i = 0; i < PercentileBucketsLength(); ++i) {
-      auto& c = counters_.at(i);
-      if (c) {
-        counts.at(i) = static_cast<int64_t>(c->Count());
-      }
-    }
-    return spectator::Percentile(counts, p);
-  }
+  auto TotalAmount() const noexcept -> double { return dist_summary_->TotalAmount(); }
 
  private:
   Registry* registry_;
@@ -56,10 +47,6 @@ class percentile_distribution_summary {
   int64_t min_;
   int64_t max_;
   std::shared_ptr<DistributionSummary> dist_summary_;
-  mutable detail::counters_t counters_{};
 };
-
-using PercentileDistributionSummary =
-    percentile_distribution_summary<detail::lazy_policy>;
 
 }  // namespace spectator

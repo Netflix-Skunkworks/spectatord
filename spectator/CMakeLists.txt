@@ -19,7 +19,6 @@ add_library(spectator OBJECT
     "config.h"
     "counter.cc"
     "counter.h"
-    "detail/perc_policy.h"
     "dist_stats.h"
     "dist_summary.cc"
     "dist_summary.h"

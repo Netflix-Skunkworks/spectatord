@@ -39,20 +39,6 @@ class PercentileDistributionSummaryTest : public ::testing::Test {
 
 TYPED_TEST_SUITE(PercentileDistributionSummaryTest, Implementations, NameGenerator);
 
-TYPED_TEST(PercentileDistributionSummaryTest, Percentile) {
-  auto& ds = this->ds;
-
-  for (auto i = 0; i < 100000; ++i) {
-    ds->Record(i);
-  }
-
-  for (auto i = 0; i <= 100; ++i) {
-    auto expected = 1e3 * i;
-    auto threshold = 0.15 * expected;
-    EXPECT_NEAR(expected, ds->Percentile(i), threshold);
-  }
-}
-
 TYPED_TEST(PercentileDistributionSummaryTest, Measure) {
   this->ds->Record(42);
 

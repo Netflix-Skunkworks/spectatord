@@ -29,6 +29,12 @@ int main(int argc, char* argv[]) {
     of.open("/dev/stdout");
   }
 
+  of << "#pragma once\n\n"
+     << "namespace spectator {\n\n";
+
   output_array(of, 276, 'T', "kTimerTags");
+  of << "\n";
   output_array(of, 276, 'D', "kDistTags");
+
+  of << "\n}  // namespace spectator\n";
 }

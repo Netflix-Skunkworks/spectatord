@@ -1,53 +1,41 @@
 #pragma once
 
-#include "detail/perc_policy.h"
 #include "id.h"
+#include "percentile_bucket_tags.inc"
 #include "percentile_buckets.h"
 #include "registry.h"
 #include "util.h"
 
 namespace spectator {
 
-template <typename policy>
-class percentile_timer {
+class PercentileTimer {
  public:
-  percentile_timer(Registry* registry, Id id, absl::Duration min,
-                   absl::Duration max) noexcept
+  PercentileTimer(Registry* registry, Id id, absl::Duration min, absl::Duration max) noexcept
       : registry_{registry},
         id_{std::move(id)},
         min_{min},
         max_{max},
-        timer_{registry->GetTimer(id_)} {
-    policy::init(registry_, id_, &counters_, detail::kTimerTags.begin());
+        timer_{registry->GetTimer(id_)} {}
+
+  auto get_counter(size_t index, const std::string* perc_tags) -> std::shared_ptr<Counter> {
+    using spectator::refs;
+    auto counterId = id_.WithTags(refs().statistic(), refs().percentile(), refs().percentile(),
+                                  intern_str(perc_tags[index]));
+    return registry_->GetCounter(std::move(counterId));
   }
 
   void Record(absl::Duration amount) noexcept {
     timer_->Record(amount);
     auto restricted = restrict(amount, min_, max_);
     auto index = PercentileBucketIndexOf(absl::ToInt64Nanoseconds(restricted));
-    auto c = policy::get_counter(registry_, id_, &counters_, index,
-                                 detail::kTimerTags.begin());
+    auto c = get_counter(index, kTimerTags.begin());
     c->Increment();
   }
 
-  void Record(std::chrono::nanoseconds amount) noexcept {
-    Record(absl::FromChrono(amount));
-  }
-
+  void Record(std::chrono::nanoseconds amount) noexcept { Record(absl::FromChrono(amount)); }
   auto MeterId() const noexcept -> const Id& { return id_; }
   auto Count() const noexcept -> int64_t { return timer_->Count(); }
   auto TotalTime() const noexcept -> int64_t { return timer_->TotalTime(); }
-  auto Percentile(double p) const noexcept -> double {
-    std::array<int64_t, PercentileBucketsLength()> counts{};
-    for (size_t i = 0; i < PercentileBucketsLength(); ++i) {
-      auto& c = counters_.at(i);
-      if (c) {
-        counts.at(i) = c->Count();
-      }
-    }
-    auto v = spectator::Percentile(counts, p);
-    return v / 1e9;
-  };
 
  private:
   Registry* registry_;
@@ -55,9 +43,6 @@ class percentile_timer {
   absl::Duration min_;
   absl::Duration max_;
   std::shared_ptr<Timer> timer_;
-  mutable detail::counters_t counters_{};
 };
-
-using PercentileTimer = percentile_timer<detail::lazy_policy>;
 
 }  // namespace spectator
