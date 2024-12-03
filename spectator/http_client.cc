@@ -251,10 +251,10 @@ auto HttpClient::perform(const char* method, const std::string& url,
   if (curl_res != CURLE_OK) {
     auto errbuff = curl.get_errbuf();
     if (errbuff[0] == '\0') {
-      logger->error("Failed to {} {}: {}",
+      logger->info("Failed to {} {}: {}",
                     method, url, curl_easy_strerror(curl_res));
     } else {
-      logger->error("Failed to {} {}: {} (errbuf={})",
+      logger->info("Failed to {} {}: {} (errbuf={})",
                     method, url, curl_easy_strerror(curl_res), errbuff);
     }
 
@@ -342,7 +342,7 @@ auto HttpClient::Post(const std::string& url, const char* content_type,
                                       &compressed_size, payload, size);
 
     if (compress_res != Z_OK) {
-      logger->error(
+      logger->info(
           "Failed to compress payload: {}, while posting to {} - uncompressed size: {}",
           compress_res, url, size);
       HttpResponse err{};
