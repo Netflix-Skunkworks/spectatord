@@ -2,7 +2,7 @@
 
 set -e
 
-# usage: ./build.sh [clean|clean --confirm|skiptest]
+# usage: ./build.sh [clean|clean --confirm|skipsource|skiptest]
 
 if [[ -z "$BUILD_DIR" ]]; then
   BUILD_DIR="cmake-build"
@@ -46,19 +46,19 @@ fi
 if [[ ! -d $BUILD_DIR ]]; then
   echo -e "${BLUE}==== install required dependencies ====${NC}"
   if [[ "$BUILD_TYPE" == "Debug" ]]; then
-    conan install . --output-folder=$BUILD_DIR --build="*" --settings=build_type=$BUILD_TYPE --profile=./sanitized
+    conan install . --output-folder="$BUILD_DIR" --build="*" --settings=build_type="$BUILD_TYPE" --profile=./sanitized
   else
-    conan install . --output-folder=$BUILD_DIR --build=missing
+    conan install . --output-folder="$BUILD_DIR" --build=missing
   fi
 
-  echo -e "${BLUE}==== install source dependencies ====${NC}"
-  if [[ "$NFLX_INTERNAL" != "ON" ]]; then
-    NFLX_INTERNAL=OFF
+  # this switch is necessary for internal centos builds
+  if [[ "$1" != "skipsource" ]]; then
+    echo -e "${BLUE}==== install source dependencies ====${NC}"
+    conan source .
   fi
-  NFLX_INTERNAL=$NFLX_INTERNAL conan source .
 fi
 
-pushd $BUILD_DIR
+pushd "$BUILD_DIR"
 
 echo -e "${BLUE}==== configure conan environment to access tools ====${NC}"
 source conanbuild.sh
@@ -68,7 +68,10 @@ if [[ $OSTYPE == "darwin"* ]]; then
 fi
 
 echo -e "${BLUE}==== generate build files ====${NC}"
-cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DNFLX_INTERNAL="$NFLX_INTERNAL"
+if [[ "$NFLX_INTERNAL" != "ON" ]]; then
+  NFLX_INTERNAL=OFF
+fi
+cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DNFLX_INTERNAL="$NFLX_INTERNAL"
 
 echo -e "${BLUE}==== build ====${NC}"
 cmake --build .
