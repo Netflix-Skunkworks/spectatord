@@ -34,8 +34,9 @@ if [[ "$1" == "clean" ]]; then
 fi
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-  export CC=gcc-13
-  export CXX=g++-13
+  # these switches are necessary for internal centos builds
+  if [[ -z "$CC" ]]; then export CC=gcc-13; fi
+  if [[ -z "$CXX" ]]; then export CXX=g++-13; fi
 fi
 
 if [[ ! -f "$HOME/.conan2/profiles/default" ]]; then
