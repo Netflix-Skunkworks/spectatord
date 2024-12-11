@@ -36,8 +36,9 @@ fi
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   source /etc/os-release
   if [[ "$NAME" == "Ubuntu" ]]; then
-    if [[ -z "$CC" ]]; then export CC=gcc-13; fi
-    if [[ -z "$CXX" ]]; then export CXX=g++-13; fi
+    # gcc version cannot be updated without breaking standard bionic images
+    if [[ -z "$CC" ]]; then export CC=gcc-11; fi
+    if [[ -z "$CXX" ]]; then export CXX=g++-11; fi
   fi
 fi
 
