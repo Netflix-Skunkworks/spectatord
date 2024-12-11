@@ -36,9 +36,8 @@ fi
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   source /etc/os-release
   if [[ "$NAME" == "Ubuntu" ]]; then
-    # gcc version cannot be updated without breaking standard bionic images
-    if [[ -z "$CC" ]]; then export CC=gcc-11; fi
-    if [[ -z "$CXX" ]]; then export CXX=g++-11; fi
+    if [[ -z "$CC" ]]; then export CC=gcc-13; fi
+    if [[ -z "$CXX" ]]; then export CXX=g++-13; fi
   fi
 fi
 
@@ -52,8 +51,7 @@ if [[ ! -d $BUILD_DIR ]]; then
   if [[ "$BUILD_TYPE" == "Debug" ]]; then
     conan install . --output-folder="$BUILD_DIR" --build="*" --settings=build_type="$BUILD_TYPE" --profile=./sanitized
   else
-    # build "*" (all) instead of "missing" to avoid "unsupported GNU_PROPERTY_TYPE" errors with gcc-11
-    conan install . --output-folder="$BUILD_DIR" --build="*"
+    conan install . --output-folder="$BUILD_DIR" --build=missing
   fi
 
   # this switch is necessary for internal centos builds
