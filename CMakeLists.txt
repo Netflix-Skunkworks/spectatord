@@ -97,6 +97,8 @@ else()
         Backward::Backward
     )
 endif()
+# required to allow running on older systems, such as bionic
+target_link_options(spectatord_main PRIVATE "-static-libstdc++")
 
 #-- metrics_gen executable
 add_executable(metrics_gen
