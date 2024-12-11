@@ -52,7 +52,8 @@ if [[ ! -d $BUILD_DIR ]]; then
   if [[ "$BUILD_TYPE" == "Debug" ]]; then
     conan install . --output-folder="$BUILD_DIR" --build="*" --settings=build_type="$BUILD_TYPE" --profile=./sanitized
   else
-    conan install . --output-folder="$BUILD_DIR" --build=missing
+    # build "*" (all) instead of "missing" to avoid "unsupported GNU_PROPERTY_TYPE" errors with gcc-11
+    conan install . --output-folder="$BUILD_DIR" --build="*"
   fi
 
   # this switch is necessary for internal centos builds
