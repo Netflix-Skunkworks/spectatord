@@ -86,7 +86,7 @@ void SmilePayload::Append(double value) {
   // Then split byte (one that crosses lo/hi int boundary), 7 bits
   {
     auto mid = static_cast<uint32_t>(l >> 28U);
-    buffer_.Append(mid & 0x7FU);
+    buffer_.Append(static_cast<uint8_t>(mid & 0x7FU));
   }
 
   // and then last 4 bytes (28 bits)
