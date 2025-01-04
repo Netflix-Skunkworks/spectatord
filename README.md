@@ -58,6 +58,12 @@ echo "c::1" | nc -u -w0 localhost 1234
     * Enable the CMake `conan-debug` profile.
   * CLion > View > Tool Windows > Conan > (gear) > Conan Executable: `$PROJECT_HOME/venv/bin/conan`
 
+## Docker Builds
+
+The `spectatord` project also supports a platform-agnostic build. The only prerequisite is the
+installation of `Docker`. Please see the file [DOCKERBUILD.md](docs/DOCKERBUILD.md) in the `docs`
+folder for more information.
+
 ## Errata
 
 When building locally on MacOS, you may see the following errors when running binaries compiled with ASAN:
