@@ -25,10 +25,6 @@ class Measurement {
   }
 };
 
-inline auto operator<<(std::ostream& os, const Measurement& m) -> std::ostream& {
-  return os << fmt::format("{}", m);
-}
-
 using Measurements = std::vector<Measurement>;
 
 }  // namespace spectator
@@ -39,3 +35,7 @@ template <> struct fmt::formatter<spectator::Measurement>: formatter<std::string
     return fmt::format_to(ctx.out(), "Measurement{{{}, {}}}", m.id, m.value);
   }
 };
+
+inline auto operator<<(std::ostream& os, const spectator::Measurement& m) -> std::ostream& {
+  return os << fmt::format("{}", m);
+}

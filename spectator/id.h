@@ -62,10 +62,6 @@ class Id {
     return WithStat(stat);
   }
 
-  friend auto operator<<(std::ostream& os, const Id& id) -> std::ostream& {
-    return os << fmt::format("{}", id);
-  }
-
   friend struct std::hash<Id>;
 
   friend struct std::hash<std::shared_ptr<Id>>;
@@ -122,3 +118,7 @@ template <> struct fmt::formatter<spectator::Id>: formatter<std::string_view> {
     return fmt::format_to(ctx.out(), "Id({}, {})", id.Name(), id.GetTags());
   }
 };
+
+inline auto operator<<(std::ostream& os, const spectator::Id& id) -> std::ostream& {
+  return os << fmt::format("{}", id);
+}

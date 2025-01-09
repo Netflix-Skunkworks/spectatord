@@ -204,10 +204,6 @@ class Tags {
   }
 };
 
-inline auto operator<<(std::ostream& os, const Tags& tags) -> std::ostream& {
-  return os << fmt::format("{}", tags);
-}
-
 }  // namespace spectator
 
 // formatter: statistic->count
@@ -216,3 +212,7 @@ template <> struct fmt::formatter<spectator::Tag>: formatter<std::string_view> {
       return fmt::format_to(ctx.out(), "{}->{}", tag.key, tag.value);
   }
 };
+
+inline auto operator<<(std::ostream& os, const spectator::Tags& tags) -> std::ostream& {
+  return os << fmt::format("{}", tags);
+}
