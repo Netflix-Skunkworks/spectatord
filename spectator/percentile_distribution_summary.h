@@ -1,10 +1,11 @@
 #pragma once
 
+#include <algorithm>
+
 #include "id.h"
 #include "percentile_bucket_tags.inc"
 #include "percentile_buckets.h"
 #include "registry.h"
-#include "util.h"
 
 namespace spectator {
 
@@ -31,7 +32,7 @@ class PercentileDistributionSummary {
     }
 
     dist_summary_->Record(amount);
-    auto restricted = restrict(amount, min_, max_);
+    auto restricted = std::clamp(amount, min_, max_);
     auto index = PercentileBucketIndexOf(restricted);
     auto c = get_counter(index, kDistTags.begin());
     c->Increment();

@@ -59,7 +59,6 @@ add_library(spectator OBJECT
     "tags.h"
     "timer.cc"
     "timer.h"
-    "util.h"
     "valid_chars.inc"
     "version.h"
 )
