@@ -24,13 +24,8 @@ auto Gauge::HasExpired(int64_t now) const noexcept -> bool {
 }
 
 void Gauge::Measure(Measurements* results, int64_t now) const noexcept {
-  double value;
-  if (HasExpired(now)) {
-    value = value_.exchange(kNAN, std::memory_order_relaxed);
-  } else {
-    value = value_.load(std::memory_order_relaxed);
-  }
-
+  double value = (HasExpired(now) == true) ? value_.exchange(kNAN, std::memory_order_relaxed)
+                                           : value_.load(std::memory_order_relaxed);
   if (std::isnan(value)) {
     return;
   }

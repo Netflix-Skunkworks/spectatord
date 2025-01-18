@@ -255,14 +255,9 @@ class Publisher {
   }
 
   static auto get_http_config(const Config& cfg) -> HttpClientConfig {
-    auto read_timeout = cfg.read_timeout;
-    auto connect_timeout = cfg.connect_timeout;
-    if (read_timeout == absl::ZeroDuration()) {
-      read_timeout = absl::Seconds(3);
-    }
-    if (connect_timeout == absl::ZeroDuration()) {
-      connect_timeout = absl::Seconds(2);
-    }
+    auto read_timeout = (cfg.read_timeout == absl::ZeroDuration()) ? absl::Seconds(3) : cfg.read_timeout;
+    auto connect_timeout = (cfg.connect_timeout == absl::ZeroDuration()) ? absl::Seconds(2) : cfg.connect_timeout;
+    
     auto static cert_info = metatron::find_certificate(cfg.external_enabled, cfg.metatron_dir);
     return HttpClientConfig{connect_timeout, read_timeout, true, false, true,
                             cfg.verbose_http, cfg.status_metrics_enabled,

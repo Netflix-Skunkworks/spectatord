@@ -21,11 +21,7 @@ auto MonotonicCounterUint::Delta() const noexcept -> double {
   auto prev = prev_value_.load(std::memory_order_relaxed);
   auto curr = value_.load(std::memory_order_relaxed);
 
-  if (curr < prev) {
-    return kMax - prev + curr + 1;
-  } else {
-    return curr - prev;
-  }
+  return ((curr < prev) == true) ? kMax - prev + curr + 1 : curr - prev;
 }
 
 void MonotonicCounterUint::Measure(Measurements* results) const noexcept {
