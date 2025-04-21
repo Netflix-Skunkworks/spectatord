@@ -12,7 +12,7 @@ class LogEntry {
            const std::string& url)
       : registry_{registry},
         start_{absl::Now()},
-        id_{Id::Of("ipc.client.call", {{"owner", "spectatord"},
+        id_{Id::Of("ipc.client.call", {{"nf.process", "spectatord"},
                                        {"ipc.endpoint", PathFromUrl(url)},
                                        {"http.method", method},
                                        {"http.status", "-1"}})} {}
