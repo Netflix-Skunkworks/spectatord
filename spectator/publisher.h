@@ -28,7 +28,7 @@ namespace detail {
 template <typename R>
 auto get_counter(R* registry, Tags tags) -> std::shared_ptr<Counter> {
   static constexpr auto kSpectatorMeasurements = "spectator.measurements";
-  tags.add("owner", "spectatord");
+  tags.add("nf.process", "spectatord");
   return registry->GetCounter(kSpectatorMeasurements, std::move(tags));
 }
 }  // namespace detail
@@ -41,7 +41,8 @@ class Publisher {
         started_{false},
         should_stop_{false},
         last_successful_send_{absl::GetCurrentTimeNanos()},
-        sentMetrics_{detail::get_counter(registry, Tags{{"id", "sent"}})},
+        sentMetrics_{detail::get_counter(
+            registry, Tags{{"id", "sent"}})},
         invalidMetrics_{detail::get_counter(
             registry, Tags{{"id", "dropped"}, {"error", "validation"}})},
         droppedHttp_{detail::get_counter(
@@ -279,8 +280,12 @@ class Publisher {
     const auto& uri = registry_->GetConfig().uri;
     const auto& status_metrics_enabled = registry_->GetConfig().status_metrics_enabled;
     auto http_code = http_response.status;
+
     if (http_code == 200) {
       num_sent = num_measurements;
+      if (status_metrics_enabled) {
+        sentMetrics_->Add(static_cast<double>(num_sent));
+      }
     } else if (http_code > 200 && http_code < 500) {
       rapidjson::Document body;
       body.Parse(http_response.raw_body.c_str(), http_response.raw_body.size());
@@ -298,7 +303,7 @@ class Publisher {
           num_sent = num_measurements - err_count;
           if (status_metrics_enabled) {
             invalidMetrics_->Add(err_count);
-            sentMetrics_->Add(static_cast<double>(num_measurements - err_count));
+            sentMetrics_->Add(static_cast<double>(num_sent));
           }
           auto messages = body["message"].GetArray();
           for (auto& msg : messages) {

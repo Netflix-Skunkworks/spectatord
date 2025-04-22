@@ -75,11 +75,15 @@ TEST(HttpTest, Post) {
 
   auto timer_for_req = find_timer(&registry, "ipc.client.call", "200");
   ASSERT_TRUE(timer_for_req != nullptr);
-  auto expected_tags =
-      Tags{{"owner", "spectatord"},      {"http.status", "200"},
-           {"http.method", "POST"},      {"ipc.status", "success"},
-           {"ipc.result", "success"},    {"ipc.endpoint", "/foo"},
-           {"ipc.attempt.final", "true"}};
+  auto expected_tags = Tags{
+    {"http.method", "POST"},
+    {"http.status", "200"},
+    {"ipc.attempt.final", "true"},
+    {"ipc.endpoint", "/foo"},
+    {"ipc.result", "success"},
+    {"ipc.status", "success"},
+    {"nf.process", "spectatord"},
+  };
 
   auto& actual_tags = timer_for_req->MeterId().GetTags();
   auto attempt = actual_tags.at(intern_str("ipc.attempt"));
@@ -133,11 +137,16 @@ TEST(HttpTest, PostUncompressed) {
 
   auto timer_for_req = find_timer(&registry, "ipc.client.call", "200");
   ASSERT_TRUE(timer_for_req != nullptr);
-  auto expected_tags =
-      Tags{{"owner", "spectatord"},   {"http.status", "200"},
-           {"http.method", "POST"},   {"ipc.status", "success"},
-           {"ipc.result", "success"}, {"ipc.attempt", "initial"},
-           {"ipc.endpoint", "/foo"},  {"ipc.attempt.final", "true"}};
+  auto expected_tags = Tags{
+    {"http.method", "POST"},
+    {"http.status", "200"},
+    {"ipc.attempt", "initial"},
+    {"ipc.attempt.final", "true"},
+    {"ipc.endpoint", "/foo"},
+    {"ipc.result", "success"},
+    {"ipc.status", "success"},
+    {"nf.process", "spectatord"},
+  };
 
   const auto& actual_tags = timer_for_req->MeterId().GetTags();
   EXPECT_EQ(expected_tags, actual_tags);
@@ -181,11 +190,16 @@ TEST(HttpTest, Timeout) {
   auto timer_for_req = find_timer(&registry, "ipc.client.call", "-1");
   ASSERT_TRUE(timer_for_req != nullptr);
 
-  auto expected_tags =
-      Tags{{"owner", "spectatord"},    {"http.status", "-1"},
-           {"ipc.result", "failure"},  {"ipc.status", "timeout"},
-           {"ipc.attempt", "initial"}, {"ipc.attempt.final", "true"},
-           {"ipc.endpoint", "/foo"},   {"http.method", "POST"}};
+  auto expected_tags = Tags{
+    {"http.method", "POST"},
+    {"http.status", "-1"},
+    {"ipc.attempt", "initial"},
+    {"ipc.attempt.final", "true"},
+    {"ipc.endpoint", "/foo"},
+    {"ipc.result", "failure"},
+    {"ipc.status", "timeout"},
+    {"nf.process", "spectatord"},
+  };
   EXPECT_EQ(expected_tags, timer_for_req->MeterId().GetTags());
 }
 
@@ -262,10 +276,16 @@ TEST(HttpTest, Get) {
   EXPECT_EQ(my_counters(registry).size(), 1);
 
   spectator::Tags timer_tags{
-      {"http.status", "200"},    {"ipc.attempt", "initial"},
-      {"ipc.result", "success"}, {"owner", "spectatord"},
-      {"ipc.status", "success"}, {"ipc.attempt.final", "true"},
-      {"http.method", "GET"},    {"ipc.endpoint", "/get"}};
+    {"http.method", "GET"},
+    {"http.status", "200"},
+    {"ipc.attempt", "initial"},
+    {"ipc.attempt.final", "true"},
+    {"ipc.endpoint", "/get"},
+    {"ipc.result", "success"},
+    {"ipc.status", "success"},
+    {"nf.process", "spectatord"},
+  };
+
   auto timer_id = Id::Of("ipc.client.call", std::move(timer_tags));
   auto timer = registry.GetTimer(timer_id);
   EXPECT_EQ(timer->Count(), 1);
@@ -294,21 +314,30 @@ TEST(HttpTest, Get503) {
   EXPECT_EQ(ipc_meters.size(), 2);
 
   spectator::Tags err_timer_tags{
-      {"http.status", "503"},       {"ipc.attempt", "initial"},
-      {"ipc.result", "failure"},    {"owner", "spectatord"},
-      {"ipc.status", "http_error"}, {"ipc.attempt.final", "false"},
-      {"http.method", "GET"},       {"ipc.endpoint", "/get503"}};
+    {"http.method", "GET"},
+    {"http.status", "503"},
+    {"ipc.attempt", "initial"},
+    {"ipc.attempt.final", "false"},
+    {"ipc.endpoint", "/get503"},
+    {"ipc.result", "failure"},
+    {"ipc.status", "http_error"},
+    {"nf.process", "spectatord"},
+  };
   spectator::Tags success_timer_tags{
-      {"http.status", "200"},    {"ipc.attempt", "second"},
-      {"ipc.result", "success"}, {"owner", "spectatord"},
-      {"ipc.status", "success"}, {"ipc.attempt.final", "true"},
-      {"http.method", "GET"},    {"ipc.endpoint", "/get503"}};
+    {"http.method", "GET"},
+    {"http.status", "200"},
+    {"ipc.attempt", "second"},
+    {"ipc.attempt.final", "true"},
+    {"ipc.endpoint", "/get503"},
+    {"ipc.result", "success"},
+    {"ipc.status", "success"},
+    {"nf.process", "spectatord"},
+  };
   auto err_id = Id::Of("ipc.client.call", std::move(err_timer_tags));
   auto err_timer = registry.GetTimer(err_id);
   EXPECT_EQ(err_timer->Count(), 1);
 
-  auto success_timer =
-      registry.GetTimer("ipc.client.call", std::move(success_timer_tags));
+  auto success_timer = registry.GetTimer("ipc.client.call", std::move(success_timer_tags));
   EXPECT_EQ(success_timer->Count(), 1);
 }
 
@@ -327,8 +356,7 @@ void test_method_header(const std::string& method) {
   std::vector<std::string> headers{"X-Spectator: foo", "X-Other-Header: bar"};
 
   auto url = fmt::format("http://localhost:{}/getheader", port);
-  auto response =
-      method == "GET" ? client.Get(url, headers) : client.Put(url, headers);
+  auto response = method == "GET" ? client.Get(url, headers) : client.Put(url, headers);
 
   server.stop();
   EXPECT_EQ(response.status, 200);
@@ -336,10 +364,15 @@ void test_method_header(const std::string& method) {
   EXPECT_EQ(my_timers(registry).size(), 1);
 
   spectator::Tags timer_tags{
-      {"http.status", "200"},    {"ipc.attempt", "initial"},
-      {"ipc.result", "success"}, {"owner", "spectatord"},
-      {"ipc.status", "success"}, {"ipc.attempt.final", "true"},
-      {"http.method", method},   {"ipc.endpoint", "/getheader"}};
+    {"http.method", method},
+    {"http.status", "200"},
+    {"ipc.attempt", "initial"},
+    {"ipc.attempt.final", "true"},
+    {"ipc.endpoint", "/getheader"},
+    {"ipc.result", "success"},
+    {"ipc.status", "success"},
+    {"nf.process", "spectatord"},
+  };
   auto timer_id = Id::Of("ipc.client.call", std::move(timer_tags));
   auto timer = registry.GetTimer(timer_id);
   EXPECT_EQ(timer->Count(), 1);

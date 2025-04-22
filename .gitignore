@@ -5,6 +5,7 @@
 CMakeUserPresets.json
 cmake-build-debug/
 cmake-build/
+conan_provider.cmake
 metatron/auth_context.pb.cc
 metatron/auth_context.pb.h
 metatron/auth_context.proto

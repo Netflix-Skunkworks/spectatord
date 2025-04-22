@@ -111,15 +111,22 @@ auto main(int argc, char** argv) -> int {
 
   auto cfg = GetSpectatorConfig();
 
-  auto maybe_agg_uri = absl::GetFlag(FLAGS_uri);
-  if (absl::GetFlag(FLAGS_debug)) {
-    cfg->uri = "https://atlas-aggr-dev.us-east-1.ieptest.netflix.net/api/v4/update";
-  } else if (!maybe_agg_uri.empty()) {
-    cfg->uri = std::move(maybe_agg_uri);
-  } else if (absl::GetFlag(FLAGS_enable_external)) {
+  if (absl::GetFlag(FLAGS_enable_external)) {
     cfg->external_enabled = true;
     cfg->metatron_dir = absl::GetFlag(FLAGS_metatron_dir);
+    // provide a reasonable default for external publishing
     cfg->uri = cfg->external_uri;
+  }
+
+  if (!absl::GetFlag(FLAGS_uri).empty()) {
+    // allow overriding the uri for both standard and external publishing
+    cfg->uri = absl::GetFlag(FLAGS_uri);
+  }
+
+  if (absl::GetFlag(FLAGS_debug)) {
+    // when running in debug mode, never publish externally
+    cfg->external_enabled = false;
+    cfg->uri = "https://atlas-aggr-dev.us-east-1.ieptest.netflix.net/api/v4/update";
   }
 
   if (absl::GetFlag(FLAGS_verbose_http)) {
