@@ -42,6 +42,7 @@ class Config {
   std::string external_uri;
 
   std::string metatron_dir;
+  std::string process_name;
   bool external_enabled = false;
   bool status_metrics_enabled = true;
   bool verbose_http = false;

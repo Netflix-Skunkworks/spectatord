@@ -84,6 +84,10 @@ ABSL_FLAG(bool, no_common_tags, false,
           "use it with a secondary spectatord process.");
 ABSL_FLAG(PortNumber, port, PortNumber(1234),
           "Port number for the UDP socket.");
+ABSL_FLAG(std::string, process_name, "spectatord",
+          "The nf.process tag value that will be added to internal status metrics. We do not "
+          "set the corresponding environment value, because only the internal status metrics "
+          "should have this tag, and all other metrics should be exempt.");
 ABSL_FLAG(std::string, socket_path, "/run/spectatord/spectatord.unix",
           "Path to the UNIX domain socket.");
 ABSL_FLAG(PortNumber, statsd_port, PortNumber(8125),
@@ -110,6 +114,8 @@ auto main(int argc, char** argv) -> int {
   absl::ParseCommandLine(argc, argv);
 
   auto cfg = GetSpectatorConfig();
+
+  cfg->process_name = absl::GetFlag(FLAGS_process_name);
 
   if (absl::GetFlag(FLAGS_enable_external)) {
     cfg->external_enabled = true;
