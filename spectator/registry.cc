@@ -5,14 +5,14 @@
 
 namespace spectator {
 
-Registry::Registry(std::unique_ptr<Config> config,
-                   Registry::logger_ptr logger) noexcept
+Registry::Registry(std::unique_ptr<Config> config, logger_ptr logger) noexcept
     : should_stop_{true},
       age_gauge_first_warn_{true},
       meter_ttl_{absl::ToInt64Nanoseconds(config->meter_ttl)},
       config_{std::move(config)},
       logger_{std::move(logger)},
-      registry_size_{GetDistributionSummary("spectator.registrySize", Tags{{"nf.process", "spectatord"}})},
+      registry_size_{GetDistributionSummary("spectator.registrySize",
+        Tags{{"nf.process", config_->process_name}})},
       publisher_(this) {
   if (meter_ttl_ == 0) {
     meter_ttl_ = int64_t(15) * 60 * 1000 * 1000 * 1000;
@@ -21,7 +21,7 @@ Registry::Registry(std::unique_ptr<Config> config,
 
 auto Registry::GetConfig() const noexcept -> const Config& { return *config_; }
 
-auto Registry::GetLogger() const noexcept -> Registry::logger_ptr {
+auto Registry::GetLogger() const noexcept -> logger_ptr {
   return logger_;
 }
 
