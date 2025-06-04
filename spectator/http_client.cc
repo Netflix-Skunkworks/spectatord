@@ -376,4 +376,271 @@ void HttpClient::GlobalShutdown() noexcept {
   curl_global_cleanup();
 }
 
+namespace {
+
+struct MultiRequestContext {
+  HttpRequest* request;
+  std::string response_body;
+  HttpHeaders response_headers;
+  int http_code = -1;
+  
+  MultiRequestContext(HttpRequest* req) : request(req) {}
+};
+
+auto curl_multi_write_callback(char* contents, size_t size, size_t nmemb, void* userp) -> size_t {
+  auto real_size = size * nmemb;
+  auto* ctx = static_cast<MultiRequestContext*>(userp);
+  ctx->response_body.append(contents, real_size);
+  return real_size;
+}
+
+auto curl_multi_header_callback(char* contents, size_t size, size_t nmemb, void* userp) -> size_t {
+  auto real_size = size * nmemb;
+  auto end = contents + real_size;
+  auto* ctx = static_cast<MultiRequestContext*>(userp);
+  
+  auto p = static_cast<char*>(memchr(contents, ':', real_size));
+  if (p != nullptr && p + 2 < end) {
+    std::string key{contents, p};
+    std::string value{p + 2, end - 1};
+    ctx->response_headers.emplace(std::make_pair(std::move(key), std::move(value)));
+  }
+  return real_size;
+}
+
+}  // namespace
+
+HttpClientMulti::HttpClientMulti(Registry* registry, HttpClientConfig config)
+    : registry_(registry), config_(std::move(config)) {
+  multi_handle_ = curl_multi_init();
+  if (!multi_handle_) {
+    throw std::runtime_error("Failed to initialize curl multi handle");
+  }
+  
+  auto* multi = static_cast<CURLM*>(multi_handle_);
+  curl_multi_setopt(multi, CURLMOPT_MAX_HOST_CONNECTIONS, static_cast<long>(config_.max_host_connections));
+  curl_multi_setopt(multi, CURLMOPT_MAX_TOTAL_CONNECTIONS, static_cast<long>(config_.max_total_connections));
+  
+  // Pre-populate connection pool
+  for (size_t i = 0; i < config_.max_total_connections; ++i) {
+    auto* curl = curl_easy_init();
+    if (curl) {
+      connection_pool_.push(curl);
+    }
+  }
+}
+
+HttpClientMulti::~HttpClientMulti() {
+  if (multi_handle_) {
+    curl_multi_cleanup(static_cast<CURLM*>(multi_handle_));
+  }
+  
+  // Clean up connection pool
+  while (!connection_pool_.empty()) {
+    curl_easy_cleanup(static_cast<CURL*>(connection_pool_.front()));
+    connection_pool_.pop();
+  }
+}
+
+auto HttpClientMulti::get_curl_handle() -> void* {
+  std::lock_guard<std::mutex> lock(pool_mutex_);
+  if (!connection_pool_.empty()) {
+    auto* handle = connection_pool_.front();
+    connection_pool_.pop();
+    return handle;
+  }
+  
+  // Pool is empty, create new handle
+  return curl_easy_init();
+}
+
+void HttpClientMulti::return_curl_handle(void* handle) {
+  if (!handle) return;
+  
+  auto* curl = static_cast<CURL*>(handle);
+  curl_easy_reset(curl);
+  
+  std::lock_guard<std::mutex> lock(pool_mutex_);
+  if (connection_pool_.size() < config_.max_total_connections) {
+    connection_pool_.push(handle);
+  } else {
+    curl_easy_cleanup(curl);
+  }
+}
+
+void HttpClientMulti::configure_curl_handle(void* handle, const HttpRequest& request) {
+  auto* curl = static_cast<CURL*>(handle);
+  
+  // Set URL
+  curl_easy_setopt(curl, CURLOPT_URL, request.url.c_str());
+  
+  // Set headers
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, request.headers->headers());
+  
+  // Set timeouts
+  auto total_timeout = config_.connect_timeout + config_.read_timeout;
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, absl::ToInt64Milliseconds(total_timeout));
+  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, absl::ToInt64Milliseconds(config_.connect_timeout));
+  
+  // Set user agent
+  auto user_agent = fmt::format("spectatord/{}", VERSION);
+  curl_easy_setopt(curl, CURLOPT_USERAGENT, user_agent.c_str());
+  
+  // Configure payload for POST requests
+  if (request.method == "POST" && !request.payload.empty()) {
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, request.payload.data());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, request.payload.size());
+  }
+  
+  // Configure metatron if external
+  if (config_.external_enabled) {
+    curl_easy_setopt(curl, CURLOPT_SSLCERT, config_.cert_info.ssl_cert.c_str());
+    curl_easy_setopt(curl, CURLOPT_SSLKEY, config_.cert_info.ssl_key.c_str());
+    curl_easy_setopt(curl, CURLOPT_CAPATH, nullptr);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
+    curl_easy_setopt(curl, CURLOPT_CAINFO, config_.cert_info.ca_info.c_str());
+    curl_easy_setopt(curl, CURLOPT_SSL_CTX_FUNCTION, metatron::sslctx_metatron_verify);
+    curl_easy_setopt(curl, CURLOPT_SSL_CTX_DATA, config_.cert_info.app_name.c_str());
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+  }
+  
+  // Enable connection reuse
+  if (config_.enable_connection_reuse) {
+    curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 0L);
+  }
+  
+  // Set verbose if requested
+  if (config_.verbose_requests) {
+    curl_easy_setopt(curl, CURLOPT_STDERR, stdout);
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  }
+}
+
+auto HttpClientMulti::PostAsync(const std::string& url, const char* content_type,
+                                const void* payload, size_t size) -> std::future<HttpResponse> {
+  auto headers = std::make_shared<CurlHeaders>();
+  headers->append(content_type);
+  
+  if (config_.compress) {
+    headers->append("Content-Encoding: gzip");
+    
+    auto compressed_size = compressBound(size) + kGzipHeaderSize;
+    auto compressed_payload = std::unique_ptr<char[]>(new char[compressed_size]);
+    auto compress_res = gzip_compress(compressed_payload.get(), &compressed_size, payload, size);
+    
+    if (compress_res != Z_OK) {
+      auto logger = registry_->GetLogger();
+      logger->info("Failed to compress payload: {}, while posting to {} - uncompressed size: {}",
+                   compress_res, url, size);
+      std::promise<HttpResponse> promise;
+      HttpResponse err_response{-1, "", {}};
+      promise.set_value(std::move(err_response));
+      return promise.get_future();
+    }
+    
+    auto request = std::make_unique<HttpRequest>(url, "POST", headers, 
+                                                 compressed_payload.get(), compressed_size);
+    auto future = request->promise.get_future();
+    
+    std::lock_guard<std::mutex> lock(requests_mutex_);
+    active_requests_.push_back(std::move(request));
+    return future;
+  }
+  
+  // No compression
+  auto request = std::make_unique<HttpRequest>(url, "POST", headers, payload, size);
+  auto future = request->promise.get_future();
+  
+  std::lock_guard<std::mutex> lock(requests_mutex_);
+  active_requests_.push_back(std::move(request));
+  return future;
+}
+
+auto HttpClientMulti::PostAsync(const std::string& url, const char* content_type,
+                                const CompressedResult& payload) -> std::future<HttpResponse> {
+  auto headers = std::make_shared<CurlHeaders>();
+  headers->append(content_type);
+  headers->append("Content-Encoding: gzip");
+  
+  auto request = std::make_unique<HttpRequest>(url, "POST", headers, payload.data, payload.size);
+  auto future = request->promise.get_future();
+  
+  std::lock_guard<std::mutex> lock(requests_mutex_);
+  active_requests_.push_back(std::move(request));
+  return future;
+}
+
+void HttpClientMulti::ProcessAll() {
+  if (active_requests_.empty()) {
+    return;
+  }
+  
+  auto* multi = static_cast<CURLM*>(multi_handle_);
+  std::vector<std::unique_ptr<MultiRequestContext>> contexts;
+  
+  // Setup all requests
+  for (auto& request : active_requests_) {
+    auto* curl = static_cast<CURL*>(get_curl_handle());
+    if (!curl) continue;
+    
+    configure_curl_handle(curl, *request);
+    
+    auto ctx = std::make_unique<MultiRequestContext>(request.get());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_multi_write_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, ctx.get());
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, curl_multi_header_callback);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, ctx.get());
+    curl_easy_setopt(curl, CURLOPT_PRIVATE, ctx.get());
+    
+    curl_multi_add_handle(multi, curl);
+    contexts.push_back(std::move(ctx));
+  }
+  
+  // Process all requests
+  int running_handles;
+  do {
+    auto mc = curl_multi_perform(multi, &running_handles);
+    if (mc != CURLM_OK) break;
+    
+    if (running_handles > 0) {
+      curl_multi_wait(multi, nullptr, 0, 1000, nullptr);
+    }
+  } while (running_handles > 0);
+  
+  // Process completed requests
+  CURLMsg* msg;
+  int msgs_left;
+  while ((msg = curl_multi_info_read(multi, &msgs_left))) {
+    if (msg->msg == CURLMSG_DONE) {
+      auto* curl = msg->easy_handle;
+      
+      // Find the corresponding context
+      MultiRequestContext* ctx = nullptr;
+      for (auto& context : contexts) {
+        void* curl_ctx = nullptr;
+        curl_easy_getinfo(curl, CURLINFO_PRIVATE, &curl_ctx);
+        if (curl_ctx == context.get()) {
+          ctx = context.get();
+          break;
+        }
+      }
+      
+      if (ctx) {
+        long http_code = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+        ctx->http_code = static_cast<int>(http_code);
+        
+        HttpResponse response{ctx->http_code, std::move(ctx->response_body), std::move(ctx->response_headers)};
+        ctx->request->promise.set_value(std::move(response));
+      }
+      
+      curl_multi_remove_handle(multi, curl);
+      return_curl_handle(curl);
+    }
+  }
+  
+  active_requests_.clear();
+}
+
 }  // namespace spectator
