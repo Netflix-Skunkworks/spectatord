@@ -96,6 +96,14 @@ class Publisher {
       should_stop_ = true;
       cv_.notify_all();
       sender_thread_.join();
+      // Flush any remaining metrics before shutdown
+      auto logger = registry_->GetLogger();
+      try {
+        send_metrics();
+        logger->info("Flushed remaining metrics during shutdown.");
+      } catch (std::exception& e) {
+        logger->error("Exception while flushing metrics during shutdown: {}", e.what());
+      }
     }
 
     if (http_initialized_.exchange(false)) {
@@ -340,6 +348,13 @@ class Publisher {
     auto start = absl::Now();
     HttpClient client{registry_, std::move(http_cfg)};
     auto batch_size = static_cast<std::vector<Measurement>::difference_type>(cfg.batch_size);
+    
+    // Safety check: prevent infinite loop when batch_size is 0 or negative
+    if (batch_size <= 0) {
+      logger->warn("Invalid batch_size: {}. Using default of 1000.", batch_size);
+      batch_size = 1000;
+    }
+    
     auto measurements = registry_->Measurements();
 
     if (!cfg.is_enabled() || measurements.empty()) {

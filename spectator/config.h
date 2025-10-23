@@ -34,7 +34,7 @@ class Config {
   absl::Duration read_timeout;
   absl::Duration connect_timeout;
   int batch_size{};
-  absl::Duration frequency;
+  absl::Duration frequency{absl::Seconds(5)};
   absl::Duration expiration_frequency;
   absl::Duration meter_ttl;
   size_t age_gauge_limit{};
