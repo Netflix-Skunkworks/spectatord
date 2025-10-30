@@ -22,6 +22,8 @@ constexpr int kDefaultPort = 8080;
 std::unique_ptr<spectator::Config> GetConfiguration() {
   auto config = std::make_unique<spectator::Config>();
   config->age_gauge_limit = 10;
+  config->batch_size = 10000; // Internal NFLX default
+  config->frequency = absl::Seconds(5);  // Internal NFLX default
   return config;
 }
 
@@ -74,13 +76,17 @@ class AdminServerTest : public testing::Test {
     auto logger = spectatord::Logger();
     logger->info("Shutdown test instance of AdminServer");
 
-    server->Stop();
-    delete server;
-    server = nullptr;
+    if (server != nullptr) {
+      server->Stop();
+      delete server;
+      server = nullptr;
+    }
 
-    registry->Stop();
-    delete registry;
-    registry = nullptr;
+    if (registry != nullptr) {
+      registry->Stop();
+      delete registry;
+      registry = nullptr;
+    }
   }
 
   static spectator::Registry *registry;
