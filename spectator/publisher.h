@@ -80,8 +80,11 @@ class Publisher {
     }
     if (started_.exchange(true)) {
       logger->warn("Registry already started. Ignoring start request");
-
       return;
+    }
+
+    if (cfg.batch_size <= 0) {
+      throw std::invalid_argument("Invalid batch_size: " + std::to_string(cfg.batch_size));
     }
 
     sender_thread_ = std::thread(&Publisher::sender, this);
@@ -349,12 +352,6 @@ class Publisher {
     HttpClient client{registry_, std::move(http_cfg)};
     auto batch_size = static_cast<std::vector<Measurement>::difference_type>(cfg.batch_size);
     
-    // Safety check: prevent infinite loop when batch_size is 0 or negative
-    if (batch_size <= 0) {
-      logger->warn("Invalid batch_size: {}. Using default of 1000.", batch_size);
-      batch_size = 1000;
-    }
-    
     auto measurements = registry_->Measurements();
 
     if (!cfg.is_enabled() || measurements.empty()) {
@@ -384,6 +381,7 @@ class Publisher {
                    [](auto& b) { return &b; });
     std::vector<std::pair<Measurements::const_iterator, Measurements::const_iterator>> batches;
 
+    // If batch_size is 0, the batching loop will create infinite empty batches:
     while (from != end) {
       auto to_end = std::distance(from, end);
       auto to_advance = std::min(batch_size, to_end);
