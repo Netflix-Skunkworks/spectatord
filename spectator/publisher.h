@@ -80,8 +80,11 @@ class Publisher {
     }
     if (started_.exchange(true)) {
       logger->warn("Registry already started. Ignoring start request");
-
       return;
+    }
+
+    if (cfg.batch_size <= 0) {
+      throw std::invalid_argument("Invalid batch_size: " + std::to_string(cfg.batch_size));
     }
 
     sender_thread_ = std::thread(&Publisher::sender, this);
@@ -96,6 +99,14 @@ class Publisher {
       should_stop_ = true;
       cv_.notify_all();
       sender_thread_.join();
+      // Flush any remaining metrics before shutdown
+      auto logger = registry_->GetLogger();
+      try {
+        send_metrics();
+        logger->info("Flushed remaining metrics during shutdown.");
+      } catch (std::exception& e) {
+        logger->error("Exception while flushing metrics during shutdown: {}", e.what());
+      }
     }
 
     if (http_initialized_.exchange(false)) {
@@ -369,6 +380,7 @@ class Publisher {
                    [](auto& b) { return &b; });
     std::vector<std::pair<Measurements::const_iterator, Measurements::const_iterator>> batches;
 
+    // If batch_size is 0, the batching loop will create infinite empty batches:
     while (from != end) {
       auto to_end = std::distance(from, end);
       auto to_advance = std::min(batch_size, to_end);
