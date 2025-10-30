@@ -351,7 +351,6 @@ class Publisher {
     auto start = absl::Now();
     HttpClient client{registry_, std::move(http_cfg)};
     auto batch_size = static_cast<std::vector<Measurement>::difference_type>(cfg.batch_size);
-    
     auto measurements = registry_->Measurements();
 
     if (!cfg.is_enabled() || measurements.empty()) {
