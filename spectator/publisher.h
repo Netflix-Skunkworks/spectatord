@@ -349,7 +349,6 @@ class Publisher {
     const auto& cfg = registry_->GetConfig();
     auto http_cfg = get_http_config(cfg);
     auto start = absl::Now();
-    HttpClient client{registry_, std::move(http_cfg)};
     auto batch_size = static_cast<std::vector<Measurement>::difference_type>(cfg.batch_size);
     auto measurements = registry_->Measurements();
 
@@ -370,14 +369,6 @@ class Publisher {
 
     auto from = measurements.begin();
     auto end = measurements.end();
-    std::vector<std::pair<int, HttpResponse>> responses;
-
-    absl::Mutex responses_mutex;
-    absl::Mutex buffers_mutex;
-    std::vector<SmilePayload*> avail_buffers;
-    std::transform(buffers_.begin(), buffers_.end(),
-                   std::back_inserter(avail_buffers),
-                   [](auto& b) { return &b; });
     std::vector<std::pair<Measurements::const_iterator, Measurements::const_iterator>> batches;
 
     // If batch_size is 0, the batching loop will create infinite empty batches:
@@ -389,46 +380,42 @@ class Publisher {
       batches.emplace_back(from, to);
       from = to;
     }
-    absl::BlockingCounter batches_to_do{static_cast<int>(batches.size())};
 
-    for (const auto& batch : batches) {
-      asio::post(pool_, [this, batch, &batches_to_do, &client, &responses,
-                         &buffers_mutex, &avail_buffers, &responses_mutex]() {
-        const auto& uri = this->registry_->GetConfig().uri;
-        SmilePayload* payload = nullptr;
-        {
-          absl::MutexLock lock(&buffers_mutex);
-          payload = avail_buffers.back();
-          avail_buffers.pop_back();
-        }
-
-        measurements_to_json(payload, batch.first, batch.second);
-        auto response = client.Post(uri, HttpClient::kSmileJson, payload->Result());
-        {
-          absl::MutexLock lock(&responses_mutex);
-          auto batch_size = batch.second - batch.first;
-          if (response.status / 100 == 2) {
-            last_successful_send_ = absl::GetCurrentTimeNanos();
-          }
-          responses.emplace_back(batch_size, std::move(response));
-        }
-        {
-          absl::MutexLock lock(&buffers_mutex);
-          avail_buffers.emplace_back(payload);
-        }
-        batches_to_do.DecrementCount();
-      });
+    // Use HttpClientMulti for connection reuse
+    HttpClientMulti multi_client{registry_, std::move(http_cfg)};
+    std::vector<std::future<HttpResponse>> futures;
+    
+    // Submit all batches using connection pooling
+    for (size_t i = 0; i < batches.size(); ++i) {
+      const auto& batch = batches[i];
+      auto* payload = &buffers_[i % buffers_.size()];
+      measurements_to_json(payload, batch.first, batch.second);
+      
+      auto future = multi_client.PostAsync(cfg.uri, HttpClient::kSmileJson, 
+                                          payload->Result());
+      futures.push_back(std::move(future));
     }
-    batches_to_do.Wait();
-
+    
+    // Process all requests with connection reuse
+    multi_client.ProcessAll();
+    
+    // Collect responses
     auto num_err = 0U;
     auto num_sent = 0U;
     tsl::hopscotch_set<std::string> err_messages;
-    for (const auto& resp_pair : responses) {
+    
+    for (size_t i = 0; i < futures.size(); ++i) {
+      auto response = futures[i].get();
+      auto batch_measurements = batches[i].second - batches[i].first;
+      
+      if (response.status / 100 == 2) {
+        last_successful_send_ = absl::GetCurrentTimeNanos();
+      }
+      
       size_t batch_sent = 0;
       size_t batch_err = 0;
       std::tie(batch_sent, batch_err) = handle_aggr_response(
-          resp_pair.second, resp_pair.first, &err_messages);
+          response, batch_measurements, &err_messages);
       num_sent += batch_sent;
       num_err += batch_err;
     }
