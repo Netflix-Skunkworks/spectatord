@@ -13,6 +13,7 @@ class LogEntry {
       : registry_{registry},
         start_{absl::Now()},
         id_{Id::Of("ipc.client.call", {{"nf.process", registry->GetConfig().process_name},
+                                       {"owner", registry->GetConfig().process_name},
                                        {"ipc.endpoint", PathFromUrl(url)},
                                        {"http.method", method},
                                        {"http.status", "-1"}})} {}
