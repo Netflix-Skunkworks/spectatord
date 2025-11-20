@@ -83,6 +83,7 @@ TEST(HttpTest, Post) {
     {"ipc.result", "success"},
     {"ipc.status", "success"},
     {"nf.process", "spectatord"},
+    {"owner", "spectatord"},
   };
 
   auto& actual_tags = timer_for_req->MeterId().GetTags();
@@ -146,6 +147,7 @@ TEST(HttpTest, PostUncompressed) {
     {"ipc.result", "success"},
     {"ipc.status", "success"},
     {"nf.process", "spectatord"},
+    {"owner", "spectatord"},
   };
 
   const auto& actual_tags = timer_for_req->MeterId().GetTags();
@@ -199,6 +201,7 @@ TEST(HttpTest, Timeout) {
     {"ipc.result", "failure"},
     {"ipc.status", "timeout"},
     {"nf.process", "spectatord"},
+    {"owner", "spectatord"},
   };
   EXPECT_EQ(expected_tags, timer_for_req->MeterId().GetTags());
 }
@@ -284,6 +287,7 @@ TEST(HttpTest, Get) {
     {"ipc.result", "success"},
     {"ipc.status", "success"},
     {"nf.process", "spectatord"},
+    {"owner", "spectatord"},
   };
 
   auto timer_id = Id::Of("ipc.client.call", std::move(timer_tags));
@@ -322,6 +326,7 @@ TEST(HttpTest, Get503) {
     {"ipc.result", "failure"},
     {"ipc.status", "http_error"},
     {"nf.process", "spectatord"},
+    {"owner", "spectatord"},
   };
   spectator::Tags success_timer_tags{
     {"http.method", "GET"},
@@ -332,6 +337,7 @@ TEST(HttpTest, Get503) {
     {"ipc.result", "success"},
     {"ipc.status", "success"},
     {"nf.process", "spectatord"},
+    {"owner", "spectatord"},
   };
   auto err_id = Id::Of("ipc.client.call", std::move(err_timer_tags));
   auto err_timer = registry.GetTimer(err_id);
@@ -372,6 +378,7 @@ void test_method_header(const std::string& method) {
     {"ipc.result", "success"},
     {"ipc.status", "success"},
     {"nf.process", "spectatord"},
+    {"owner", "spectatord"},
   };
   auto timer_id = Id::Of("ipc.client.call", std::move(timer_tags));
   auto timer = registry.GetTimer(timer_id);
