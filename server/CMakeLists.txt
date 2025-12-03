@@ -19,8 +19,3 @@ target_link_libraries(spectatord
     asio::asio
 )
 
-# Link against libsystemd if available
-if(LIBSYSTEMD_FOUND)
-    target_link_libraries(spectatord ${LIBSYSTEMD_LIBRARIES})
-    target_include_directories(spectatord PRIVATE ${LIBSYSTEMD_INCLUDE_DIRS})
-endif()
