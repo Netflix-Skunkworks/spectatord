@@ -366,19 +366,16 @@ void Server::Start() {
 
   std::unique_ptr<LocalServer> local_server;
   if (socket_path_) {
-    // Check if systemd passed us a socket file descriptor
     auto systemd_fd = get_systemd_socket();
     if (systemd_fd) {
-      logger->info("Using systemd socket activation for local server (dgram)");
+      logger->info("Using systemd socket activation for local server (fd={})", *systemd_fd);
       local_server = std::make_unique<LocalServer>(io_context, *systemd_fd, parser);
-      local_server->Start();
     } else {
-      // No systemd socket, create our own
       prepare_socket_path(*socket_path_);
-      local_server = std::make_unique<LocalServer>(io_context, *socket_path_, parser);
       logger->info("Starting local server (dgram) on socket {}", *socket_path_);
-      local_server->Start();
+      local_server = std::make_unique<LocalServer>(io_context, *socket_path_, parser);
     }
+    local_server->Start();
   } else {
     logger->info("unix socket support is not enabled");
   }
