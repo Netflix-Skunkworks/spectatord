@@ -18,4 +18,3 @@ target_link_libraries(spectatord
     abseil::abseil
     asio::asio
 )
-
