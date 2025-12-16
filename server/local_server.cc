@@ -9,6 +9,13 @@ LocalServer::LocalServer(asio::io_context& io_context, std::string_view path,
     : handler_{std::move(handler)},
       socket_{io_context, asio::local::datagram_protocol::endpoint{path}} {}
 
+LocalServer::LocalServer(asio::io_context& io_context, int socket_fd,
+                         handler_t handler)
+    : handler_{std::move(handler)},
+      socket_{io_context, asio::local::datagram_protocol(), socket_fd} {
+  Logger()->info("Using systemd socket activation for local server (fd={})", socket_fd);
+}
+
 void LocalServer::Start() { start_local_receive(); }
 
 void LocalServer::start_local_receive() {

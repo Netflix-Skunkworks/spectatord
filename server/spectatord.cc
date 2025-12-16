@@ -2,6 +2,7 @@
 #include "local_server.h"
 #include "proc_utils.h"
 #include "udp_server.h"
+#include "../util/systemd.h"
 
 #include <asio.hpp>
 
@@ -365,9 +366,15 @@ void Server::Start() {
 
   std::unique_ptr<LocalServer> local_server;
   if (socket_path_) {
-    prepare_socket_path(*socket_path_);
-    local_server = std::make_unique<LocalServer>(io_context, *socket_path_, parser);
-    logger->info("Starting local server (dgram) on socket {}", *socket_path_);
+    auto systemd_fd = get_systemd_socket();
+    if (systemd_fd) {
+      logger->info("Using systemd socket activation for local server (fd={})", *systemd_fd);
+      local_server = std::make_unique<LocalServer>(io_context, *systemd_fd, parser);
+    } else {
+      prepare_socket_path(*socket_path_);
+      logger->info("Starting local server (dgram) on socket {}", *socket_path_);
+      local_server = std::make_unique<LocalServer>(io_context, *socket_path_, parser);
+    }
     local_server->Start();
   } else {
     logger->info("unix socket support is not enabled");
