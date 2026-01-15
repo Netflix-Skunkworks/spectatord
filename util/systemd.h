@@ -4,7 +4,9 @@
 #include <string>
 
 #ifdef __linux__
+#include <cstddef>
 #include <cstdlib>
+#include <cstring>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -167,6 +169,73 @@ inline auto get_systemd_udp_socket(int port) -> std::optional<int>
 	}
 #endif
 	return std::nullopt;
+}
+
+// Send a notification message to systemd.
+// This implements the systemd notification protocol documented at:
+// https://www.freedesktop.org/software/systemd/man/sd_notify.html
+//
+// Common notification strings:
+//   "READY=1" - Service startup is finished
+//   "STATUS=..." - Status message
+//   "WATCHDOG=1" - Watchdog keepalive
+//   "STOPPING=1" - Service is stopping
+//
+// Returns true if the notification was sent successfully, false otherwise.
+inline bool sd_notify(const std::string& state)
+{
+#ifdef __linux__
+	const char* notify_socket = std::getenv("NOTIFY_SOCKET");
+	if (notify_socket == nullptr || notify_socket[0] == '\0')
+	{
+		return false;
+	}
+
+	// Create a UNIX datagram socket
+	int fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (fd < 0)
+	{
+		return false;
+	}
+
+	// Parse the socket address
+	struct sockaddr_un addr = {};
+	addr.sun_family = AF_UNIX;
+
+	size_t notify_socket_len = std::strlen(notify_socket);
+	if (notify_socket_len >= sizeof(addr.sun_path))
+	{
+		close(fd);
+		return false;
+	}
+
+	// Handle abstract namespace sockets (starting with '@')
+	// Compute the actual sockaddr_un length - don't use sizeof(addr) as it includes padding
+	// See: https://github.com/systemd/systemd/blob/main/src/basic/socket-util.c sockaddr_un_len()
+	socklen_t addr_len;
+	if (notify_socket[0] == '@')
+	{
+		addr.sun_path[0] = '\0';
+		std::strncpy(addr.sun_path + 1, notify_socket + 1, sizeof(addr.sun_path) - 2);
+		// Abstract socket: offsetof + 1 (leading null) + path length (no trailing null needed)
+		addr_len = offsetof(struct sockaddr_un, sun_path) + 1 + (notify_socket_len - 1);
+	}
+	else
+	{
+		std::strncpy(addr.sun_path, notify_socket, sizeof(addr.sun_path) - 1);
+		// Filesystem socket: offsetof + path length + 1 (trailing null)
+		addr_len = offsetof(struct sockaddr_un, sun_path) + notify_socket_len + 1;
+	}
+
+	// Send the notification
+	ssize_t result =
+	    sendto(fd, state.c_str(), state.size(), MSG_NOSIGNAL, reinterpret_cast<struct sockaddr*>(&addr), addr_len);
+
+	close(fd);
+	return result >= 0;
+#else
+	return false;
+#endif
 }
 
 }  // namespace spectatord
