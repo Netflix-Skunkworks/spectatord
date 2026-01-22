@@ -77,6 +77,8 @@ ABSL_FLAG(std::string, metatron_dir, "",
           "if your certificates are in an unusual location.");
 ABSL_FLAG(absl::Duration, meter_ttl, absl::Minutes(15),
           "Meter TTL: expire meters after this period of inactivity.");
+ABSL_FLAG(absl::Duration, frequency, absl::Seconds(5),
+          "Reporting frequency: how often metrics are flushed to the Atlas aggregator.");
 ABSL_FLAG(bool, no_common_tags, false,
           "No common tags will be provided for metrics. Since no common tags are available, no "
           "internal status metrics will be recorded. Only use this feature for special cases "
@@ -140,6 +142,8 @@ auto main(int argc, char** argv) -> int {
   }
 
   cfg->meter_ttl = absl::GetFlag(FLAGS_meter_ttl);
+
+  cfg->frequency = absl::GetFlag(FLAGS_frequency);
 
   cfg->age_gauge_limit = absl::GetFlag(FLAGS_age_gauge_limit);
 
