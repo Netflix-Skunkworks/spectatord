@@ -21,6 +21,14 @@ UdpServer::UdpServer(asio::io_context& io_context, bool ipv4_only, int port_numb
   }
 }
 
+// NOLINTNEXTLINE(google-runtime-references)
+UdpServer::UdpServer(asio::io_context& io_context, int socket_fd, bool is_ipv6,
+                     handler_t message_handler)
+    : udp_socket_{io_context, is_ipv6 ? udp::v6() : udp::v4(), socket_fd},
+      message_handler_(std::move(message_handler)) {
+  Logger()->info("Using systemd socket activation for UDP server (fd={})", socket_fd);
+}
+
 void UdpServer::start_udp_receive() {
   udp_socket_.async_receive(
       asio::buffer(recv_buffer_),
