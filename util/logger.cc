@@ -1,33 +1,30 @@
 #include "logger.h"
-#include <iostream>
+#include "tcp_log_sink.h"
 #include <spdlog/async.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace spectatord {
 
-static constexpr const char* const kMainLogger = "spectatord";
-
-LogManager& log_manager() noexcept {
-  static auto* the_log_manager = new LogManager();
-  return *the_log_manager;
-}
-
-LogManager::LogManager() noexcept {
-  try {
-    logger_ = spdlog::create_async_nb<spdlog::sinks::ansicolor_stdout_sink_mt>(
-        kMainLogger);
-  } catch (const spdlog::spdlog_ex& ex) {
-    std::cerr << "Log initialization failed: " << ex.what() << "\n";
+Logger::Logger(const std::string& name, bool enable_insight_logs) {
+  logger_ = spdlog::get(name);
+  if (logger_) {
+    return;
   }
-}
 
-std::shared_ptr<spdlog::logger> LogManager::Logger() noexcept {
-  return logger_;
-}
+  if (!spdlog::thread_pool()) {
+    spdlog::init_thread_pool(8192, 1);
+  }
 
-std::shared_ptr<spdlog::logger> LogManager::GetLogger(
-    const std::string& name) noexcept {
-  return spdlog::create_async_nb<spdlog::sinks::ansicolor_stdout_sink_mt>(name);
+  std::vector<spdlog::sink_ptr> sinks;
+  sinks.push_back(std::make_shared<spdlog::sinks::ansicolor_stdout_sink_mt>());
+  if (enable_insight_logs) {
+    sinks.push_back(create_insight_logs_sink("127.0.0.1", 1552));
+  }
+
+  logger_ = std::make_shared<spdlog::async_logger>(
+      name, sinks.begin(), sinks.end(), spdlog::thread_pool(),
+      spdlog::async_overflow_policy::overrun_oldest);
+  spdlog::register_logger(logger_);
 }
 
 }  // namespace spectatord
