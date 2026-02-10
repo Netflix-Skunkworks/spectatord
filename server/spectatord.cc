@@ -2,6 +2,7 @@
 #include "local_server.h"
 #include "proc_utils.h"
 #include "udp_server.h"
+#include "../util/systemd.h"
 
 #include <asio.hpp>
 
@@ -347,17 +348,37 @@ void Server::Start() {
 
   logger->info("Using receive buffer size = {}", max_buffer_size());
   auto parser = [this](char* buffer) { return this->parse(buffer); };
-  UdpServer udp_server{io_context, ipv4_only_, port_number_, parser};
-  logger->info("Starting spectatord server on port {}/udp (ipv4_only={})", port_number_, ipv4_only_);
-  udp_server.Start();
+
+  // Check for systemd socket activation for the main UDP port
+  std::unique_ptr<UdpServer> udp_server;
+  auto systemd_udp_fd = get_systemd_udp_socket(port_number_);
+  if (systemd_udp_fd) {
+    logger->info("Using systemd socket activation for spectatord server on port {}/udp (fd={})",
+                 port_number_, *systemd_udp_fd);
+    bool is_ipv6 = is_socket_ipv6(*systemd_udp_fd);
+    udp_server = std::make_unique<UdpServer>(io_context, *systemd_udp_fd, is_ipv6, parser);
+  } else {
+    logger->info("Starting spectatord server on port {}/udp (ipv4_only={})", port_number_, ipv4_only_);
+    udp_server = std::make_unique<UdpServer>(io_context, ipv4_only_, port_number_, parser);
+  }
+  udp_server->Start();
 
   std::unique_ptr<UdpServer> statsd_server;
   if (statsd_port_number_) {
     auto statsd_parser = [this](char* buffer) {
       return this->parse_statsd(buffer);
     };
-    statsd_server = std::make_unique<UdpServer>(io_context, ipv4_only_, *statsd_port_number_, statsd_parser);
-    logger->info("Starting statsd server on port {}/udp (ipv4_only={})", *statsd_port_number_, ipv4_only_);
+    // Check for systemd socket activation for the statsd port
+    auto systemd_statsd_fd = get_systemd_udp_socket(*statsd_port_number_);
+    if (systemd_statsd_fd) {
+      logger->info("Using systemd socket activation for statsd server on port {}/udp (fd={})",
+                   *statsd_port_number_, *systemd_statsd_fd);
+      bool is_ipv6 = is_socket_ipv6(*systemd_statsd_fd);
+      statsd_server = std::make_unique<UdpServer>(io_context, *systemd_statsd_fd, is_ipv6, statsd_parser);
+    } else {
+      logger->info("Starting statsd server on port {}/udp (ipv4_only={})", *statsd_port_number_, ipv4_only_);
+      statsd_server = std::make_unique<UdpServer>(io_context, ipv4_only_, *statsd_port_number_, statsd_parser);
+    }
     statsd_server->Start();
   } else {
     logger->info("statsd support is not enabled");
