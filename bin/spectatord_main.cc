@@ -15,7 +15,6 @@
 
 auto GetSpectatorConfig() -> std::unique_ptr<spectator::Config>;
 
-using spectatord::GetLogger;
 using spectatord::Logger;
 
 struct PortNumber {
@@ -96,14 +95,14 @@ ABSL_FLAG(PortNumber, statsd_port, PortNumber(8125),
           "Port number for the statsd socket.");
 ABSL_FLAG(std::string, uri, "",
           "Optional override URI for the aggregator.");
+ABSL_FLAG(bool, enable_insight_logs, false,
+          "Send internal logs to the Insight Logs agent on localhost:1552.");
 ABSL_FLAG(bool, verbose, false,
           "Use verbose logging.");
 ABSL_FLAG(bool, verbose_http, false,
           "Output debug info for HTTP requests.");
 
 auto main(int argc, char** argv) -> int {
-  auto logger = Logger();
-
   auto signals = backward::SignalHandling::make_default_signals();
   // default signals except SIGABRT
   signals.erase(std::remove(signals.begin(), signals.end(), SIGABRT), signals.end());
@@ -114,6 +113,8 @@ auto main(int argc, char** argv) -> int {
   absl::SetFlagsUsageConfig(usage_config);
   absl::SetProgramUsageMessage("A daemon that listens for metrics and reports them to Atlas.");
   absl::ParseCommandLine(argc, argv);
+
+  auto logger = Logger("spectatord", absl::GetFlag(FLAGS_enable_insight_logs));
 
   auto cfg = GetSpectatorConfig();
 
@@ -147,13 +148,10 @@ auto main(int argc, char** argv) -> int {
 
   cfg->age_gauge_limit = absl::GetFlag(FLAGS_age_gauge_limit);
 
-  auto spectator_logger = GetLogger("spectator");
   if (absl::GetFlag(FLAGS_verbose)) {
     logger->set_level(spdlog::level::trace);
-    spectator_logger->set_level(spdlog::level::trace);
   } else {
     logger->set_level(spdlog::level::info);
-    spectator_logger->set_level(spdlog::level::info);
   }
 
   auto maybe_common_tags = absl::GetFlag(FLAGS_common_tags);
@@ -180,7 +178,7 @@ auto main(int argc, char** argv) -> int {
     logger->info("Unable to load signal handling for stacktraces");
   }
 
-  spectator::Registry registry{std::move(cfg), std::move(spectator_logger)};
+  spectator::Registry registry{std::move(cfg), logger};
   registry.Start();
 
   std::optional<std::string> socket_path;

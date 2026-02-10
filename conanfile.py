@@ -42,6 +42,7 @@ class SpectatorDConan(ConanFile):
     def configure(self):
         self.options["libcurl"].with_c_ares = True
         self.options["libcurl"].with_ssl = "openssl"
+        self.options["poco"].enable_data = False
         self.options["poco"].enable_data_mysql = False
         self.options["poco"].enable_data_postgresql = False
         self.options["poco"].enable_data_sqlite = False
