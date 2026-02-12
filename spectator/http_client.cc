@@ -57,8 +57,7 @@ auto curl_capture_headers_fun(char* contents, size_t size, size_t nmemb, void* u
 class CurlHandle {
  public:
   CurlHandle() noexcept : handle_{curl_easy_init()} {
-    auto user_agent = fmt::format("spectatord/{}", VERSION);
-    curl_easy_setopt(handle_, CURLOPT_USERAGENT, user_agent.c_str());
+    apply_persistent_settings();
   }
 
   CurlHandle(const CurlHandle&) = delete;
@@ -168,7 +167,34 @@ class CurlHandle {
     return errbuf_;
   }
 
+  // Clear per-request state when reusing handle across requests.
+  // curl_easy_reset() clears all options but preserves the connection cache.
+  void clear_for_reuse() {
+    response_.clear();
+    resp_headers_.clear();
+    headers_.reset();
+    payload_ = nullptr;
+    std::memset(errbuf_, 0, CURL_ERROR_SIZE);
+
+    curl_easy_reset(handle_);
+    apply_persistent_settings();
+  }
+
  private:
+  // Settings that survive across requests (applied in constructor and after reset)
+  void apply_persistent_settings() {
+    static const auto user_agent = fmt::format("spectatord/{}", VERSION);
+    curl_easy_setopt(handle_, CURLOPT_USERAGENT, user_agent.c_str());
+
+    // Enable connection reuse for thread-local handles
+    curl_easy_setopt(handle_, CURLOPT_TCP_KEEPALIVE, 1L);
+    // Cache up to 2 connections per handle. Each thread only talks to one aggregator
+    // endpoint, so 1 is sufficient for steady state. We use 2 to handle the edge case
+    // where an old connection is closing while a new one is being established.
+    curl_easy_setopt(handle_, CURLOPT_MAXCONNECTS, 2L);
+    curl_easy_setopt(handle_, CURLOPT_FORBID_REUSE, 0L);  // Allow connection reuse
+  }
+
   CURL* handle_;
   std::shared_ptr<CurlHeaders> headers_;
   const void* payload_ = nullptr;
@@ -216,7 +242,12 @@ auto HttpClient::perform(const char* method, const std::string& url,
                          int attempt_number) const -> HttpResponse {
   LogEntry entry{registry_, method, url};
 
-  CurlHandle curl;
+  // Use thread-local handle to enable connection reuse across requests.
+  // Each thread maintains its own handle with cached connections, significantly
+  // reducing connection churn and TLS handshake overhead for periodic publishing.
+  thread_local CurlHandle curl;
+  curl.clear_for_reuse();
+
   auto total_timeout = config_.connect_timeout + config_.read_timeout;
   curl.set_timeout(total_timeout);
   curl.set_connect_timeout(config_.connect_timeout);

@@ -98,6 +98,11 @@ inline int listen_fds() {
   cached_n = static_cast<int>(n);
   return cached_n;
 }
+#else
+// Stub implementations for non-Linux platforms
+inline bool is_socket_ipv6(int fd) {
+  return false;
+}
 #endif
 
 // Check if systemd has passed us any socket file descriptors
