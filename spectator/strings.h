@@ -2,7 +2,8 @@
 
 #include <string>
 
-namespace spectator {
+namespace spectator
+{
 
 auto PathFromUrl(std::string_view url) noexcept -> std::string;
 

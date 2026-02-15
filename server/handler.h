@@ -3,6 +3,7 @@
 #include <optional>
 #include <string>
 
-namespace spectatord {
+namespace spectatord
+{
 using handler_t = std::function<std::optional<std::string>(char*)>;
 }  // namespace spectatord
