@@ -91,7 +91,7 @@ ABSL_FLAG(std::string, process_name, "spectatord",
 ABSL_FLAG(std::string, socket_path, "/run/spectatord/spectatord.unix", "Path to the UNIX domain socket.");
 ABSL_FLAG(PortNumber, statsd_port, PortNumber(8125), "Port number for the statsd socket.");
 ABSL_FLAG(std::string, uri, "", "Optional override URI for the aggregator.");
-ABSL_FLAG(bool, enable_insight_logs, false, "Send internal logs to the Insight Logs agent on localhost:1552.");
+ABSL_FLAG(bool, enable_insight_logs, true, "Send internal logs to the Insight Logs agent on localhost:1552.");
 ABSL_FLAG(bool, verbose, false, "Use verbose logging.");
 ABSL_FLAG(bool, verbose_http, false, "Output debug info for HTTP requests.");
 
@@ -146,14 +146,7 @@ auto main(int argc, char** argv) -> int
 
 	cfg->age_gauge_limit = absl::GetFlag(FLAGS_age_gauge_limit);
 
-	if (absl::GetFlag(FLAGS_verbose))
-	{
-		logger->set_level(spdlog::level::trace);
-	}
-	else
-	{
-		logger->set_level(spdlog::level::info);
-	}
+	logger->set_level(absl::GetFlag(FLAGS_verbose) ? spdlog::level::trace : spdlog::level::info);
 
 	auto maybe_common_tags = absl::GetFlag(FLAGS_common_tags);
 	if (!maybe_common_tags.empty())
