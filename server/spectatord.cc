@@ -464,6 +464,11 @@ void Server::Start()
 		logger->info("unix socket support is not enabled");
 	}
 
+	// Notify systemd that we're ready to accept connections
+	if (sd_notify("READY=1")) {
+	  logger->info("Sent READY=1 notification to systemd");
+	}
+
 	io_context.run();
 }
 
