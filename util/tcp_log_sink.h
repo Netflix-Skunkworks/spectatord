@@ -30,6 +30,8 @@ class JsonLogFormatter : public spdlog::formatter
 		writer.Int64(millis);
 		writer.Key("logger");
 		writer.String(msg.logger_name.data(), static_cast<rapidjson::SizeType>(msg.logger_name.size()));
+		writer.Key("nf.platform");
+		writer.String("spectatord");
 		writer.EndObject();
 
 		dest.append(buf.GetString(), buf.GetString() + buf.GetSize());
