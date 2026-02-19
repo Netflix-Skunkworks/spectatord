@@ -22,14 +22,8 @@ class JsonLogFormatter : public spdlog::formatter
 		rapidjson::Writer<rapidjson::StringBuffer> writer(buf);
 
 		writer.StartObject();
-		writer.Key("message");
-		writer.String(msg.payload.data(), static_cast<rapidjson::SizeType>(msg.payload.size()));
-		writer.Key("level");
-		writer.String(level_to_string(msg.level));
-		writer.Key("logts");
-		writer.Int64(millis);
-		writer.Key("logger");
-		writer.String(msg.logger_name.data(), static_cast<rapidjson::SizeType>(msg.logger_name.size()));
+		write_top_level_fields(writer, msg, millis);
+		write_tags(writer);
 		writer.EndObject();
 
 		dest.append(buf.GetString(), buf.GetString() + buf.GetSize());
@@ -42,6 +36,29 @@ class JsonLogFormatter : public spdlog::formatter
 	}
 
    private:
+	using Writer = rapidjson::Writer<rapidjson::StringBuffer>;
+
+	static void write_top_level_fields(Writer& writer, const spdlog::details::log_msg& msg, int64_t millis)
+	{
+		writer.Key("message");
+		writer.String(msg.payload.data(), static_cast<rapidjson::SizeType>(msg.payload.size()));
+		writer.Key("level");
+		writer.String(level_to_string(msg.level));
+		writer.Key("logts");
+		writer.Int64(millis);
+		writer.Key("logger");
+		writer.String(msg.logger_name.data(), static_cast<rapidjson::SizeType>(msg.logger_name.size()));
+	}
+
+	static void write_tags(Writer& writer)
+	{
+		writer.Key("tags");
+		writer.StartObject();
+		writer.Key("nf.platform");
+		writer.String("spectator");
+		writer.EndObject();
+	}
+
 	static auto level_to_string(spdlog::level::level_enum level) -> const char*
 	{
 		switch (level)
