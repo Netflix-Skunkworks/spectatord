@@ -4,5 +4,6 @@ add_library(util OBJECT
     "logger.cc"
     "logger.h"
     "tcp_log_sink.h"
+    "unix_socket_log_sink.h"
 )
 target_link_libraries(util spdlog::spdlog fmt::fmt rapidjson)
