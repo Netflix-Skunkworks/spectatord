@@ -1,5 +1,5 @@
 #include "logger.h"
-#include "tcp_log_sink.h"
+#include "insight_log_sinks.h"
 #include <spdlog/async.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <sys/stat.h>

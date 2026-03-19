@@ -77,6 +77,22 @@ add_test(
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+#-- util_test test executable
+add_executable(util_test
+    "bin/test_main.cc"
+    "util/unix_socket_log_sink_test.cc"
+)
+target_link_libraries(util_test
+    util
+    Backward::Backward
+    gtest::gtest
+)
+add_test(
+    NAME util_test
+    COMMAND util_test
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
 #-- spectatord_main executable
 option(NFLX_INTERNAL "Netflix internal build" OFF)
 add_executable(spectatord_main "bin/spectatord_main.cc")
