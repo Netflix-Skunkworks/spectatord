@@ -189,6 +189,17 @@ class CurlHandle
 		apply_persistent_settings();
 	}
 
+	// Destroy and recreate the handle to get a fresh DNS resolver.
+	// The underlying resolver (c-ares) reads /etc/resolv.conf once at handle
+	// creation and never re-reads it, so a stale resolver can cause permanent
+	// DNS failures. This forces a full re-initialization.
+	void recreate()
+	{
+		curl_easy_cleanup(handle_);
+		handle_ = curl_easy_init();
+		apply_persistent_settings();
+	}
+
    private:
 	// Settings that survive across requests (applied in constructor and after reset)
 	void apply_persistent_settings()
@@ -310,6 +321,9 @@ auto HttpClient::perform(const char* method, const std::string& url, std::shared
 
 		switch (curl_res)
 		{
+			case CURLE_COULDNT_RESOLVE_HOST:
+				entry.set_error("dns_error");
+				break;
 			case CURLE_COULDNT_CONNECT:
 				entry.set_error("connection_error");
 				break;
@@ -319,6 +333,13 @@ auto HttpClient::perform(const char* method, const std::string& url, std::shared
 			default:
 				entry.set_error("unknown");
 		}
+
+		// Recreate the handle on any error to get a fresh DNS resolver.
+		// c-ares reads /etc/resolv.conf once at handle creation and never
+		// re-reads it. A stale resolver can manifest as DNS errors or as
+		// timeouts (when the old nameserver is unreachable).
+		logger->info("Recreating CURL handle to refresh DNS resolver");
+		curl.recreate();
 
 		auto elapsed = absl::Now() - entry.start();
 		// retry connect timeouts if possible, not read timeouts
