@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <string>
 
 #include <asio.hpp>
@@ -62,11 +63,14 @@ class unix_sink : public spdlog::sinks::base_sink<Mutex> {
 		if (ec && ec != asio::error::would_block
 		       && ec != asio::error::no_buffer_space)
 		{
-			// If a fallback sink is provided, log the message there instead.
+			// OTel Collector early socket is unreachable. Log the error to stderr
+			// (visible in journald) and route this message through the TCP
+			// fallback sink at 127.0.0.1:1552.
 			if (fallback_)
 			{
-				spdlog::details::log_msg warn_msg(spdlog::source_loc{}, "", spdlog::level::err,
-				    "unix_sink: OTel Collector socket is down (" + ec.message() + "), falling back to TCP");
+				std::string warn_text = "unix_sink: OTel Collector socket is down (" + ec.message() + "), falling back to TCP";
+				spdlog::details::log_msg warn_msg(spdlog::source_loc{}, "", spdlog::level::err, warn_text);
+				std::cerr << warn_text << std::endl;
 				fallback_->log(warn_msg);
 				fallback_->log(msg);
 			}
