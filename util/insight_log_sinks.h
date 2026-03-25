@@ -20,9 +20,9 @@ inline auto create_insight_logs_sink(const std::string& host, int port) -> spdlo
 	return sink;
 }
 
-inline auto create_insight_logs_unix_sink(const std::string& socket_path) -> spdlog::sink_ptr
+inline auto create_insight_logs_unix_sink(const std::string& socket_path, spdlog::sink_ptr fallback = nullptr) -> spdlog::sink_ptr
 {
-	spdlog::sinks::unix_sink_config cfg{socket_path};
+	spdlog::sinks::unix_sink_config cfg{socket_path, std::move(fallback)};
 
 	auto sink = std::make_shared<spdlog::sinks::unix_sink_mt>(cfg);
 	sink->set_formatter(std::make_unique<JsonLogFormatter>());

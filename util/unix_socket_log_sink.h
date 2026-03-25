@@ -17,9 +17,10 @@ namespace sinks {
 
 struct unix_sink_config {
 	std::string path;
+	spdlog::sink_ptr fallback;
 
-	explicit unix_sink_config(std::string socket_path)
-		: path{std::move(socket_path)}
+	explicit unix_sink_config(std::string socket_path, spdlog::sink_ptr fallback_sink = nullptr)
+		: path{std::move(socket_path)}, fallback{std::move(fallback_sink)}
 	{
 	}
 };
@@ -29,6 +30,7 @@ class unix_sink : public spdlog::sinks::base_sink<Mutex> {
    public:
 	explicit unix_sink(unix_sink_config sink_config)
 		: config_{std::move(sink_config)},
+		  fallback_{config_.fallback},
 		  endpoint_{config_.path}
 	{
 		asio::error_code ec;
@@ -60,7 +62,18 @@ class unix_sink : public spdlog::sinks::base_sink<Mutex> {
 		if (ec && ec != asio::error::would_block
 		       && ec != asio::error::no_buffer_space)
 		{
-			throw_spdlog_ex("unix_sink: send_to failed: " + ec.message());
+			// If a fallback sink is provided, log the message there instead.
+			if (fallback_)
+			{
+				spdlog::details::log_msg warn_msg(spdlog::source_loc{}, "", spdlog::level::err,
+				    "unix_sink: OTel Collector socket is down (" + ec.message() + "), falling back to TCP");
+				fallback_->log(warn_msg);
+				fallback_->log(msg);
+			}
+			else
+			{
+				throw_spdlog_ex("unix_sink: send_to failed: " + ec.message());
+			}
 		}
 	}
  
@@ -68,6 +81,7 @@ class unix_sink : public spdlog::sinks::base_sink<Mutex> {
 
    private:
 	unix_sink_config config_;
+	spdlog::sink_ptr fallback_;
 	asio::io_context io_context_;
 	asio::local::datagram_protocol::socket socket_{io_context_};
 	asio::local::datagram_protocol::endpoint endpoint_;
