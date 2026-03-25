@@ -69,7 +69,7 @@ class unix_sink : public spdlog::sinks::base_sink<Mutex> {
 			if (fallback_)
 			{
 				std::string warn_text = "unix_sink: OTel Collector socket is down (" + ec.message() + "), falling back to TCP";
-				spdlog::details::log_msg warn_msg(spdlog::source_loc{}, "", spdlog::level::err, warn_text);
+				spdlog::details::log_msg warn_msg(spdlog::source_loc{}, msg.logger_name, spdlog::level::err, warn_text);
 				std::cerr << warn_text << std::endl;
 				fallback_->log(warn_msg);
 				fallback_->log(msg);
