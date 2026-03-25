@@ -31,7 +31,8 @@ Logger::Logger(const std::string& name, bool enable_insight_logs)
 		struct stat sb;
 		if (stat(kInsightLogsSocketPath, &sb) == 0 && (sb.st_mode & S_IFSOCK) != 0)
 		{
-			sinks.push_back(create_insight_logs_unix_sink(kInsightLogsSocketPath));
+			auto fallback = create_insight_logs_sink("127.0.0.1", 1552);
+			sinks.push_back(create_insight_logs_unix_sink(kInsightLogsSocketPath, std::move(fallback)));
 			insight_logs_dest = kInsightLogsSocketPath;
 		}
 		else
