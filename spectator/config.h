@@ -4,9 +4,16 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace spectator
 {
+
+struct PolicyRule
+{
+	std::map<std::string, std::string> match_tags;
+	std::vector<std::string> omit_common_tags;
+};
 
 class Config
 {
@@ -34,6 +41,7 @@ class Config
 	{
 	}
 	std::map<std::string, std::string> common_tags;
+	std::vector<PolicyRule> policies{{{{"nf.process", "spark-executor"}}, {"nf.node"}}};
 	absl::Duration read_timeout;
 	absl::Duration connect_timeout;
 	int batch_size{};

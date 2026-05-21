@@ -15,6 +15,7 @@
 #include <asio/post.hpp>
 #include <asio/thread_pool.hpp>
 #include <atomic>
+#include <algorithm>
 #include <condition_variable>
 #include <functional>
 #include <mutex>
@@ -56,6 +57,10 @@ class Publisher
 		for (const auto& kv : registry_->GetConfig().common_tags)
 		{
 			common_tags_.add(kv.first, kv.second);
+		}
+		for (const auto& rule : registry_->GetConfig().policies)
+		{
+			policies_.emplace_back(rule);
 		}
 	}
 
@@ -141,6 +146,27 @@ class Publisher
 	std::shared_ptr<Counter> droppedHttp_;
 	std::shared_ptr<Counter> droppedOther_;
 	Tags common_tags_;
+
+	struct InternedPolicyRule
+	{
+		Tags match_tags;
+		std::vector<StrRef> omit_common_tags;
+
+		explicit InternedPolicyRule(const PolicyRule& rule)
+		{
+			for (const auto& kv : rule.match_tags)
+			{
+				match_tags.add(kv.first, kv.second);
+			}
+			omit_common_tags.reserve(rule.omit_common_tags.size());
+			for (const auto& tag : rule.omit_common_tags)
+			{
+				omit_common_tags.emplace_back(intern_str(tag));
+			}
+		}
+	};
+
+	std::vector<InternedPolicyRule> policies_;
 	size_t num_sender_threads_;
 	asio::thread_pool pool_;
 	std::vector<SmilePayload> buffers_;
@@ -223,6 +249,54 @@ class Publisher
 		Max = 10
 	};
 
+	static auto rule_matches(const InternedPolicyRule& rule, const Tags& tags) -> bool
+	{
+		for (const auto& matcher : rule.match_tags)
+		{
+			if (tags.at(matcher.key) != matcher.value)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	static auto rule_omits_common_tag(const InternedPolicyRule& rule, StrRef key) -> bool
+	{
+		return std::find(rule.omit_common_tags.begin(), rule.omit_common_tags.end(), key) !=
+		       rule.omit_common_tags.end();
+	}
+
+	// Policies let the same daemon publish host-level Hadoop metrics and Spark
+	// executor metrics with different common-tag handling. For example, the
+	// default policy language rule `tag:nf.process=spark-executor->omit:nf.node`
+	// keeps node identity for system metrics while omitting nf.node for executor metrics.
+	auto should_omit_common_tag(const Measurement& measurement, StrRef key) const -> bool
+	{
+		const auto& tags = measurement.id.GetTags();
+		for (const auto& rule : policies_)
+		{
+			if (rule_omits_common_tag(rule, key) && rule_matches(rule, tags))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	auto common_tags_size_for_measurement(const Measurement& measurement) const -> size_t
+	{
+		size_t size = 0;
+		for (const auto& tag : common_tags_)
+		{
+			if (!should_omit_common_tag(measurement, tag.key))
+			{
+				++size;
+			}
+		}
+		return size;
+	}
+
 	auto op_from_tags(const Tags& tags) -> Op
 	{
 		auto stat = tags.at(refs().statistic());
@@ -239,26 +313,38 @@ class Publisher
 	{
 		for (const auto& tag : tags)
 		{
-			auto k_pair = strings.find(tag.key);
-			auto v_pair = strings.find(tag.value);
-			assert(k_pair != strings.end());
-			assert(v_pair != strings.end());
-			payload->Append(k_pair->second);
-			payload->Append(v_pair->second);
+			add_tag(payload, strings, tag);
 		}
 	}
 
-	void append_measurement(SmilePayload* payload, const StrTable& strings, const std::vector<int>& common_ids,
-	                        const Measurement& m)
+	void add_tag(SmilePayload* payload, const StrTable& strings, const Tag& tag)
+	{
+		auto k_pair = strings.find(tag.key);
+		auto v_pair = strings.find(tag.value);
+		assert(k_pair != strings.end());
+		assert(v_pair != strings.end());
+		payload->Append(k_pair->second);
+		payload->Append(v_pair->second);
+	}
+
+	void add_common_tags(SmilePayload* payload, const StrTable& strings, const Measurement& measurement)
+	{
+		for (const auto& tag : common_tags_)
+		{
+			if (!should_omit_common_tag(measurement, tag.key))
+			{
+				add_tag(payload, strings, tag);
+			}
+		}
+	}
+
+	void append_measurement(SmilePayload* payload, const StrTable& strings, const Measurement& m)
 	{
 		auto op = op_from_tags(m.id.GetTags());
-		auto common_tags_size = common_ids.size() / 2;
+		auto common_tags_size = common_tags_size_for_measurement(m);
 		auto total_tags = m.id.GetTags().size() + 1 + common_tags_size;
 		payload->Append(total_tags);
-		for (auto i : common_ids)
-		{
-			payload->Append(i);
-		}
+		add_common_tags(payload, strings, m);
 		add_tags(payload, strings, m.id.GetTags());
 		auto name_idx = strings.find(refs().name())->second;
 		auto name_value_idx = strings.find(m.id.Name())->second;
@@ -269,31 +355,14 @@ class Publisher
 		payload->Append(m.value);
 	}
 
-	auto get_common_ids(const StrTable& strings) -> std::vector<int>
-	{
-		std::vector<int> ids;
-		ids.reserve(common_tags_.size() * 2);
-		for (const auto& tag : common_tags_)
-		{
-			auto key_pair = strings.find(tag.key);
-			auto val_pair = strings.find(tag.value);
-			assert(key_pair != strings.end());
-			assert(val_pair != strings.end());
-			ids.emplace_back(key_pair->second);
-			ids.emplace_back(val_pair->second);
-		}
-		return ids;
-	}
-
 	void measurements_to_json(SmilePayload* payload, std::vector<Measurement>::const_iterator first,
 	                          std::vector<Measurement>::const_iterator last)
 	{
 		payload->Init();
 		auto strings = build_str_table(payload, first, last);
-		auto common_ids = get_common_ids(strings);
 		for (auto it = first; it != last; ++it)
 		{
-			append_measurement(payload, strings, common_ids, *it);
+			append_measurement(payload, strings, *it);
 		}
 	}
 

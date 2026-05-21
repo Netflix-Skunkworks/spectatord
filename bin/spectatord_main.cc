@@ -7,11 +7,14 @@
 #include "absl/flags/usage.h"
 #include "absl/flags/usage_config.h"
 #include "absl/strings/str_split.h"
+#include "absl/strings/strip.h"
 #include "absl/time/time.h"
 #include "backward.hpp"
 
 #include <cstdlib>
 #include <fmt/ranges.h>
+#include <optional>
+#include <string_view>
 
 auto GetSpectatorConfig() -> std::unique_ptr<spectator::Config>;
 
@@ -48,6 +51,88 @@ auto AbslParseFlag(absl::string_view text, PortNumber* p, std::string* error) ->
 	return true;
 }
 
+static auto trim_copy(std::string_view value) -> std::string
+{
+	auto stripped = absl::StripAsciiWhitespace(value);
+	return {stripped.data(), stripped.size()};
+}
+
+static auto starts_with(std::string_view value, std::string_view prefix) -> bool
+{
+	return value.size() >= prefix.size() && value.compare(0, prefix.size(), prefix) == 0;
+}
+
+static auto parse_policies(std::string_view value, std::string* error)
+    -> std::optional<std::vector<spectator::PolicyRule>>
+{
+	std::vector<spectator::PolicyRule> rules;
+	for (auto raw_rule : absl::StrSplit(value, ';'))
+	{
+		auto rule_text = trim_copy(raw_rule);
+		if (rule_text.empty())
+		{
+			continue;
+		}
+
+		auto arrow_pos = rule_text.find("->");
+		if (arrow_pos == std::string::npos)
+		{
+			*error = fmt::format("missing '->' in policy rule '{}'", rule_text);
+			return std::nullopt;
+		}
+
+		auto matcher_text = trim_copy(std::string_view{rule_text}.substr(0, arrow_pos));
+		auto action_text = trim_copy(std::string_view{rule_text}.substr(arrow_pos + 2));
+		if (!starts_with(matcher_text, "tag:"))
+		{
+			*error = fmt::format("policy matcher must start with 'tag:' in rule '{}'", rule_text);
+			return std::nullopt;
+		}
+		if (!starts_with(action_text, "omit:"))
+		{
+			*error = fmt::format("policy action must start with 'omit:' in rule '{}'", rule_text);
+			return std::nullopt;
+		}
+
+		spectator::PolicyRule rule;
+		for (auto raw_matcher : absl::StrSplit(std::string_view{matcher_text}.substr(4), ','))
+		{
+			auto matcher = trim_copy(raw_matcher);
+			if (starts_with(matcher, "tag:"))
+			{
+				matcher = trim_copy(std::string_view{matcher}.substr(4));
+			}
+			auto equals_pos = matcher.find('=');
+			if (equals_pos == std::string::npos || equals_pos == 0 || equals_pos == matcher.size() - 1)
+			{
+				*error = fmt::format("policy matcher must be key=value in rule '{}'", rule_text);
+				return std::nullopt;
+			}
+			rule.match_tags[trim_copy(std::string_view{matcher}.substr(0, equals_pos))] =
+			    trim_copy(std::string_view{matcher}.substr(equals_pos + 1));
+		}
+
+		for (auto raw_tag : absl::StrSplit(std::string_view{action_text}.substr(5), ','))
+		{
+			auto tag = trim_copy(raw_tag);
+			if (tag.empty())
+			{
+				*error = fmt::format("policy omit action has an empty tag in rule '{}'", rule_text);
+				return std::nullopt;
+			}
+			rule.omit_common_tags.emplace_back(std::move(tag));
+		}
+
+		if (rule.match_tags.empty() || rule.omit_common_tags.empty())
+		{
+			*error = fmt::format("policy rule '{}' must have matchers and omitted common tags", rule_text);
+			return std::nullopt;
+		}
+		rules.emplace_back(std::move(rule));
+	}
+	return rules;
+}
+
 ABSL_FLAG(PortNumber, admin_port, PortNumber(1234), "Port number for the admin server.");
 ABSL_FLAG(size_t, age_gauge_limit, 1000, "The maximum number of age gauges that may be reported by this process.");
 ABSL_FLAG(std::string, common_tags, "",
@@ -78,6 +163,10 @@ ABSL_FLAG(std::string, metatron_dir, "",
 ABSL_FLAG(absl::Duration, meter_ttl, absl::Minutes(15), "Meter TTL: expire meters after this period of inactivity.");
 ABSL_FLAG(absl::Duration, frequency, absl::Seconds(5),
           "Reporting frequency: how often metrics are flushed to the Atlas aggregator.");
+ABSL_FLAG(std::string, policies, "",
+          "Policy rules for per-metric common-tag handling. Grammar: "
+          "tag:<key>=<value>[,<key>=<value>]->omit:<common-tag>[,<common-tag>];... "
+          "Example: tag:nf.process=spark-executor->omit:nf.node. Use 'none' to clear configured rules.");
 ABSL_FLAG(bool, no_common_tags, false,
           "No common tags will be provided for metrics. Since no common tags are available, no "
           "internal status metrics will be recorded. Only use this feature for special cases "
@@ -164,6 +253,28 @@ auto main(int argc, char** argv) -> int
 		}
 		logger->info("Using common tags: {}", common_tags);
 		cfg->common_tags = std::move(common_tags);
+	}
+
+	auto maybe_policies = absl::GetFlag(FLAGS_policies);
+	if (!maybe_policies.empty())
+	{
+		if (maybe_policies == "none")
+		{
+			logger->info("Clearing policy rules");
+			cfg->policies.clear();
+		}
+		else
+		{
+			std::string error;
+			auto policies = parse_policies(maybe_policies, &error);
+			if (!policies)
+			{
+				logger->error("Invalid policies specified: {}", error);
+				exit(EXIT_FAILURE);
+			}
+			logger->info("Using {} policy rule(s)", policies->size());
+			cfg->policies = std::move(*policies);
+		}
 	}
 
 	if (absl::GetFlag(FLAGS_no_common_tags))

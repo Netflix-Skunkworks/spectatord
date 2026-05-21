@@ -53,9 +53,30 @@ void GET_config(HTTPServerRequest& req, HTTPServerResponse& res, const spectator
 		common_tags->set(pair.first, pair.second);
 	}
 
+	Poco::JSON::Array::Ptr policies = new Poco::JSON::Array(true);
+	for (const auto& rule : config.policies)
+	{
+		Object::Ptr rule_obj = new Object(true);
+		Object::Ptr match_tags = new Object(true);
+		for (const auto& pair : rule.match_tags)
+		{
+			match_tags->set(pair.first, pair.second);
+		}
+		rule_obj->set("match_tags", match_tags);
+
+		Poco::JSON::Array::Ptr omit_common_tags = new Poco::JSON::Array(true);
+		for (const auto& tag : rule.omit_common_tags)
+		{
+			omit_common_tags->add(tag);
+		}
+		rule_obj->set("omit_common_tags", omit_common_tags);
+		policies->add(rule_obj);
+	}
+
 	obj->set("age_gauge_limit", config.age_gauge_limit);
 	obj->set("batch_size", config.batch_size);
 	obj->set("common_tags", common_tags);
+	obj->set("policies", policies);
 	obj->set("connect_timeout", ToDoubleMilliseconds(config.connect_timeout));
 	obj->set("expiration_frequency", ToDoubleMilliseconds(config.expiration_frequency));
 	obj->set("external_enabled", config.external_enabled);

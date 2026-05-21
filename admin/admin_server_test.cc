@@ -189,10 +189,19 @@ TEST_F(AdminServerTest, GET_config)
 	Var result{parser.parse(rr)};
 	Object::Ptr object = result.extract<Object::Ptr>();
 
-	std::vector<std::string> expected_keys{
-	    "age_gauge_limit",        "batch_size", "common_tags",  "connect_timeout", "expiration_frequency",
-	    "external_enabled",       "frequency",  "metatron_dir", "meter_ttl",       "read_timeout",
-	    "status_metrics_enabled", "uri"};
+	std::vector<std::string> expected_keys{"age_gauge_limit",
+	                                      "batch_size",
+	                                      "common_tags",
+	                                      "connect_timeout",
+	                                      "expiration_frequency",
+	                                      "external_enabled",
+	                                      "frequency",
+	                                      "metatron_dir",
+	                                      "meter_ttl",
+	                                      "policies",
+	                                      "read_timeout",
+	                                      "status_metrics_enabled",
+	                                      "uri"};
 	std::vector<std::string> found_keys;
 
 	for (auto& it : *object)
