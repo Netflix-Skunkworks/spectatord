@@ -9,6 +9,6 @@ add_library(util STATIC
 )
 target_include_directories(util PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(util
-    PUBLIC  spdlog::spdlog fmt::fmt
-    PRIVATE rapidjson asio::asio
+    PUBLIC  spdlog::spdlog fmt::fmt asio::asio
+    PRIVATE rapidjson
 )

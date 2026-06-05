@@ -10,4 +10,5 @@ target_include_directories(spectator_encoding
 target_link_libraries(spectator_encoding
     PUBLIC
         ZLIB::ZLIB
+        fmt::fmt
 )
