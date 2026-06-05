@@ -138,7 +138,7 @@ target_link_options(spectatord_main PRIVATE "-static-libstdc++")
 
 #-- metrics_gen executable
 add_executable(metrics_gen
-    "server/local.h"
+    "server/transport/local.h"
     "tools/metrics_gen.cc"
 )
 target_link_libraries(metrics_gen
