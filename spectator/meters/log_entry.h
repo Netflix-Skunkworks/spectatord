@@ -1,8 +1,8 @@
 #pragma once
 
-#include "registry.h"
-#include "strings.h"
-#include "percentile_timer.h"
+#include "spectator/registry/registry.h"
+#include "spectator/strings/strings.h"
+#include "spectator/registry/percentile_timer.h"
 #include "absl/time/clock.h"
 
 namespace spectator
