@@ -11,11 +11,11 @@ target_link_libraries(spectator_registry
         spectator_meters
         spectator_http
         metatron
+        rapidjson
     PRIVATE
         util
         CURL::libcurl
         asio::asio
-        rapidjson
         spdlog::spdlog
         tsl::hopscotch_map
 )
