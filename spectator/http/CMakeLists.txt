@@ -11,7 +11,7 @@ target_link_libraries(spectator_http
     PUBLIC
         spectator_encoding
         spectator_strings
-        absl::absl
+        abseil::abseil
     PRIVATE
         metatron
         CURL::libcurl

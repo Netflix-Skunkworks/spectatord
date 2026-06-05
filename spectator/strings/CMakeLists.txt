@@ -23,7 +23,7 @@ target_include_directories(spectator_strings
 )
 target_link_libraries(spectator_strings
     PUBLIC
-        absl::absl
+        abseil::abseil
         fmt::fmt
         tsl::hopscotch_map
         xxHash::xxhash

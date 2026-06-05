@@ -25,7 +25,7 @@ target_include_directories(spectator_meter_types
 target_link_libraries(spectator_meter_types
     INTERFACE
         spectator_strings
-        absl::absl
+        abseil::abseil
         fmt::fmt
         spdlog::spdlog
         tsl::hopscotch_map
