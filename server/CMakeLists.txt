@@ -1,20 +1,15 @@
-#-- spectatord library
-add_library(spectatord
-    "expiring_cache.h"
-    "handler.h"
-    "local.h"
-    "local_server.cc"
-    "local_server.h"
-    "proc_utils.cc"
-    "proc_utils.h"
-    "spectatord.cc"
-    "spectatord.h"
-    "udp_server.cc"
-    "udp_server.h"
-)
+add_subdirectory(proc)
+add_subdirectory(transport)
+
+add_library(spectatord STATIC "spectatord.cc")
+target_include_directories(spectatord PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(spectatord
-    spectator
-    util
-    abseil::abseil
-    asio::asio
+    PUBLIC
+        spectator
+    PRIVATE
+        spectatord_proc
+        spectatord_transport
+        util
+        abseil::abseil
+        asio::asio
 )

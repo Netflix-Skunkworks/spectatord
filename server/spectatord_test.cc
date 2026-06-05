@@ -1,6 +1,6 @@
 #include "spectator/registry/test_utils.h"
 #include "gtest/gtest.h"
-#include "local.h"
+#include "server/transport/local.h"
 #include "spectatord.h"
 
 #include <fmt/ostream.h>

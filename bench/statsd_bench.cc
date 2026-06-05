@@ -1,4 +1,4 @@
-#include "../server/spectatord.h"
+#include "server/spectatord.h"
 #include <benchmark/benchmark.h>
 #include <fmt/format.h>
 #include <spdlog/sinks/stdout_color_sinks.h>

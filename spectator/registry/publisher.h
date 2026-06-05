@@ -2,7 +2,7 @@
 
 #include "metatron/metatron_config.h"
 #include "ska/flat_hash_map.hpp"
-#include "util/logger.h"
+#include "util/logging/logger.h"
 #include "absl/synchronization/blocking_counter.h"
 #include "absl/time/time.h"
 #include "spectator/strings/common_refs.h"

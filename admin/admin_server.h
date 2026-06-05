@@ -1,7 +1,7 @@
 #pragma once
 
 #include "spectator/registry/registry.h"
-#include "../util/logger.h"
+#include "util/logging/logger.h"
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/HTTPRequestHandler.h>
 

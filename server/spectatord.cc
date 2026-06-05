@@ -1,8 +1,8 @@
 #include "spectatord.h"
-#include "local_server.h"
-#include "proc_utils.h"
-#include "udp_server.h"
-#include "../util/systemd.h"
+#include "server/transport/local_server.h"
+#include "server/proc/proc_utils.h"
+#include "server/transport/udp_server.h"
+#include "util/systemd.h"
 
 #include <asio.hpp>
 

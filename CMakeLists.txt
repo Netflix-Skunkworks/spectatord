@@ -80,7 +80,7 @@ add_test(
 add_executable(spectatord_test
     "admin/admin_server_test.cc"
     "bin/test_main.cc"
-    "server/proc_utils_test.cc"
+    "server/proc/proc_utils_test.cc"
     "server/spectatord_test.cc"
     "spectator/registry/test_utils.cc"
     "spectator/registry/test_utils.h"
@@ -100,7 +100,7 @@ add_test(
 #-- util_test test executable
 add_executable(util_test
     "bin/test_main.cc"
-    "util/unix_socket_log_sink_test.cc"
+    "util/logging/unix_socket_log_sink_test.cc"
 )
 target_link_libraries(util_test
     util

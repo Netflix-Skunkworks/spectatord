@@ -22,7 +22,7 @@ bench_get_measurement_strchr        2729 ns         2729 ns       252424
 bench_get_measurement_strview       2488 ns         2488 ns       284401
 */
 
-#include "../server/spectatord.h"
+#include "server/spectatord.h"
 #include <benchmark/benchmark.h>
 
 using spectator::Id;
