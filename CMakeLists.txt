@@ -141,6 +141,7 @@ add_executable(metrics_gen
     "server/transport/local.h"
     "tools/metrics_gen.cc"
 )
+target_include_directories(metrics_gen PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(metrics_gen
     abseil::abseil
     asio::asio
