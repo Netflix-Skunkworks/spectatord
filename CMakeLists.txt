@@ -36,13 +36,33 @@ add_subdirectory(tools)
 add_subdirectory(util)
 
 #-- spectator_test test executable
-file(GLOB spectator_test_source_files
+add_executable(spectator_test
     "bin/test_main.cc"
-    "spectator/*test.cc"
-    "spectator/http_server.*"
-    "spectator/test_utils.*"
+    "spectator/encoding/compressed_buffer_test.cc"
+    "spectator/encoding/gzip_test.cc"
+    "spectator/encoding/smile_test.cc"
+    "spectator/http/http_client_test.cc"
+    "spectator/http/http_server.cc"
+    "spectator/meters/age_gauge_test.cc"
+    "spectator/meters/config_test.cc"
+    "spectator/meters/counter_test.cc"
+    "spectator/meters/dist_summary_test.cc"
+    "spectator/meters/gauge_test.cc"
+    "spectator/meters/id_test.cc"
+    "spectator/meters/max_gauge_test.cc"
+    "spectator/meters/monotonic_counter_test.cc"
+    "spectator/meters/monotonic_counter_uint_test.cc"
+    "spectator/meters/monotonic_sampled_test.cc"
+    "spectator/meters/perc_buckets_test.cc"
+    "spectator/meters/tags_test.cc"
+    "spectator/meters/timer_test.cc"
+    "spectator/registry/perc_dist_summary_test.cc"
+    "spectator/registry/perc_timer_test.cc"
+    "spectator/registry/registry_test.cc"
+    "spectator/registry/test_utils.cc"
+    "spectator/strings/string_intern_test.cc"
+    "spectator/strings/strings_test.cc"
 )
-add_executable(spectator_test ${spectator_test_source_files})
 target_link_libraries(spectator_test
     sample_cfg
     spectator
@@ -62,8 +82,8 @@ add_executable(spectatord_test
     "bin/test_main.cc"
     "server/proc_utils_test.cc"
     "server/spectatord_test.cc"
-    "spectator/test_utils.cc"
-    "spectator/test_utils.h"
+    "spectator/registry/test_utils.cc"
+    "spectator/registry/test_utils.h"
 )
 target_link_libraries(spectatord_test
     admin_server

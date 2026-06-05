@@ -2,9 +2,9 @@
 
 #include "expiring_cache.h"
 #include "handler.h"
-#include "../spectator/percentile_distribution_summary.h"
-#include "../spectator/percentile_timer.h"
-#include "../spectator/registry.h"
+#include "spectator/registry/percentile_distribution_summary.h"
+#include "spectator/registry/percentile_timer.h"
+#include "spectator/registry/registry.h"
 
 namespace spectatord
 {

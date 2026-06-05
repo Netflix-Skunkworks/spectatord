@@ -1,5 +1,5 @@
-#include "../spectator/config.h"
-#include "../spectator/registry.h"
+#include "spectator/meters/config.h"
+#include "spectator/registry/registry.h"
 #include "admin_server.h"
 #include "gtest/gtest.h"
 #include <Poco/JSON/Parser.h>

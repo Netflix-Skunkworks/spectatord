@@ -1,6 +1,6 @@
 #include "admin_server.h"
 #include "../server/spectatord.h"
-#include "../spectator/version.h"
+#include "spectator/meters/version.h"
 #include <Poco/JSON/Parser.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>

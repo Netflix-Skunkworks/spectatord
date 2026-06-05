@@ -1,4 +1,4 @@
-#include "../spectator/test_utils.h"
+#include "spectator/registry/test_utils.h"
 #include "gtest/gtest.h"
 #include "local.h"
 #include "spectatord.h"

@@ -1,6 +1,6 @@
 #include "../admin/admin_server.h"
 #include "../server/spectatord.h"
-#include "../spectator/version.h"
+#include "spectator/meters/version.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/internal/program_name.h"
 #include "absl/flags/parse.h"

@@ -82,7 +82,7 @@ fi
 cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DNFLX_INTERNAL="$NFLX_INTERNAL"
 
 echo -e "${BLUE}==== build ====${NC}"
-cmake --build .
+cmake --build . --parallel
 
 if [[ "$1" != "skiptest" ]]; then
   echo -e "${BLUE}==== test ====${NC}"

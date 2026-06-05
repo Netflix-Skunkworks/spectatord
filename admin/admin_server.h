@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../spectator/registry.h"
+#include "spectator/registry/registry.h"
 #include "../util/logger.h"
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/HTTPRequestHandler.h>

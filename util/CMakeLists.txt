@@ -1,5 +1,5 @@
 #-- util library
-add_library(util OBJECT
+add_library(util STATIC
     "files.h"
     "insight_log_sinks.h"
     "json_log_formatter.h"
@@ -7,4 +7,8 @@ add_library(util OBJECT
     "logger.h"
     "unix_socket_log_sink.h"
 )
-target_link_libraries(util spdlog::spdlog fmt::fmt rapidjson asio::asio)
+target_include_directories(util PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(util
+    PUBLIC  spdlog::spdlog fmt::fmt
+    PRIVATE rapidjson asio::asio
+)

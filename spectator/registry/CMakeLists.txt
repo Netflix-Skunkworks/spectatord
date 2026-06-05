@@ -1,0 +1,32 @@
+add_library(spectator_registry STATIC
+    "registry.cc"
+)
+target_include_directories(spectator_registry
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/spectator/registry
+)
+target_link_libraries(spectator_registry
+    PUBLIC
+        spectator_meters
+        spectator_http
+    PRIVATE
+        util
+        asio::asio
+        rapidjson
+        spdlog::spdlog
+        tsl::hopscotch_map
+)
+
+#-- sample config library
+add_library(sample_cfg STATIC "sample_config.cc")
+target_include_directories(sample_cfg PRIVATE ${CMAKE_SOURCE_DIR}/spectator/registry)
+target_link_libraries(sample_cfg PUBLIC spectator_registry)
+
+#-- netflix config library (internal builds only)
+if(NFLX_INTERNAL)
+    add_library(netflix_cfg STATIC "netflix_config.cc")
+    target_include_directories(netflix_cfg PRIVATE ${CMAKE_SOURCE_DIR}/spectator/registry)
+    target_link_libraries(netflix_cfg PUBLIC spectator_registry)
+endif()
