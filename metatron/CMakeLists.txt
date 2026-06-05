@@ -12,10 +12,9 @@ else()
         "metatron_sample.cc"
     )
 endif()
-target_link_libraries(metatron util
-    CURL::libcurl
-    openssl::openssl
-    protobuf::protobuf
+target_link_libraries(metatron
+    PUBLIC  util CURL::libcurl openssl::openssl
+    PRIVATE protobuf::protobuf
 )
 
 #-- protobuf generated files must exist in both the SOURCE_DIR and the BINARY_DIR
