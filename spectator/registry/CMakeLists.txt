@@ -10,7 +10,6 @@ target_link_libraries(spectator_registry
     PUBLIC
         spectator_meters
         spectator_http
-    PUBLIC
         metatron
     PRIVATE
         util
