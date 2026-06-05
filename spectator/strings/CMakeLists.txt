@@ -18,8 +18,6 @@ target_include_directories(spectator_strings
     PUBLIC
         ${CMAKE_SOURCE_DIR}
         ${CMAKE_BINARY_DIR}/spectator/strings
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/spectator/strings
 )
 target_link_libraries(spectator_strings
     PUBLIC

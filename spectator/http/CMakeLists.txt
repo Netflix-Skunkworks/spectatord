@@ -4,8 +4,6 @@ add_library(spectator_http STATIC
 target_include_directories(spectator_http
     PUBLIC
         ${CMAKE_SOURCE_DIR}
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/spectator/http
 )
 target_link_libraries(spectator_http
     PUBLIC

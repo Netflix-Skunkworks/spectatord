@@ -43,10 +43,6 @@ add_library(spectator_meters STATIC
     "percentile_buckets.cc"
     "timer.cc"
 )
-target_include_directories(spectator_meters
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/spectator/meters
-)
 target_link_libraries(spectator_meters
     PUBLIC
         spectator_meter_types

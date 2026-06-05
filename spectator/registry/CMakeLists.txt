@@ -4,8 +4,6 @@ add_library(spectator_registry STATIC
 target_include_directories(spectator_registry
     PUBLIC
         ${CMAKE_SOURCE_DIR}
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/spectator/registry
 )
 target_link_libraries(spectator_registry
     PUBLIC
@@ -21,7 +19,7 @@ target_link_libraries(spectator_registry
 
 #-- sample config library
 add_library(sample_cfg STATIC "sample_config.cc")
-target_include_directories(sample_cfg PRIVATE ${CMAKE_SOURCE_DIR}/spectator/registry)
+target_include_directories(sample_cfg PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(sample_cfg PUBLIC spectator_registry)
 
 #-- netflix config library (internal builds only)
