@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.23)
 project(spectatord)
 
 set(CMAKE_CXX_STANDARD 26)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_compile_options(-pedantic -Werror -Wall -Wno-missing-braces -fno-omit-frame-pointer "$<$<CONFIG:Debug>:-fsanitize=address>")
@@ -134,7 +134,9 @@ else()
     )
 endif()
 # required to allow running on older systems, such as bionic
-target_link_options(spectatord_main PRIVATE "-static-libstdc++")
+# statically link the GCC runtime + C++ standard library so the binary does not
+# depend on the libstdc++/libgcc_s present on the target host
+target_link_options(spectatord_main PRIVATE "-static-libstdc++" "-static-libgcc")
 
 #-- metrics_gen executable
 add_executable(metrics_gen
