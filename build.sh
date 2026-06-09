@@ -35,16 +35,16 @@ if [[ "$1" == "clean" ]]; then
 fi
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-  if ! command -v gcc-16 &> /dev/null; then
-    echo -e "${RED}ERROR: gcc-16 is required but not found${NC}"
+  if ! command -v gcc-15 &> /dev/null; then
+    echo -e "${RED}ERROR: gcc-15 is required but not found${NC}"
     exit 1
   fi
-  if ! command -v g++-16 &> /dev/null; then
-    echo -e "${RED}ERROR: g++-16 is required but not found${NC}"
+  if ! command -v g++-15 &> /dev/null; then
+    echo -e "${RED}ERROR: g++-15 is required but not found${NC}"
     exit 1
   fi
-  export CC=gcc-16
-  export CXX=g++-16
+  export CC=gcc-15
+  export CXX=g++-15
 fi
 
 if [[ ! -f "$HOME/.conan2/profiles/default" ]]; then
@@ -55,7 +55,7 @@ fi
 ## Modify the default profile to set the compiler version and C++ standard
 DEFAULT_PROFILE="$HOME/.conan2/profiles/default"
 sed -i.bak -E \
-  -e 's/^compiler\.version=.*/compiler.version=16/' \
+  -e 's/^compiler\.version=.*/compiler.version=15.2/' \
   -e 's/^compiler\.cppstd=.*/compiler.cppstd=gnu26/' \
   "$DEFAULT_PROFILE"
 rm -f "$DEFAULT_PROFILE.bak"
