@@ -221,7 +221,7 @@ class Tags
 		if (!is_large())
 		{
 			begin_ = static_cast<Tag*>(malloc(capacity_bytes));
-			std::copy(&U.entries_[0], &U.entries_[size_], begin());
+			std::copy(U.entries_.data(), U.entries_.data() + size_, begin());
 			U.capacity_ = c + 4;
 		}
 		else
