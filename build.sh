@@ -14,6 +14,7 @@ if [[ -z "$BUILD_TYPE" ]]; then
 fi
 
 BLUE="\033[0;34m"
+RED="\033[0;31m"
 NC="\033[0m"
 
 if [[ "$1" == "clean" ]]; then
@@ -34,11 +35,16 @@ if [[ "$1" == "clean" ]]; then
 fi
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-  source /etc/os-release
-  if [[ "$NAME" == "Ubuntu" ]]; then
-    if [[ -z "$CC" ]]; then export CC=gcc-13; fi
-    if [[ -z "$CXX" ]]; then export CXX=g++-13; fi
+  if ! command -v gcc-16 &> /dev/null; then
+    echo -e "${RED}ERROR: gcc-16 is required but not found${NC}"
+    exit 1
   fi
+  if ! command -v g++-16 &> /dev/null; then
+    echo -e "${RED}ERROR: g++-16 is required but not found${NC}"
+    exit 1
+  fi
+  export CC=gcc-16
+  export CXX=g++-16
 fi
 
 if [[ ! -f "$HOME/.conan2/profiles/default" ]]; then
@@ -46,16 +52,25 @@ if [[ ! -f "$HOME/.conan2/profiles/default" ]]; then
   conan profile detect
 fi
 
+## Modify the default profile to set the compiler version and C++ standard
+DEFAULT_PROFILE="$HOME/.conan2/profiles/default"
+sed -i.bak -E \
+  -e 's/^compiler\.version=.*/compiler.version=16/' \
+  -e 's/^compiler\.cppstd=.*/compiler.cppstd=gnu26/' \
+  "$DEFAULT_PROFILE"
+rm -f "$DEFAULT_PROFILE.bak"
+
+
 if [[ ! -d $BUILD_DIR ]]; then
   echo -e "${BLUE}==== install required dependencies ====${NC}"
   if [[ "$BUILD_TYPE" == "Debug" ]]; then
     conan install . --output-folder="$BUILD_DIR" --build="*" --settings=build_type="$BUILD_TYPE" --profile=./sanitized \
       -c tools.cmake:cmake_program="$(which cmake)"
   else
-    # force m4 to build from source; pre-built binaries from Conan Center may
+    # build everything from source; pre-built binaries from Conan Center may
     # be linked against a newer glibc than the build environment provides.
     # use the system cmake to avoid the same glibc issue with Conan's cmake.
-    conan install . --output-folder="$BUILD_DIR" --build=missing --build=m4/* \
+    conan install . --output-folder="$BUILD_DIR" --build="*" \
       -c tools.cmake:cmake_program="$(which cmake)"
   fi
 
