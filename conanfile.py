@@ -101,8 +101,8 @@ class SpectatorDConan(ConanFile):
         dir_name = repo.replace("corp/", "")
         self.maybe_remove_dir(dir_name)
         unzip(self, zip_name, destination=dir_name, strip_root=True)
-        self.maybe_remove_file("spectator/netflix_config.cc")
-        shutil.move(f"{dir_name}/netflix_config.cc", "spectator")
+        self.maybe_remove_file("spectator/registry/netflix_config.cc")
+        shutil.move(f"{dir_name}/netflix_config.cc", "spectator/registry")
 
         os.unlink(zip_name)
         shutil.rmtree(dir_name)

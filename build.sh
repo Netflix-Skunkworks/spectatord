@@ -27,7 +27,7 @@ if [[ "$1" == "clean" ]]; then
   rm -f metatron/metatron_config.cc
   rm -rf ska
   rm -f spectator/*.inc
-  rm -f spectator/netflix_config.cc
+  rm -f spectator/registry/netflix_config.cc
   if [[ "$2" == "--confirm" ]]; then
     # remove all packages from the conan cache, to allow swapping between Release/Debug builds
     conan remove "*" --confirm
