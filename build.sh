@@ -63,14 +63,17 @@ rm -f "$DEFAULT_PROFILE.bak"
 
 if [[ ! -d $BUILD_DIR ]]; then
   echo -e "${BLUE}==== install required dependencies ====${NC}"
+  # build all library dependencies from source; pre-built binaries from Conan
+  # Center may be linked against a newer glibc than the build environment
+  # provides. ninja is excluded: it is a host-only build tool that never links
+  # into spectatord, and building it from source triggers an LTO internal
+  # compiler error under the RHEL/Rocky gcc-toolset, so we use a prebuilt ninja.
+  # use the system cmake to avoid the same glibc issue with Conan's cmake.
   if [[ "$BUILD_TYPE" == "Debug" ]]; then
-    conan install . --output-folder="$BUILD_DIR" --build="*" --settings=build_type="$BUILD_TYPE" --profile=./sanitized \
+    conan install . --output-folder="$BUILD_DIR" --build="*" --build="!ninja/*" --settings=build_type="$BUILD_TYPE" --profile=./sanitized \
       -c tools.cmake:cmake_program="$(which cmake)"
   else
-    # build everything from source; pre-built binaries from Conan Center may
-    # be linked against a newer glibc than the build environment provides.
-    # use the system cmake to avoid the same glibc issue with Conan's cmake.
-    conan install . --output-folder="$BUILD_DIR" --build="*" \
+    conan install . --output-folder="$BUILD_DIR" --build="*" --build="!ninja/*" \
       -c tools.cmake:cmake_program="$(which cmake)"
   fi
 
