@@ -56,6 +56,7 @@ add_executable(spectator_test
     "spectator/meters/perc_buckets_test.cc"
     "spectator/meters/tags_test.cc"
     "spectator/meters/timer_test.cc"
+    "spectator/registry/distinct_count_sketch_test.cc"
     "spectator/registry/perc_dist_summary_test.cc"
     "spectator/registry/perc_timer_test.cc"
     "spectator/registry/registry_test.cc"

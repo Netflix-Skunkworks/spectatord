@@ -480,4 +480,45 @@ TEST(Spectatord, ParseTimer)
 	EXPECT_DOUBLE_EQ(map["timer.name|statistic=totalTime"], 0.002);
 	EXPECT_DOUBLE_EQ(map["timer.name|statistic=max"], 0.001);
 }
+
+// The value "a" hashes (xxHash64, seed 0) to register index 27 (R1B) with rho 1, per the
+// shared cross-language test vectors. base64("a") == "YQ==".
+TEST(Spectatord, ParseDistinctSketchBase64)
+{
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	char_ptr line{strdup("S:dcs.name:YQ==")};
+	EXPECT_FALSE(server.parse_msg(line.get()).has_value());
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 1);
+	EXPECT_DOUBLE_EQ(map["dcs.name|distinct=R1B|statistic=distinct"], 1);
+}
+
+// The precomputed-hash variant must land in the same register as the base64 variant.
+TEST(Spectatord, ParseDistinctSketchPrecomputedHash)
+{
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	char_ptr line{strdup("s:dcs.name:15154266338359012955")};
+	EXPECT_FALSE(server.parse_msg(line.get()).has_value());
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["dcs.name|distinct=R1B|statistic=distinct"], 1);
+}
+
+TEST(Spectatord, ParseDistinctSketchInvalidBase64)
+{
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	char_ptr line{strdup("S:dcs.name:not valid base64!")};
+	auto err = server.parse_msg(line.get());
+	EXPECT_TRUE(err.has_value());
+}
 }  // namespace

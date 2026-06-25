@@ -4,6 +4,7 @@
 #include "server/transport/udp_server.h"
 #include "util/systemd.h"
 
+#include <absl/strings/escaping.h>
 #include <asio.hpp>
 
 namespace spectatord
@@ -303,35 +304,55 @@ auto get_measurement(char type, std::string_view measurement_str, std::string* e
 
 	++pos;
 	auto value_str = measurement_str.begin() + pos;
-	char* last_char = nullptr;
 	valueT value{};
-	if (type == 'U')
+	std::string_view str_value{};
+	if (type == 'S')
 	{
-		value.u = std::strtoull(value_str, &last_char, 10);
+		// The distinct count sketch value is an opaque base64 blob (the bytes to hash), not a
+		// number. Capture the raw token; it is decoded and hashed in parse_line. Treat it like a
+		// tag value with respect to size: it is bounded by the overall line size limits.
+		str_value = measurement_str.substr(pos);
+		while (!str_value.empty() && std::isspace(static_cast<unsigned char>(str_value.back())) != 0)
+		{
+			str_value.remove_suffix(1);
+		}
+		if (str_value.empty())
+		{
+			*err_msg = "Unable to parse value for measurement";
+			return {};
+		}
 	}
 	else
 	{
-		value.d = std::strtod(value_str, &last_char);
-	}
-
-	if (last_char == value_str)
-	{
-		*err_msg = "Unable to parse value for measurement";
-		return {};
-	}
-	if (*last_char != '\0' && std::isspace(*last_char) == 0)
-	{
-		if (type == 'U')
+		char* last_char = nullptr;
+		if (type == 'U' || type == 's')
 		{
-			*err_msg = fmt::format("Got {} parsing value, ignoring chars starting at {}", value.u, last_char);
+			value.u = std::strtoull(value_str, &last_char, 10);
 		}
 		else
 		{
-			*err_msg = fmt::format("Got {} parsing value, ignoring chars starting at {}", value.d, last_char);
+			value.d = std::strtod(value_str, &last_char);
+		}
+
+		if (last_char == value_str)
+		{
+			*err_msg = "Unable to parse value for measurement";
+			return {};
+		}
+		if (*last_char != '\0' && std::isspace(static_cast<unsigned char>(*last_char)) == 0)
+		{
+			if (type == 'U' || type == 's')
+			{
+				*err_msg = fmt::format("Got {} parsing value, ignoring chars starting at {}", value.u, last_char);
+			}
+			else
+			{
+				*err_msg = fmt::format("Got {} parsing value, ignoring chars starting at {}", value.d, last_char);
+			}
 		}
 	}
 	auto name_ref = spectator::intern_str(name);
-	return measurement{spectator::Id{name_ref, tags}, value};
+	return measurement{spectator::Id{name_ref, tags}, value, str_value};
 }
 
 static constexpr auto min_perc_timer = absl::Nanoseconds(1);
@@ -349,6 +370,11 @@ static auto create_perc_ds(spectator::Registry* registry, spectator::Id id)
 	return std::make_unique<spectator::PercentileDistributionSummary>(registry, std::move(id), min_ds, max_ds);
 }
 
+static auto create_sketch(spectator::Registry* registry, spectator::Id id)
+{
+	return std::make_unique<spectator::DistinctCountSketch>(registry, std::move(id));
+}
+
 Server::Server(bool ipv4_only, int port_number, std::optional<int> statsd_port_number,
                std::optional<std::string> socket_path, spectator::Registry* registry)
     : ipv4_only_{ipv4_only},
@@ -360,7 +386,8 @@ Server::Server(bool ipv4_only, int port_number, std::optional<int> statsd_port_n
       parse_errors_{registry_->GetCounter("spectatord.parseErrors")},
       logger_{Logger()},
       perc_timers_{create_perc_timer},
-      perc_ds_{create_perc_ds}
+      perc_ds_{create_perc_ds},
+      sketches_{create_sketch}
 {
 }
 
@@ -505,6 +532,10 @@ void Server::upkeep()
 	    registry_->GetCounter("spectatord.percentileExpired", spectator::Tags{{"id", "timer"}});
 	static auto ds_expired_ctr =
 	    registry_->GetCounter("spectatord.percentileExpired", spectator::Tags{{"id", "dist-summary"}});
+	static auto sketch_size_gauge =
+	    registry_->GetGauge("spectatord.sketchCacheSize", spectator::Tags{{"id", "distinct"}});
+	static auto sketch_expired_ctr =
+	    registry_->GetCounter("spectatord.sketchExpired", spectator::Tags{{"id", "distinct"}});
 
 	static auto pool_hits = registry_->GetMonotonicCounter("spectatord.poolAccess", spectator::Tags{{"id", "hit"}});
 	static auto pool_misses = registry_->GetMonotonicCounter("spectatord.poolAccess", spectator::Tags{{"id", "miss"}});
@@ -520,18 +551,23 @@ void Server::upkeep()
 	size_t ds_expired = 0;
 	size_t t_size = 0;
 	size_t t_expired = 0;
+	size_t sketch_size = 0;
+	size_t sketch_expired = 0;
 	while (!should_stop_)
 	{
 		auto start = clock::now();
 
 		std::tie(ds_size, ds_expired) = perc_ds_.expire();
 		std::tie(t_size, t_expired) = perc_timers_.expire();
+		std::tie(sketch_size, sketch_expired) = sketches_.expire();
 		if (cfg.status_metrics_enabled)
 		{
 			timers_size_gauge->Set(t_size);
 			ds_size_gauge->Set(ds_size);
 			timers_expired_ctr->Add(t_expired);
 			ds_expired_ctr->Add(ds_expired);
+			sketch_size_gauge->Set(sketch_size);
+			sketch_expired_ctr->Add(sketch_expired);
 		}
 #ifdef __linux__
 		update_network_metrics();
@@ -685,6 +721,23 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string>
 			break;
 		case 'm':
 			registry_->GetMaxGauge(measurement->id)->Update(measurement->value.d);
+			break;
+		case 'S':
+		{
+			// Distinct count sketch: the value is base64-encoded raw bytes that spectatord
+			// hashes. This keeps the hash implementation in one place for all thin clients.
+			std::string decoded;
+			if (!absl::Base64Unescape(measurement->str_value, &decoded))
+			{
+				return fmt::format("Invalid base64 value for distinct count sketch: {}", measurement->str_value);
+			}
+			sketches_.get_or_create(registry_, measurement->id)->Record(decoded.data(), decoded.size());
+		}
+		break;
+		case 's':
+			// Distinct count sketch with a precomputed xxHash64 (seed 0) value, for clients that
+			// hash locally (e.g. to keep the raw value off the wire or bound the line size).
+			sketches_.get_or_create(registry_, measurement->id)->RecordHash(measurement->value.u);
 			break;
 		case 't':  // elapsed time is reported in seconds
 		{

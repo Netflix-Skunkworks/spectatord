@@ -15,6 +15,7 @@ class Refs final
 	      totalAmount_(intern_str("totalAmount")),
 	      totalSq_(intern_str("totalOfSquares")),
 	      percentile_(intern_str("percentile")),
+	      distinct_(intern_str("distinct")),
 	      max_(intern_str("max")),
 	      statistic_(intern_str("statistic"))
 	{
@@ -27,6 +28,7 @@ class Refs final
 	[[nodiscard]] auto totalAmount() const -> StrRef { return totalAmount_; }
 	[[nodiscard]] auto totalOfSquares() const -> StrRef { return totalSq_; }
 	[[nodiscard]] auto percentile() const -> StrRef { return percentile_; }
+	[[nodiscard]] auto distinct() const -> StrRef { return distinct_; }
 	[[nodiscard]] auto max() const -> StrRef { return max_; }
 	[[nodiscard]] auto statistic() const -> StrRef { return statistic_; }
 
@@ -38,6 +40,7 @@ class Refs final
 	StrRef totalAmount_;
 	StrRef totalSq_;
 	StrRef percentile_;
+	StrRef distinct_;
 	StrRef max_;
 	StrRef statistic_;
 };
