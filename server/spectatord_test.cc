@@ -521,4 +521,20 @@ TEST(Spectatord, ParseDistinctSketchInvalidBase64)
 	auto err = server.parse_msg(line.get());
 	EXPECT_TRUE(err.has_value());
 }
+
+// An empty value (base64 of zero bytes) is valid: it hashes the empty byte sequence, which the
+// shared vectors map to register R19 (index 25) with rho 1, matching record("") in the other
+// clients so sketches merge.
+TEST(Spectatord, ParseDistinctSketchEmptyValue)
+{
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	char_ptr line{strdup("S:dcs.name:")};
+	EXPECT_FALSE(server.parse_msg(line.get()).has_value());
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["dcs.name|distinct=R19|statistic=distinct"], 1);
+}
 }  // namespace

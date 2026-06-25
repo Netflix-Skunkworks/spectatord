@@ -311,15 +311,14 @@ auto get_measurement(char type, std::string_view measurement_str, std::string* e
 		// The distinct count sketch value is an opaque base64 blob (the bytes to hash), not a
 		// number. Capture the raw token; it is decoded and hashed in parse_line. Treat it like a
 		// tag value with respect to size: it is bounded by the overall line size limits.
+		//
+		// An empty value is allowed: it decodes to zero bytes and hashes the empty input, which
+		// matches record("") / record(empty bytes) in the other clients so the sketches merge.
+		// A genuinely missing value (no trailing ':') is rejected earlier as a missing name.
 		str_value = measurement_str.substr(pos);
 		while (!str_value.empty() && std::isspace(static_cast<unsigned char>(str_value.back())) != 0)
 		{
 			str_value.remove_suffix(1);
-		}
-		if (str_value.empty())
-		{
-			*err_msg = "Unable to parse value for measurement";
-			return {};
 		}
 	}
 	else
