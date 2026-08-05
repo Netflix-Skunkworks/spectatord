@@ -19,7 +19,11 @@ void MaxGauge::Measure(Measurements* results) const noexcept
 	}
 	if (!max_id_)
 	{
-		max_id_ = std::make_unique<Id>(MeterId().WithStat(refs().max()));
+		// Preserve an existing statistic tag (e.g. statistic=distinct for the registers of a
+		// distinct count sketch); only default it to max when none is set. This matches the
+		// way Counter uses WithDefaultStat and keeps the published statistic correct for
+		// callers that decompose a metric into max gauges with their own statistic.
+		max_id_ = std::make_unique<Id>(MeterId().WithDefaultStat(refs().max()));
 	}
 	results->emplace_back(*max_id_, value);
 }

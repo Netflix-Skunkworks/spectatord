@@ -79,6 +79,22 @@ TEST(MaxGauge, Measure)
 	EXPECT_EQ(expected, ms);
 }
 
+TEST(MaxGauge, PreservesExistingStatistic)
+{
+	// A max gauge whose id already carries a statistic (e.g. the per-register gauges of a
+	// distinct count sketch use statistic=distinct) must keep that statistic when measured,
+	// rather than have it overwritten with statistic=max. This matches Counter's behavior and
+	// is what lets DistinctCountSketch publish its registers as statistic=distinct.
+	auto id = spectator::Id("dcs", spectator::Tags{}).WithStat(refs().distinct());
+	spectator::MaxGauge g{id};
+	g.Update(3);
+
+	spectator::Measurements ms;
+	g.Measure(&ms);
+	ASSERT_EQ(ms.size(), 1);
+	EXPECT_EQ(ms.front().id, id);
+}
+
 TEST(MaxGauge, Updated)
 {
 	auto m = getMaxGauge("m");

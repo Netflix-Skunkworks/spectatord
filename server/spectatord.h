@@ -2,6 +2,7 @@
 
 #include "expiring_cache.h"
 #include "server/transport/handler.h"
+#include "spectator/registry/distinct_count_sketch.h"
 #include "spectator/registry/percentile_distribution_summary.h"
 #include "spectator/registry/percentile_timer.h"
 #include "spectator/registry/registry.h"
@@ -35,6 +36,7 @@ class Server
 	std::shared_ptr<spdlog::logger> logger_;
 	expiring_cache<spectator::PercentileTimer> perc_timers_;
 	expiring_cache<spectator::PercentileDistributionSummary> perc_ds_;
+	expiring_cache<spectator::DistinctCountSketch> sketches_;
 
 	std::atomic_bool should_stop_{false};
 	std::thread upkeep_thread_;  // some janitorial tasks, like expiration of
@@ -64,6 +66,9 @@ struct measurement
 {
 	spectator::Id id;
 	valueT value;
+	// Raw (un-parsed) value token, used by the distinct count sketch 'S' type whose value is a
+	// base64 blob to hash rather than a number. Points into the parse buffer.
+	std::string_view str_value{};
 };
 
 std::optional<measurement> get_measurement(char type, std::string_view measurement_str, std::string* err_msg);
