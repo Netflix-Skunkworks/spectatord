@@ -26,7 +26,7 @@ class SpectatorDConan(ConanFile):
         "gtest/1.15.0",
         "libcurl/8.10.1",
         "openssl/3.3.2",
-        "poco/1.13.3",
+        "poco/1.15.2",
         "protobuf/5.27.0",
         "rapidjson/cci.20230929",
         "spdlog/1.15.0",
