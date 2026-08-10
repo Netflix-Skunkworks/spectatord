@@ -2,6 +2,8 @@
 #include "spectator/registry/registry.h"
 #include "admin_server.h"
 #include "gtest/gtest.h"
+#include <Poco/JSON/Array.h>
+#include <Poco/JSON/Object.h>
 #include <Poco/JSON/Parser.h>
 #include <Poco/Net/HTTPClientSession.h>
 #include <Poco/Net/HTTPServerRequest.h>
@@ -267,6 +269,9 @@ HTTPResponse post(const std::string& uri, const std::string& body)
 {
 	HTTPClientSession s(kDefaultHost, kDefaultPort);
 	HTTPRequest req(HTTPRequest::HTTP_POST, uri);
+	// poco 1.15 no longer sends a body without an explicit content length, which
+	// leaves the server reading an empty request stream
+	req.setContentLength(static_cast<std::streamsize>(body.size()));
 	s.sendRequest(req) << body;
 	HTTPResponse res;
 	s.receiveResponse(res);
