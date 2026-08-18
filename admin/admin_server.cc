@@ -180,7 +180,7 @@ void GET_metrics(HTTPServerRequest& req, HTTPServerResponse& res, spectator::Reg
 	Poco::JSON::Array::Ptr age_gauges = new Poco::JSON::Array(true);
 	for (auto it : registry.AgeGauges())
 	{
-		auto meter = fmt_meter_object((spectator::Meter*)it);
+		auto meter = fmt_meter_object((spectator::Meter*)it.get());
 		meter->set("value", fmt::format("{}", it->Value()));
 		age_gauges->add(meter);
 	}
@@ -189,7 +189,7 @@ void GET_metrics(HTTPServerRequest& req, HTTPServerResponse& res, spectator::Reg
 	Poco::JSON::Array::Ptr counters = new Poco::JSON::Array(true);
 	for (auto it : registry.Counters())
 	{
-		auto meter = fmt_meter_object((spectator::Meter*)it);
+		auto meter = fmt_meter_object((spectator::Meter*)it.get());
 		meter->set("value", fmt::format("{}", it->Count()));
 		counters->add(meter);
 	}
@@ -198,7 +198,7 @@ void GET_metrics(HTTPServerRequest& req, HTTPServerResponse& res, spectator::Reg
 	Poco::JSON::Array::Ptr dist_summaries = new Poco::JSON::Array(true);
 	for (auto it : registry.DistSummaries())
 	{
-		auto meter = fmt_meter_object((spectator::Meter*)it);
+		auto meter = fmt_meter_object((spectator::Meter*)it.get());
 		meter->set("value", fmt::format("{}", it->TotalAmount()));
 		dist_summaries->add(meter);
 	}
@@ -207,7 +207,7 @@ void GET_metrics(HTTPServerRequest& req, HTTPServerResponse& res, spectator::Reg
 	Poco::JSON::Array::Ptr gauges = new Poco::JSON::Array(true);
 	for (auto it : registry.Gauges())
 	{
-		auto meter = fmt_meter_object((spectator::Meter*)it);
+		auto meter = fmt_meter_object((spectator::Meter*)it.get());
 		meter->set("value", fmt::format("{}", it->Get()));
 		gauges->add(meter);
 	}
@@ -216,7 +216,7 @@ void GET_metrics(HTTPServerRequest& req, HTTPServerResponse& res, spectator::Reg
 	Poco::JSON::Array::Ptr max_gauges = new Poco::JSON::Array(true);
 	for (auto it : registry.MaxGauges())
 	{
-		auto meter = fmt_meter_object((spectator::Meter*)it);
+		auto meter = fmt_meter_object((spectator::Meter*)it.get());
 		meter->set("value", fmt::format("{}", it->Get()));
 		max_gauges->add(meter);
 	}
@@ -225,7 +225,7 @@ void GET_metrics(HTTPServerRequest& req, HTTPServerResponse& res, spectator::Reg
 	Poco::JSON::Array::Ptr mono_counters = new Poco::JSON::Array(true);
 	for (auto it : registry.MonotonicCounters())
 	{
-		auto meter = fmt_meter_object((spectator::Meter*)it);
+		auto meter = fmt_meter_object((spectator::Meter*)it.get());
 		meter->set("value", fmt::format("{}", it->Delta()));
 		mono_counters->add(meter);
 	}
@@ -234,7 +234,7 @@ void GET_metrics(HTTPServerRequest& req, HTTPServerResponse& res, spectator::Reg
 	Poco::JSON::Array::Ptr mono_counters_uint = new Poco::JSON::Array(true);
 	for (auto it : registry.MonotonicCountersUint())
 	{
-		auto meter = fmt_meter_object((spectator::Meter*)it);
+		auto meter = fmt_meter_object((spectator::Meter*)it.get());
 		meter->set("value", fmt::format("{}", it->Delta()));
 		mono_counters_uint->add(meter);
 	}
@@ -243,7 +243,7 @@ void GET_metrics(HTTPServerRequest& req, HTTPServerResponse& res, spectator::Reg
 	Poco::JSON::Array::Ptr timers = new Poco::JSON::Array(true);
 	for (auto it : registry.Timers())
 	{
-		auto meter = fmt_meter_object((spectator::Meter*)it);
+		auto meter = fmt_meter_object((spectator::Meter*)it.get());
 		meter->set("value", fmt::format("{}", it->TotalTime()));
 		timers->add(meter);
 	}

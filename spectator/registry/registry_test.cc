@@ -237,4 +237,26 @@ TEST(Registry, DeleteMeters)
 	EXPECT_DOUBLE_EQ(r.AgeGauges().size(), 0.0);
 }
 
+TEST(Registry, MeterSnapshotOutlivesExpiry)
+{
+	Registry r{GetConfiguration(), spectatord::Logger()};
+	r.GetGauge("g1")->Set(1.0);
+	r.GetGauge("g2")->Set(1.0);
+
+	// simulate admin thread capturing snapshot during GET /metrics
+	auto snapshot = r.Gauges();
+	ASSERT_FALSE(snapshot.empty());
+
+	// simulate expiring all the gauges out of the registry
+	r.DeleteAllMeters("g");
+	ASSERT_TRUE(r.Gauges().empty());
+
+	// simulate admin thread using snapshot to respond to GET after expiry
+	ASSERT_FALSE(snapshot.empty());
+	for (const auto& g : snapshot)
+	{
+		EXPECT_NE(g->MeterId().Name().Get(), nullptr);
+	}
+}
+
 }  // namespace

@@ -39,7 +39,7 @@ const Timer* find_timer(Registry* registry, const std::string& name, const std::
 			auto t = m->MeterId().GetTags().at(intern_str("http.status"));
 			if (t == status_code_ref)
 			{
-				return m;
+				return m.get();
 			}
 		}
 	}

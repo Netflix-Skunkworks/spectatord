@@ -162,15 +162,15 @@ struct meter_map
 		return res;
 	}
 
-	auto get_values() const -> std::vector<const M*>
+	auto get_values() const -> std::vector<std::shared_ptr<const M>>
 	{
-		std::vector<const M*> res;
+		std::vector<std::shared_ptr<const M>> res;
 		{
 			absl::MutexLock lock{&meters_mutex_};
 			res.reserve(meters_.size());
 			for (const auto& pair : meters_)
 			{
-				res.emplace_back(pair.second.get());
+				res.emplace_back(pair.second);
 			}
 		}
 		return res;
@@ -329,23 +329,29 @@ class Registry
 	void DeleteAllMeters(const std::string& type);
 
 	// for debugging / testing
-	auto AgeGauges() const -> std::vector<const AgeGauge*> { return all_meters_.age_gauges_.get_values(); }
-	auto Counters() const -> std::vector<const Counter*> { return all_meters_.counters_.get_values(); }
-	auto DistSummaries() const -> std::vector<const DistributionSummary*>
+	auto AgeGauges() const -> std::vector<std::shared_ptr<const AgeGauge>>
+	{
+		return all_meters_.age_gauges_.get_values();
+	}
+	auto Counters() const -> std::vector<std::shared_ptr<const Counter>> { return all_meters_.counters_.get_values(); }
+	auto DistSummaries() const -> std::vector<std::shared_ptr<const DistributionSummary>>
 	{
 		return all_meters_.dist_sums_.get_values();
 	}
-	auto Gauges() const -> std::vector<const Gauge*> { return all_meters_.gauges_.get_values(); }
-	auto MaxGauges() const -> std::vector<const MaxGauge*> { return all_meters_.max_gauges_.get_values(); }
-	auto MonotonicCounters() const -> std::vector<const MonotonicCounter*>
+	auto Gauges() const -> std::vector<std::shared_ptr<const Gauge>> { return all_meters_.gauges_.get_values(); }
+	auto MaxGauges() const -> std::vector<std::shared_ptr<const MaxGauge>>
+	{
+		return all_meters_.max_gauges_.get_values();
+	}
+	auto MonotonicCounters() const -> std::vector<std::shared_ptr<const MonotonicCounter>>
 	{
 		return all_meters_.mono_counters_.get_values();
 	}
-	auto MonotonicCountersUint() const -> std::vector<const MonotonicCounterUint*>
+	auto MonotonicCountersUint() const -> std::vector<std::shared_ptr<const MonotonicCounterUint>>
 	{
 		return all_meters_.mono_counters_uint_.get_values();
 	}
-	auto Timers() const -> std::vector<const Timer*> { return all_meters_.timers_.get_values(); }
+	auto Timers() const -> std::vector<std::shared_ptr<const Timer>> { return all_meters_.timers_.get_values(); }
 	auto GetLastSuccessTime() const -> int64_t { return publisher_.GetLastSuccessTime(); }
 
    private:

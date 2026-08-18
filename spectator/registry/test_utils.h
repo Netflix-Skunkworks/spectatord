@@ -8,11 +8,11 @@
 auto measurements_to_map(const std::vector<spectator::Measurement>& measurements) -> std::map<std::string, double>;
 
 template <typename T>
-auto filter_my_meters(const std::vector<const T*> source) -> std::vector<const T*>
+auto filter_my_meters(const std::vector<std::shared_ptr<const T>> source) -> std::vector<std::shared_ptr<const T>>
 {
-	std::vector<const T*> result;
+	std::vector<std::shared_ptr<const T>> result;
 	std::copy_if(source.begin(), source.end(), std::back_inserter(result),
-	             [](const T* t)
+	             [](const std::shared_ptr<const T>& t)
 	             {
 		             std::string name = t->MeterId().Name().Get();
 		             auto found = name.rfind("spectator.", 0);
@@ -21,38 +21,42 @@ auto filter_my_meters(const std::vector<const T*> source) -> std::vector<const T
 	return result;
 }
 
-inline auto my_timers(const spectator::Registry& registry) -> std::vector<const spectator::Timer*>
+inline auto my_timers(const spectator::Registry& registry) -> std::vector<std::shared_ptr<const spectator::Timer>>
 {
 	using spectator::Timer;
 	return filter_my_meters(registry.Timers());
 }
 
-inline auto my_counters(const spectator::Registry& registry) -> std::vector<const spectator::Counter*>
+inline auto my_counters(const spectator::Registry& registry) -> std::vector<std::shared_ptr<const spectator::Counter>>
 {
 	return filter_my_meters(registry.Counters());
 }
 
-inline auto my_ds(const spectator::Registry& registry) -> std::vector<const spectator::DistributionSummary*>
+inline auto my_ds(const spectator::Registry& registry)
+    -> std::vector<std::shared_ptr<const spectator::DistributionSummary>>
 {
 	return filter_my_meters(registry.DistSummaries());
 }
 
-inline auto my_gauges(const spectator::Registry& registry) -> std::vector<const spectator::Gauge*>
+inline auto my_gauges(const spectator::Registry& registry) -> std::vector<std::shared_ptr<const spectator::Gauge>>
 {
 	return filter_my_meters(registry.Gauges());
 }
 
-inline auto my_age_gauges(const spectator::Registry& registry) -> std::vector<const spectator::AgeGauge*>
+inline auto my_age_gauges(const spectator::Registry& registry)
+    -> std::vector<std::shared_ptr<const spectator::AgeGauge>>
 {
 	return filter_my_meters(registry.AgeGauges());
 }
 
-inline auto my_max_gauges(const spectator::Registry& registry) -> std::vector<const spectator::MaxGauge*>
+inline auto my_max_gauges(const spectator::Registry& registry)
+    -> std::vector<std::shared_ptr<const spectator::MaxGauge>>
 {
 	return filter_my_meters(registry.MaxGauges());
 }
 
-inline auto my_mono_counters(const spectator::Registry& registry) -> std::vector<const spectator::MonotonicCounter*>
+inline auto my_mono_counters(const spectator::Registry& registry)
+    -> std::vector<std::shared_ptr<const spectator::MonotonicCounter>>
 {
 	return filter_my_meters(registry.MonotonicCounters());
 }
