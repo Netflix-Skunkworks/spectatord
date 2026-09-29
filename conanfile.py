@@ -109,12 +109,12 @@ class SpectatorDConan(ConanFile):
 
     def get_spectatord_metatron(self, nflx_cfg: NflxConfig) -> None:
         repo = "corp/cldmta-spectatord-metatron"
-        commit = "2247fd57fd2b098d295eb1e09411a9ae1969097b"
+        commit = "42893de90f96f80460b928c5a8e937533437986b"
         zip_name = repo.replace("corp/", "") + f"-{commit}.zip"
 
         self.maybe_remove_file(zip_name)
         self.download(nflx_cfg, repo, commit, zip_name)
-        check_sha256(self, zip_name, "6bb8a5239ad3016d681342759e2807b05848027711810ad24b858d9b05179677")
+        check_sha256(self, zip_name, "0acd1b62d97401597cbb801af483b7f8132f16d04e9731c1be25f052c73291c0")
 
         dir_name = repo.replace("corp/", "")
         self.maybe_remove_dir(dir_name)
