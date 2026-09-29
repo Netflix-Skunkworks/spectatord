@@ -17,11 +17,11 @@ See the [Atlas Documentation] site for more details on SpectatorD.
 * Start `spectatord` in debug mode (`--debug`) to send metrics to a dev stack of the Atlas aggregator,
 which will perform validation and return the correct HTTP status codes for payloads, then drop the
 metrics on the floor. Alternatively, you can also configure it to send metrics to `/dev/null`.
-* Use the [`metrics_gen`](./tools/metrics_gen.cc) binary to generate and send a stream of metrics to
+* Use the [`metrics_gen`](./lib/tools/metrics_gen.cc) binary to generate and send a stream of metrics to
 a running spectatord binary.
 * Use the `perf-record` and `perf-report` Linux utilities to measure the performance of the running
 binary.
-* The [`udp_numbers.pl`](./tools/udp_numbers.pl) script is used to automate running `metrics_gen`
+* The [`udp_numbers.pl`](./lib/tools/udp_numbers.pl) script is used to automate running `metrics_gen`
 with different kernel settings for UDP sockets.
 
 ## Local & IDE Configuration

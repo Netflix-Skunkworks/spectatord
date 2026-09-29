@@ -20,13 +20,13 @@ if [[ "$1" == "clean" ]]; then
   echo -e "${BLUE}==== clean ====${NC}"
   rm -rf "$BUILD_DIR"
   # extracted and generated files
-  rm -f metatron/auth_context.pb.cc
-  rm -f metatron/auth_context.pb.h
-  rm -f metatron/auth_context.proto
-  rm -f metatron/metatron_config.cc
-  rm -rf ska
-  rm -f spectator/*.inc
-  rm -f spectator/netflix_config.cc
+  rm -f lib/metatron/auth_context.pb.cc
+  rm -f lib/metatron/auth_context.pb.h
+  rm -f lib/metatron/auth_context.proto
+  rm -f lib/metatron/metatron_config.cc
+  rm -rf lib/ska
+  rm -f lib/spectator/*.inc
+  rm -f lib/spectator/registry/netflix_config.cc
   if [[ "$2" == "--confirm" ]]; then
     # remove all packages from the conan cache, to allow swapping between Release/Debug builds
     conan remove "*" --confirm

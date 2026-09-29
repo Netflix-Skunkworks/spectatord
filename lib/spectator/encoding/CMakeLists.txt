@@ -5,7 +5,7 @@ add_library(spectator_encoding STATIC
 )
 target_include_directories(spectator_encoding
     PUBLIC
-        ${CMAKE_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/lib
 )
 target_link_libraries(spectator_encoding
     PUBLIC

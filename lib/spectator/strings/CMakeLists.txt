@@ -16,7 +16,7 @@ add_library(spectator_strings STATIC
 )
 target_include_directories(spectator_strings
     PUBLIC
-        ${CMAKE_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/lib
         ${CMAKE_BINARY_DIR}/spectator/strings
 )
 target_link_libraries(spectator_strings
