@@ -91,12 +91,12 @@ class SpectatorDConan(ConanFile):
 
     def get_netflix_spectator_cppconf(self, nflx_cfg: NflxConfig) -> None:
         repo = "corp/cldmta-netflix-spectator-cppconf"
-        commit = "aa12add4ba33ac08002573d1a6563cad1b620e08"
+        commit = "36f53a358756923bc795890e2e2abc5023e0cdef"
         zip_name = repo.replace("corp/", "") + f"-{commit}.zip"
 
         self.maybe_remove_file(zip_name)
         self.download(nflx_cfg, repo, commit, zip_name)
-        check_sha256(self, zip_name, "7d72078e5e209ebaa1e7e861edf815c212353bcf2e8c9bf20de5304a2f9a7271")
+        check_sha256(self, zip_name, "ecb3b7f1db1137068fb871f01b16a5a66035e646c3944cb24baf50cf16654b15")
 
         dir_name = repo.replace("corp/", "")
         self.maybe_remove_dir(dir_name)
