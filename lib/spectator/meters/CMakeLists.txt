@@ -19,7 +19,7 @@ add_custom_target(gen_perc_bucket_incs DEPENDS
 add_library(spectator_meter_types INTERFACE)
 target_include_directories(spectator_meter_types
     INTERFACE
-        ${CMAKE_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/lib
         ${CMAKE_BINARY_DIR}/spectator/meters
 )
 target_link_libraries(spectator_meter_types

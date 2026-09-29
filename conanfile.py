@@ -83,7 +83,7 @@ class SpectatorDConan(ConanFile):
         download(self, f"https://github.com/{repo}/archive/{commit}.zip", zip_name)
         check_sha256(self, zip_name, "513efb9c2f246b6df9fa16c5640618f09804b009e69c8f7bd18b3099a11203d5")
 
-        dir_name = "ska"
+        dir_name = "lib/ska"
         self.maybe_remove_dir(dir_name)
         unzip(self, zip_name, destination=dir_name, strip_root=True)
 
@@ -101,8 +101,8 @@ class SpectatorDConan(ConanFile):
         dir_name = repo.replace("corp/", "")
         self.maybe_remove_dir(dir_name)
         unzip(self, zip_name, destination=dir_name, strip_root=True)
-        self.maybe_remove_file("spectator/netflix_config.cc")
-        shutil.move(f"{dir_name}/netflix_config.cc", "spectator")
+        self.maybe_remove_file("lib/spectator/registry/netflix_config.cc")
+        shutil.move(f"{dir_name}/netflix_config.cc", "lib/spectator/registry")
 
         os.unlink(zip_name)
         shutil.rmtree(dir_name)
@@ -119,10 +119,10 @@ class SpectatorDConan(ConanFile):
         dir_name = repo.replace("corp/", "")
         self.maybe_remove_dir(dir_name)
         unzip(self, zip_name, destination=dir_name, strip_root=True)
-        self.maybe_remove_file("metatron/auth_context.proto")
-        self.maybe_remove_file("metatron/metatron_config.cc")
-        shutil.move(f"{dir_name}/metatron/auth_context.proto", "metatron")
-        shutil.move(f"{dir_name}/metatron/metatron_config.cc", "metatron")
+        self.maybe_remove_file("lib/metatron/auth_context.proto")
+        self.maybe_remove_file("lib/metatron/metatron_config.cc")
+        shutil.move(f"{dir_name}/metatron/auth_context.proto", "lib/metatron")
+        shutil.move(f"{dir_name}/metatron/metatron_config.cc", "lib/metatron")
 
         os.unlink(zip_name)
         shutil.rmtree(dir_name)
