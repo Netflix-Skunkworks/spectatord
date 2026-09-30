@@ -40,6 +40,8 @@ class SpectatorDConan(ConanFile):
     generators = "CMakeDeps", "CMakeToolchain"
 
     def configure(self):
+        # the default "dw" stack details on linux pulls in elfutils; backtrace_symbol has no extra dependencies
+        self.options["backward-cpp"].stack_details = "backtrace_symbol"
         self.options["libcurl"].with_c_ares = True
         self.options["libcurl"].with_ssl = "openssl"
         self.options["poco"].enable_data = False
@@ -91,38 +93,38 @@ class SpectatorDConan(ConanFile):
 
     def get_netflix_spectator_cppconf(self, nflx_cfg: NflxConfig) -> None:
         repo = "corp/cldmta-netflix-spectator-cppconf"
-        commit = "36f53a358756923bc795890e2e2abc5023e0cdef"
+        commit = "f04c26b6663f466ca4813255315e9c7114bf79b1"
         zip_name = repo.replace("corp/", "") + f"-{commit}.zip"
 
         self.maybe_remove_file(zip_name)
         self.download(nflx_cfg, repo, commit, zip_name)
-        check_sha256(self, zip_name, "ecb3b7f1db1137068fb871f01b16a5a66035e646c3944cb24baf50cf16654b15")
+        check_sha256(self, zip_name, "453c4ae4e0c3632b11a2f5c366a94e1d84928953e89b56628e79c952282a4277")
 
         dir_name = repo.replace("corp/", "")
         self.maybe_remove_dir(dir_name)
         unzip(self, zip_name, destination=dir_name, strip_root=True)
         self.maybe_remove_file("lib/spectator/registry/netflix_config.cc")
-        shutil.move(f"{dir_name}/netflix_config.cc", "lib/spectator/registry")
+        shutil.move(f"{dir_name}/lib/src/netflix_config.cc", "lib/spectator/registry")
 
         os.unlink(zip_name)
         shutil.rmtree(dir_name)
 
     def get_spectatord_metatron(self, nflx_cfg: NflxConfig) -> None:
         repo = "corp/cldmta-spectatord-metatron"
-        commit = "42893de90f96f80460b928c5a8e937533437986b"
+        commit = "066e2a98ba8cd798283ecbfb3c1f88fa6564f330"
         zip_name = repo.replace("corp/", "") + f"-{commit}.zip"
 
         self.maybe_remove_file(zip_name)
         self.download(nflx_cfg, repo, commit, zip_name)
-        check_sha256(self, zip_name, "0acd1b62d97401597cbb801af483b7f8132f16d04e9731c1be25f052c73291c0")
+        check_sha256(self, zip_name, "3edbe56baebe19089bc3121833564fdc93cc141063722a5d4ffea73c385dabe3")
 
         dir_name = repo.replace("corp/", "")
         self.maybe_remove_dir(dir_name)
         unzip(self, zip_name, destination=dir_name, strip_root=True)
         self.maybe_remove_file("lib/metatron/auth_context.proto")
         self.maybe_remove_file("lib/metatron/metatron_config.cc")
-        shutil.move(f"{dir_name}/metatron/auth_context.proto", "lib/metatron")
-        shutil.move(f"{dir_name}/metatron/metatron_config.cc", "lib/metatron")
+        shutil.move(f"{dir_name}/lib/metatron/auth_context.proto", "lib/metatron")
+        shutil.move(f"{dir_name}/lib/metatron/metatron_config.cc", "lib/metatron")
 
         os.unlink(zip_name)
         shutil.rmtree(dir_name)
