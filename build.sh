@@ -25,7 +25,6 @@ if [[ "$1" == "clean" ]]; then
   rm -f lib/metatron/auth_context.proto
   rm -f lib/metatron/metatron_config.cc
   rm -rf lib/ska
-  rm -f lib/spectator/*.inc
   rm -f lib/spectator/registry/netflix_config.cc
   if [[ "$2" == "--confirm" ]]; then
     # remove all packages from the conan cache, to allow swapping between Release/Debug builds
