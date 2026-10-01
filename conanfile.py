@@ -93,12 +93,12 @@ class SpectatorDConan(ConanFile):
 
     def get_netflix_spectator_cppconf(self, nflx_cfg: NflxConfig) -> None:
         repo = "corp/cldmta-netflix-spectator-cppconf"
-        commit = "f04c26b6663f466ca4813255315e9c7114bf79b1"
+        commit = "cef415c71068c4c4049076042922af36ed316249"
         zip_name = repo.replace("corp/", "") + f"-{commit}.zip"
 
         self.maybe_remove_file(zip_name)
         self.download(nflx_cfg, repo, commit, zip_name)
-        check_sha256(self, zip_name, "453c4ae4e0c3632b11a2f5c366a94e1d84928953e89b56628e79c952282a4277")
+        check_sha256(self, zip_name, "9cf5bf8193a53ee3978a625bc5fb520807aff1240bdfc26da03a6a2936c43e15")
 
         dir_name = repo.replace("corp/", "")
         self.maybe_remove_dir(dir_name)
@@ -111,12 +111,12 @@ class SpectatorDConan(ConanFile):
 
     def get_spectatord_metatron(self, nflx_cfg: NflxConfig) -> None:
         repo = "corp/cldmta-spectatord-metatron"
-        commit = "066e2a98ba8cd798283ecbfb3c1f88fa6564f330"
+        commit = "0159b93bd198d9846e92224acab012f6d355805a"
         zip_name = repo.replace("corp/", "") + f"-{commit}.zip"
 
         self.maybe_remove_file(zip_name)
         self.download(nflx_cfg, repo, commit, zip_name)
-        check_sha256(self, zip_name, "3edbe56baebe19089bc3121833564fdc93cc141063722a5d4ffea73c385dabe3")
+        check_sha256(self, zip_name, "efdadf4b254c547d6ff2dd07579ac97cced774d8d6645fd132d953881c0d6070")
 
         dir_name = repo.replace("corp/", "")
         self.maybe_remove_dir(dir_name)
