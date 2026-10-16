@@ -136,6 +136,36 @@ static void update_statsd_metric(spectator::Registry* registry, StatsdMetricType
 	}
 }
 
+// Parse the tags of a common tags directive: k1=v1,k2=v2.
+static auto parse_common_tags_directive(const char* buffer, spectator::Tags& common_tags)
+    -> std::optional<std::string>
+{
+	spectator::Tags parsed{};
+	while (*buffer != '\0' && std::isspace(*buffer) == 0)
+	{
+		const size_t tag_value_len = std::strcspn(buffer, ", \t\r\n");
+		const std::string_view tag_value{buffer, tag_value_len};
+		const auto eq = tag_value.find('=');
+		if (eq == std::string_view::npos)
+		{
+			return fmt::format("Missing '=' in common tags starting at {}", buffer);
+		}
+		std::string_view key = tag_value.substr(0, eq);
+		std::string_view val = tag_value.substr(eq + 1);
+		if (key.empty() || val.empty())
+		{
+			return fmt::format("Empty key or value in common tags starting at {}", buffer);
+		}
+		parsed.add(key, val);
+
+		const char sep = *(buffer + tag_value_len);
+		buffer += sep == ',' ? tag_value_len + 1 : tag_value_len;
+	}
+
+	common_tags = std::move(parsed);
+	return {};
+}
+
 /* StatsD Protocol Parser Specification
  *
  * Parse a single line, of the following form:
@@ -148,8 +178,8 @@ static void update_statsd_metric(spectator::Registry* registry, StatsdMetricType
  *
  * Examples:
  *
- *   custom_metric:60|g|#shell            - Set the custom_metric gauge to 60 and tag it
- *   with 'shell' page.views:1|c          - Increment the page.views COUNT metric.
+ *   custom_metric:60|g|#shell            - Set the custom_metric gauge to 60 and tag it with 'shell'
+ *   page.views:1|c                       - Increment the page.views COUNT metric.
  *   fuel.level:0.5|g                     - Record the fuel tank is half-empty.
  *   song.length:240|h|@0.5               - Sample the song.length histogram half of the time.
  *   users.uniques:1234|s                 - Track unique visitors to the site.
@@ -268,7 +298,8 @@ auto Server::parse_statsd_line(const char* buffer) -> std::optional<std::string>
 	return {};
 }
 
-auto get_measurement(char type, std::string_view measurement_str, std::string* err_msg) -> std::optional<measurement>
+auto get_measurement(char type, std::string_view measurement_str, std::string* err_msg,
+                     const spectator::Tags& common_tags) -> std::optional<measurement>
 {
 	// get name (tags are specified with , but are optional)
 	auto pos = measurement_str.find_first_of(",:");
@@ -278,7 +309,7 @@ auto get_measurement(char type, std::string_view measurement_str, std::string* e
 		return {};
 	}
 	auto name = measurement_str.substr(0, pos);
-	spectator::Tags tags{};
+	spectator::Tags tags(common_tags);
 
 	// optionally get tags
 	if (measurement_str[pos] == ',')
@@ -627,10 +658,17 @@ auto Server::parse_statsd(char* buffer) -> std::optional<std::string>
 
 auto Server::parse(char* buffer) -> std::optional<std::string>
 {
-	return parse_lines(buffer, [this](const char* line) { return this->parse_line(line); });
+	spectator::Tags common_tags{};
+	return parse_lines(buffer, [this, &common_tags](char* line) -> std::optional<std::string> {
+		if (*line == '^')
+		{
+			return parse_common_tags_directive(line + 1, common_tags);
+		}
+		return this->parse_line(line, common_tags);
+	});
 }
 
-auto Server::parse_line(const char* buffer) -> std::optional<std::string>
+auto Server::parse_line(const char* buffer, const spectator::Tags& common_tags) -> std::optional<std::string>
 {
 	static int_fast64_t parsed_count = 0;
 
@@ -669,7 +707,7 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string>
 	}
 	++p;
 	std::string err_msg;
-	auto measurement = get_measurement(type, p, &err_msg);
+	auto measurement = get_measurement(type, p, &err_msg, common_tags);
 	if (!measurement)
 	{
 		Logger()->info(fmt::format("Parse error for '{}': {}", buffer, err_msg));

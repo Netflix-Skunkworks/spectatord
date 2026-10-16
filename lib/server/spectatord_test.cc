@@ -280,6 +280,105 @@ TEST(Spectatord, ParseMultiline)
 	EXPECT_DOUBLE_EQ(map["counter.name|statistic=count"], 42);
 }
 
+TEST(Spectatord, CommonTagsAppliedToSubsequentLines)
+{
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	// a leading '^' directive applies its tags to every metric line after it in the same buffer
+	char_ptr line{strdup("c:counter.one:1\n^common.a=asdf,common.b=jkl\nc:counter.two:2\ng:gauge.name:5")};
+	server.parse_msg(line.get());
+
+	auto map = server.measurements();
+	// the directive line itself isn't a metric, but it still counts as successfully parsed
+	EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 4);
+	EXPECT_DOUBLE_EQ(map["counter.one|statistic=count"], 1);
+	EXPECT_DOUBLE_EQ(map["counter.two|common.a=asdf|common.b=jkl|statistic=count"], 2);
+	EXPECT_DOUBLE_EQ(map["gauge.name|common.a=asdf|common.b=jkl|statistic=gauge"], 5);
+}
+
+TEST(Spectatord, CommonTagsDoNotLeakAcrossBuffers)
+{
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	// the directive only applies to the remaining lines in the packet it appeared in
+	char_ptr line1{strdup("^common=tag\nc:counter.one:1")};
+	server.parse_msg(line1.get());
+
+	char_ptr line2{strdup("c:counter.two:2")};
+	server.parse_msg(line2.get());
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["counter.one|common=tag|statistic=count"], 1);
+	EXPECT_DOUBLE_EQ(map["counter.two|statistic=count"], 2);
+	EXPECT_EQ(map.count("counter.two|common=tag|statistic=count"), 0u);
+}
+
+TEST(Spectatord, CommonTagsOverriddenByPerLineTag)
+{
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	// an explicit per-line tag wins over a common tag with the same key
+	char_ptr line{strdup("^tag=common\nc:counter.name,tag=specific:1")};
+	server.parse_msg(line.get());
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["counter.name|tag=specific|statistic=count"], 1);
+	EXPECT_EQ(map.count("counter.name|tag=common|statistic=count"), 0u);
+}
+
+TEST(Spectatord, CommonTagsReplacedBySecondDirective)
+{
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	// a second '^' directive in the same packet fully replaces the first, it doesn't merge with it
+	char_ptr line{strdup("^a=1,b=2\nc:counter.one:1\n^c=3\nc:counter.two:1")};
+	server.parse_msg(line.get());
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["counter.one|a=1|b=2|statistic=count"], 1);
+	EXPECT_DOUBLE_EQ(map["counter.two|c=3|statistic=count"], 1);
+}
+
+TEST(Spectatord, CommonTagsBareDirectiveClears)
+{
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	// a bare '^' with no tags clears whatever common tags were set earlier in the packet
+	char_ptr line{strdup("^a=1\nc:counter.one:1\n^\nc:counter.two:1")};
+	server.parse_msg(line.get());
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["counter.one|a=1|statistic=count"], 1);
+	EXPECT_DOUBLE_EQ(map["counter.two|statistic=count"], 1);
+}
+
+TEST(Spectatord, CommonTagsDirectiveMalformedIsAParseError)
+{
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	char_ptr line{strdup("^missing_equals\nc:counter.name:1")};
+	auto err = server.parse_msg(line.get());
+	ASSERT_TRUE(err.has_value());
+
+	auto map = server.measurements();
+	// the malformed directive doesn't block the rest of the packet from being parsed; it just
+	// never sets any common tags, so the following line gets none
+	EXPECT_DOUBLE_EQ(map["spectatord.parseErrors|statistic=count"], 1);
+	EXPECT_DOUBLE_EQ(map["counter.name|statistic=count"], 1);
+}
+
 TEST(Spectatord, ParseAgeGauge)
 {
 	auto logger = Logger();
