@@ -547,6 +547,20 @@ TEST(Spectatord, ParseDistinctSketchEmptyValue)
 	EXPECT_DOUBLE_EQ(map["dcs.name|distinct=R19|statistic=distinct"], 1);
 }
 
+TEST(Spectatord, ParseLeadingEmptyLines)
+{
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+	char_ptr line{strdup("\n\nc:x:1\n\nc:x:2")};
+	auto err = server.parse_msg(line.get());
+	EXPECT_FALSE(err.has_value());
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 2);
+	EXPECT_EQ(map.count("spectatord.parseErrors|statistic=count"), 0);
+	EXPECT_DOUBLE_EQ(map["x|statistic=count"], 3);
+}
+
 TEST(Spectatord, ParseMultilineWithErrors)
 {
 	auto logger = Logger();
