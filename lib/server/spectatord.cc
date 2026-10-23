@@ -47,20 +47,28 @@ inline auto add_tag(spectator::Tags* tags, const char* begin_key, const char* en
 // feed lines into parser
 auto Server::parse_lines(char* buffer, const handler_t& parser) -> std::optional<std::string>
 {
-	const auto& cfg = registry_->GetConfig();
-
-	char* p = buffer;
 	std::string err_msg;
 	size_t num_parsed = 0;
 	size_t num_errors = 0;
-	while (*p != '\0')
+
+	char* line = buffer;
+	while (line != nullptr)
 	{
-		char* newline = std::strchr(p, '\n');
-		if (newline != nullptr)
+		// skip empty lines, the parser expects at least one character
+		line += std::strspn(line, "\n");
+		if (*line == '\0')
 		{
-			*newline = '\0';
+			break;
 		}
-		if (auto maybe_err = parser(p))
+
+		// terminate the current line, and find the start of the next one
+		char* next = std::strchr(line, '\n');
+		if (next != nullptr)
+		{
+			*next++ = '\0';
+		}
+
+		if (auto maybe_err = parser(line))
 		{
 			++num_errors;
 			if (!err_msg.empty())
@@ -73,17 +81,10 @@ auto Server::parse_lines(char* buffer, const handler_t& parser) -> std::optional
 		{
 			++num_parsed;
 		}
-		if (newline == nullptr)
-		{
-			break;
-		}
-		// skip empty lines
-		while (*++newline == '\n')
-		{
-		}
-		p = newline;
+		line = next;
 	}
-	if (cfg.status_metrics_enabled)
+
+	if (registry_->GetConfig().status_metrics_enabled)
 	{
 		if (num_parsed > 0)
 		{
