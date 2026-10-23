@@ -113,6 +113,15 @@ TEST(Spectatord, Statsd_Multiline)
 	test_statsd(ctr.get(), expected);
 }
 
+TEST(Spectatord, Statsd_MultilineWithErrors)
+{
+	char_ptr ctr{strdup("page.views:1|c\nbad\npage.views:3|c")};
+	std::map<std::string, double> expected{{"spectatord.parsedCount|statistic=count", 2},
+	                                       {"spectatord.parseErrors|statistic=count", 1},
+	                                       {"page.views|statistic=count", 4.0}};
+	test_statsd(ctr.get(), expected);
+}
+
 TEST(Spectatord, Statsd_Counter)
 {
 	char_ptr ctr{strdup("page.views:1|c\n")};
@@ -537,4 +546,21 @@ TEST(Spectatord, ParseDistinctSketchEmptyValue)
 	auto map = server.measurements();
 	EXPECT_DOUBLE_EQ(map["dcs.name|distinct=R19|statistic=distinct"], 1);
 }
+
+TEST(Spectatord, ParseMultilineWithErrors)
+{
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+	char_ptr line{strdup("c:counter.name:10\nc:counter.name\nc:counter.name:20\n:1\n")};
+	auto err = server.parse_msg(line.get());
+	ASSERT_TRUE(err.has_value());
+	EXPECT_NE(err->find('\n'), std::string::npos);  // "Missing name\nExpecting separator..."
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 2);
+	EXPECT_DOUBLE_EQ(map["spectatord.parseErrors|statistic=count"], 2);
+	EXPECT_DOUBLE_EQ(map["counter.name|statistic=count"], 30);
+}
+
+
 }  // namespace

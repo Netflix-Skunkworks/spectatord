@@ -51,6 +51,8 @@ auto Server::parse_lines(char* buffer, const handler_t& parser) -> std::optional
 
 	char* p = buffer;
 	std::string err_msg;
+	size_t num_parsed = 0;
+	size_t num_errors = 0;
 	while (*p != '\0')
 	{
 		char* newline = std::strchr(p, '\n');
@@ -58,26 +60,18 @@ auto Server::parse_lines(char* buffer, const handler_t& parser) -> std::optional
 		{
 			*newline = '\0';
 		}
-		auto maybe_err = parser(p);
-		if (maybe_err)
+		if (auto maybe_err = parser(p))
 		{
-			if (cfg.status_metrics_enabled)
-			{
-				parse_errors_->Increment();
-			}
-			if (err_msg.empty())
-			{
-				err_msg = *maybe_err;
-			}
-			else
+			++num_errors;
+			if (!err_msg.empty())
 			{
 				err_msg += '\n';
-				err_msg += *maybe_err;
 			}
+			err_msg += *maybe_err;
 		}
-		else if (cfg.status_metrics_enabled)
+		else
 		{
-			parsed_count_->Increment();
+			++num_parsed;
 		}
 		if (newline == nullptr)
 		{
@@ -88,6 +82,17 @@ auto Server::parse_lines(char* buffer, const handler_t& parser) -> std::optional
 		{
 		}
 		p = newline;
+	}
+	if (cfg.status_metrics_enabled)
+	{
+		if (num_parsed > 0)
+		{
+			parsed_count_->Add(static_cast<double>(num_parsed));
+		}
+		if (num_errors > 0)
+		{
+			parse_errors_->Add(static_cast<double>(num_errors));
+		}
 	}
 	if (err_msg.empty())
 	{
