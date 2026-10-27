@@ -47,47 +47,53 @@ inline auto add_tag(spectator::Tags* tags, const char* begin_key, const char* en
 // feed lines into parser
 auto Server::parse_lines(char* buffer, const handler_t& parser) -> std::optional<std::string>
 {
-	const auto& cfg = registry_->GetConfig();
-
-	char* p = buffer;
 	std::string err_msg;
-	while (*p != '\0')
+	size_t num_parsed = 0;
+	size_t num_errors = 0;
+
+	char* line = buffer;
+	while (line != nullptr)
 	{
-		char* newline = std::strchr(p, '\n');
-		if (newline != nullptr)
-		{
-			*newline = '\0';
-		}
-		auto maybe_err = parser(p);
-		if (maybe_err)
-		{
-			if (cfg.status_metrics_enabled)
-			{
-				parse_errors_->Increment();
-			}
-			if (err_msg.empty())
-			{
-				err_msg = *maybe_err;
-			}
-			else
-			{
-				err_msg += '\n';
-				err_msg += *maybe_err;
-			}
-		}
-		else if (cfg.status_metrics_enabled)
-		{
-			parsed_count_->Increment();
-		}
-		if (newline == nullptr)
+		// skip empty lines, the parser expects at least one character
+		line += std::strspn(line, "\n");
+		if (*line == '\0')
 		{
 			break;
 		}
-		// skip empty lines
-		while (*++newline == '\n')
+
+		// terminate the current line, and find the start of the next one
+		char* next = std::strchr(line, '\n');
+		if (next != nullptr)
 		{
+			*next++ = '\0';
 		}
-		p = newline;
+
+		if (auto maybe_err = parser(line))
+		{
+			++num_errors;
+			if (!err_msg.empty())
+			{
+				err_msg += '\n';
+			}
+			err_msg += *maybe_err;
+		}
+		else
+		{
+			++num_parsed;
+		}
+		line = next;
+	}
+
+	if (registry_->GetConfig().status_metrics_enabled)
+	{
+		if (num_parsed > 0)
+		{
+			parsed_count_->Add(static_cast<double>(num_parsed));
+		}
+		if (num_errors > 0)
+		{
+			parse_errors_->Add(static_cast<double>(num_errors));
+		}
 	}
 	if (err_msg.empty())
 	{
