@@ -274,7 +274,69 @@ auto Server::parse_statsd_line(const char* buffer) -> std::optional<std::string>
 	return {};
 }
 
-auto get_measurement(char type, std::string_view measurement_str, std::string* err_msg) -> std::optional<measurement>
+struct parsed_value
+{
+	valueT value{};
+	std::string_view str_value{};
+};
+
+// Parses the value portion of a measurement line (everything after the ':').
+// value_str must be NUL-terminated: it points into the parse buffer, which
+// parse_lines NUL-terminates at the end of each line.
+static auto parse_value(char type, std::string_view value_str, std::string* err_msg)
+    -> std::optional<parsed_value>
+{
+	parsed_value result{};
+	if (type == 'S')
+	{
+		// The distinct count sketch value is an opaque base64 blob (the bytes to hash), not a
+		// number. Capture the raw token; it is decoded and hashed in parse_line. Treat it like a
+		// tag value with respect to size: it is bounded by the overall line size limits.
+		//
+		// An empty value is allowed: it decodes to zero bytes and hashes the empty input, which
+		// matches record("") / record(empty bytes) in the other clients so the sketches merge.
+		// A genuinely missing value (no trailing ':') is rejected earlier as a missing name.
+		auto str_value = value_str;
+		while (!str_value.empty() && std::isspace(static_cast<unsigned char>(str_value.back())) != 0)
+		{
+			str_value.remove_suffix(1);
+		}
+		result.str_value = str_value;
+		return result;
+	}
+
+	const auto* begin = value_str.data();
+	char* last_char = nullptr;
+	if (type == 'U' || type == 's')
+	{
+		result.value.u = std::strtoull(begin, &last_char, 10);
+	}
+	else
+	{
+		result.value.d = std::strtod(begin, &last_char);
+	}
+
+	if (last_char == begin)
+	{
+		*err_msg = "Unable to parse value for measurement";
+		return {};
+	}
+	if (*last_char != '\0' && std::isspace(static_cast<unsigned char>(*last_char)) == 0)
+	{
+		if (type == 'U' || type == 's')
+		{
+			*err_msg = fmt::format("Got {} parsing value, ignoring chars starting at {}", result.value.u, last_char);
+		}
+		else
+		{
+			*err_msg = fmt::format("Got {} parsing value, ignoring chars starting at {}", result.value.d, last_char);
+		}
+	}
+	return result;
+}
+
+auto get_measurement(char type, std::string_view measurement_str, std::string* err_msg, size_t* id_len)
+    -> std::optional<measurement>
 {
 	// get name (tags are specified with , but are optional)
 	auto pos = measurement_str.find_first_of(",:");
@@ -286,6 +348,12 @@ auto get_measurement(char type, std::string_view measurement_str, std::string* e
 	auto name = measurement_str.substr(0, pos);
 	spectator::Tags tags{};
 
+	// Whether the id is self-contained: every tag segment has its '=' and the id
+	// is terminated by ':'. If the loop below breaks out instead, the '=' it was
+	// looking for may sit after that ':', which makes the extent of the id depend
+	// on what follows it, so such an id must not be cached by its prefix.
+	auto self_contained = true;
+
 	// optionally get tags
 	if (measurement_str[pos] == ',')
 	{
@@ -293,7 +361,11 @@ auto get_measurement(char type, std::string_view measurement_str, std::string* e
 		{
 			++pos;
 			auto k_pos = measurement_str.find('=', pos);
-			if (k_pos == std::string_view::npos) break;
+			if (k_pos == std::string_view::npos)
+			{
+				self_contained = false;
+				break;
+			}
 			auto key = measurement_str.substr(pos, k_pos - pos);
 			++k_pos;
 			auto v_pos = measurement_str.find_first_of(",:", k_pos);
@@ -308,56 +380,30 @@ auto get_measurement(char type, std::string_view measurement_str, std::string* e
 		}
 	}
 
-	++pos;
-	auto value_str = measurement_str.begin() + pos;
-	valueT value{};
-	std::string_view str_value{};
-	if (type == 'S')
+	if (id_len != nullptr)
 	{
-		// The distinct count sketch value is an opaque base64 blob (the bytes to hash), not a
-		// number. Capture the raw token; it is decoded and hashed in parse_line. Treat it like a
-		// tag value with respect to size: it is bounded by the overall line size limits.
-		//
-		// An empty value is allowed: it decodes to zero bytes and hashes the empty input, which
-		// matches record("") / record(empty bytes) in the other clients so the sketches merge.
-		// A genuinely missing value (no trailing ':') is rejected earlier as a missing name.
-		str_value = measurement_str.substr(pos);
-		while (!str_value.empty() && std::isspace(static_cast<unsigned char>(str_value.back())) != 0)
-		{
-			str_value.remove_suffix(1);
-		}
+		// Where the id ended, which is not necessarily the offset of the first
+		// ':' in the line: a tag key is located with find('='), so it may span a
+		// colon. Reported only for a self-contained id, because only then does
+		// the same text parse the same way regardless of what follows it.
+		*id_len = self_contained ? pos : std::numeric_limits<size_t>::max();
 	}
-	else
-	{
-		char* last_char = nullptr;
-		if (type == 'U' || type == 's')
-		{
-			value.u = std::strtoull(value_str, &last_char, 10);
-		}
-		else
-		{
-			value.d = std::strtod(value_str, &last_char);
-		}
 
-		if (last_char == value_str)
-		{
-			*err_msg = "Unable to parse value for measurement";
-			return {};
-		}
-		if (*last_char != '\0' && std::isspace(static_cast<unsigned char>(*last_char)) == 0)
-		{
-			if (type == 'U' || type == 's')
-			{
-				*err_msg = fmt::format("Got {} parsing value, ignoring chars starting at {}", value.u, last_char);
-			}
-			else
-			{
-				*err_msg = fmt::format("Got {} parsing value, ignoring chars starting at {}", value.d, last_char);
-			}
-		}
+	++pos;
+	if (pos > measurement_str.size())
+	{
+		// the tag section ran to the end of the line without a value separator,
+		// e.g. "name,"; substr() would throw for such a line
+		*err_msg = "Missing value";
+		return {};
+	}
+	auto value = parse_value(type, measurement_str.substr(pos), err_msg);
+	if (!value)
+	{
+		return {};
 	}
 	auto name_ref = spectator::intern_str(name);
-	return measurement{spectator::Id{name_ref, tags}, value, str_value};
+	return measurement{spectator::Id{name_ref, tags}, value->value, value->str_value};
 }
 
 static constexpr auto min_perc_timer = absl::Nanoseconds(1);
@@ -392,7 +438,8 @@ Server::Server(bool ipv4_only, int port_number, std::optional<int> statsd_port_n
       logger_{Logger()},
       perc_timers_{create_perc_timer},
       perc_ds_{create_perc_ds},
-      sketches_{create_sketch}
+      sketches_{create_sketch},
+      id_cache_{registry->GetConfig().meter_cache_size}
 {
 }
 
@@ -640,6 +687,12 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string>
 {
 	static int_fast64_t parsed_count = 0;
 
+	auto fail = [buffer](const std::string& msg)
+	{
+		Logger()->info(fmt::format("Parse error for '{}': {}", buffer, msg));
+		return msg;
+	};
+
 	const char* p = buffer;
 
 	auto type = *p++;
@@ -654,32 +707,77 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string>
 			auto idx = p - buffer;
 			if (type == 'g')
 			{
-				auto msg = fmt::format("Invalid ttl specified for gauge at index {}", idx);
-				Logger()->info(fmt::format("Parse error for '{}': {}", buffer, msg));
-				return msg;
+				return fail(fmt::format("Invalid ttl specified for gauge at index {}", idx));
 			}
 			else if (type == 'X')
 			{
-				auto msg = fmt::format("Invalid timestamp specified for monotonic sampled source at index {}", idx);
-				Logger()->info(fmt::format("Parse error for '{}': {}", buffer, msg));
-				return msg;
+				return fail(fmt::format("Invalid timestamp specified for monotonic sampled source at index {}", idx));
 			}
 		}
 		p = end_ttl;
 	}
 	if (*p != ':')
 	{
-		auto msg = fmt::format("Expecting separator ':' at index {}", p - buffer);
-		Logger()->info(fmt::format("Parse error for '{}': {}", buffer, msg));
-		return msg;
+		return fail(fmt::format("Expecting separator ':' at index {}", p - buffer));
 	}
 	++p;
-	std::string err_msg;
-	auto measurement = get_measurement(type, p, &err_msg);
-	if (!measurement)
+
+	// The identity of the measurement (name and tags) precedes the value.
+	// Repeated measurements for the same id are the common case, so the parsed
+	// Id is cached by (type, id text) and a hit skips tag parsing and interning.
+	const char* id_begin = p;
+	const char* id_end = std::strchr(id_begin, ':');
+	// A line is only cacheable when the id is both terminated by a value
+	// separator and non-empty. Neither can be assumed from a successful parse:
+	// a distinct count sketch accepts an empty value, so "S:a,z" parses even
+	// though it contains no second ':' at all. Caching such a line under the
+	// resulting empty key would make a later line with an empty id ("S::...")
+	// resolve to it and record against the wrong meter instead of being
+	// rejected.
+	auto cacheable = id_end != nullptr && id_end != id_begin;
+	std::string_view id_key;
+	std::shared_ptr<const spectator::Id> cached_id;
+	if (cacheable)
 	{
-		Logger()->info(fmt::format("Parse error for '{}': {}", buffer, err_msg));
-		return err_msg;
+		id_key = std::string_view{id_begin, static_cast<size_t>(id_end - id_begin)};
+		cached_id = id_cache_.get(type, id_key);
+	}
+
+	// On a hit the id was already validated when it was first cached, so only
+	// the value is parsed. On a miss the whole measurement is parsed and
+	// validated exactly as before, which also reports a malformed id (including
+	// a missing value separator, which leaves id_end null).
+	std::string err_msg;
+	valueT value{};
+	std::string_view str_value{};
+	std::optional<measurement> parsed;
+	if (cached_id != nullptr)
+	{
+		auto v = parse_value(type, std::string_view{id_end + 1}, &err_msg);
+		if (!v)
+		{
+			return fail(err_msg);
+		}
+		value = v->value;
+		str_value = v->str_value;
+	}
+	else
+	{
+		auto parsed_id_len = std::numeric_limits<size_t>::max();
+		parsed = get_measurement(type, id_begin, &err_msg, &parsed_id_len);
+		if (!parsed)
+		{
+			return fail(err_msg);
+		}
+		value = parsed->value;
+		str_value = parsed->str_value;
+		// Only cache when the id really ended at the first ':'. A tag key is
+		// found with find('='), so it may contain a colon ("m,a:b=1:5" has the
+		// id "m,a:b=1"), in which case the key would only be a prefix of the id
+		// and a shorter line sharing that prefix would resolve to this meter.
+		// An id that does end there is self-contained: every tag segment has its
+		// '=' before the colon, so it parses the same way whatever follows.
+		cacheable = cacheable && parsed_id_len == id_key.size();
 	}
 
 	if (!err_msg.empty())
@@ -687,84 +785,96 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string>
 		// got a warning while parsing
 		Logger()->info("While parsing {}: {}", p, err_msg);
 	}
+
+	// The registry is still consulted for every line; only the parsing and
+	// interning that produced the Id is skipped. A cached Id is a value, so it
+	// can never refer to a meter the registry has removed.
+	if (cached_id == nullptr && cacheable)
+	{
+		cached_id = id_cache_.put(type, id_key, parsed->id);
+	}
+	const spectator::Id& rid = cached_id != nullptr ? *cached_id : parsed->id;
+
 	switch (type)
 	{
 		case 'A':
-			if (measurement->value.d == 0)
+		{
+			auto gauge = registry_->GetAgeGauge(rid);
+			if (value.d == 0)
 			{
-				registry_->GetAgeGauge(measurement->id)->UpdateLastSuccess();
+				gauge->UpdateLastSuccess();
 			}
 			else
 			{
-				registry_->GetAgeGauge(measurement->id)
-				    ->UpdateLastSuccess(static_cast<int64_t>(measurement->value.d * 1e9));
+				gauge->UpdateLastSuccess(static_cast<int64_t>(value.d * 1e9));
 			}
 			break;
+		}
 		case 'c':
-			registry_->GetCounter(measurement->id)->Add(measurement->value.d);
+			registry_->GetCounter(rid)->Add(value.d);
 			break;
 		case 'C':
-			registry_->GetMonotonicCounter(measurement->id)->Set(measurement->value.d);
+			registry_->GetMonotonicCounter(rid)->Set(value.d);
 			break;
 		case 'd':
-			registry_->GetDistributionSummary(measurement->id)->Record(measurement->value.d);
+			registry_->GetDistributionSummary(rid)->Record(value.d);
 			break;
 		case 'D':
-			perc_ds_.get_or_create(registry_, measurement->id)->Record(static_cast<int64_t>(measurement->value.d));
+			perc_ds_.get_or_create(registry_, rid)
+			    ->Record(static_cast<int64_t>(value.d));
 			break;
 		case 'g':
-			if (extra > 0)
-			{
-				registry_->GetGauge(measurement->id, absl::Seconds(extra))->Set(measurement->value.d);
-			}
-			else
-			{
-				// this preserves the previous ttl, otherwise we would override it
-				// with the default value, if we use the previous constructor
-				registry_->GetGauge(measurement->id)->Set(measurement->value.d);
-			}
+		{
+			// GetGauge(id, ttl) refreshes the ttl; without one the previous ttl
+			// is preserved rather than overridden with the default
+			auto gauge = extra > 0 ? registry_->GetGauge(rid, absl::Seconds(extra)) : registry_->GetGauge(rid);
+			gauge->Set(value.d);
 			break;
+		}
 		case 'm':
-			registry_->GetMaxGauge(measurement->id)->Update(measurement->value.d);
+			registry_->GetMaxGauge(rid)->Update(value.d);
 			break;
 		case 'S':
 		{
 			// Distinct count sketch: the value is base64-encoded raw bytes that spectatord
 			// hashes. This keeps the hash implementation in one place for all thin clients.
 			std::string decoded;
-			if (!absl::Base64Unescape(measurement->str_value, &decoded))
+			if (!absl::Base64Unescape(str_value, &decoded))
 			{
-				return fmt::format("Invalid base64 value for distinct count sketch: {}", measurement->str_value);
+				return fmt::format("Invalid base64 value for distinct count sketch: {}", str_value);
 			}
-			sketches_.get_or_create(registry_, measurement->id)->Record(decoded.data(), decoded.size());
+			sketches_.get_or_create(registry_, rid)
+			    ->Record(decoded.data(), decoded.size());
 		}
 		break;
 		case 's':
 			// Distinct count sketch with a precomputed xxHash64 (seed 0) value, for clients that
 			// hash locally (e.g. to keep the raw value off the wire or bound the line size).
-			sketches_.get_or_create(registry_, measurement->id)->RecordHash(measurement->value.u);
+			sketches_.get_or_create(registry_, rid)->RecordHash(value.u);
 			break;
 		case 't':  // elapsed time is reported in seconds
 		{
-			auto nanos = static_cast<int64_t>(measurement->value.d * 1e9);
-			registry_->GetTimer(measurement->id)->Record(std::chrono::nanoseconds(nanos));
+			auto nanos = static_cast<int64_t>(value.d * 1e9);
+			registry_->GetTimer(rid)
+			    ->Record(std::chrono::nanoseconds(nanos));
 		}
 		break;
 		case 'T':
 		{
-			auto nanos = static_cast<int64_t>(measurement->value.d * 1e9);
-			perc_timers_.get_or_create(registry_, measurement->id)->Record(std::chrono::nanoseconds(nanos));
+			auto nanos = static_cast<int64_t>(value.d * 1e9);
+			perc_timers_.get_or_create(registry_, rid)
+			    ->Record(std::chrono::nanoseconds(nanos));
 		}
 		break;
 		case 'U':
-			registry_->GetMonotonicCounterUint(measurement->id)->Set(measurement->value.u);
+			registry_->GetMonotonicCounterUint(rid)->Set(value.u);
 			break;
 		case 'X':
 			if (extra > 0)
 			{
 				// extra is milliseconds since the epoch
 				auto nanos = extra * 1000 * 1000;
-				registry_->GetMonotonicSampled(measurement->id)->Set(measurement->value.u, nanos);
+				registry_->GetMonotonicSampled(rid)->Set(value.u, nanos);
 			}
 			break;
 		default:

@@ -65,6 +65,19 @@ struct meter_map
 		return meters_.contains(id);
 	}
 
+	// Lookup-first fast path: takes a shared lock and allocates nothing, so a
+	// line reporting an id that already has a meter does not construct one
+	// just to discard it.
+	//
+	// Hashing an Id memoises into a mutable field, so the caller must own the
+	// Id it passes; the insert_* helpers below take theirs by value.
+	auto find_existing(const Id& id) -> std::shared_ptr<M>
+	{
+		absl::ReaderMutexLock lock(&meters_mutex_);
+		auto it = meters_.find(id);
+		return it == meters_.end() ? nullptr : it->second;
+	}
+
 	// only insert if it doesn't exist, otherwise return the existing meter
 	auto insert(std::shared_ptr<M> meter) -> std::shared_ptr<M>
 	{
@@ -243,26 +256,59 @@ struct all_meters
 		return {total_expired, total_count};
 	}
 
-	auto insert_age_gauge(Id id) { return age_gauges_.insert(std::make_shared<AgeGauge>(std::move(id))); }
+	auto insert_age_gauge(Id id)
+	{
+		if (auto hit = age_gauges_.find_existing(id)) return hit;
+		return age_gauges_.insert(std::make_shared<AgeGauge>(std::move(id)));
+	}
 
-	auto insert_counter(Id id) { return counters_.insert(std::make_shared<Counter>(std::move(id))); }
+	auto insert_counter(Id id)
+	{
+		if (auto hit = counters_.find_existing(id)) return hit;
+		return counters_.insert(std::make_shared<Counter>(std::move(id)));
+	}
 
-	auto insert_dist_sum(Id id) { return dist_sums_.insert(std::make_shared<DistributionSummary>(std::move(id))); }
+	auto insert_dist_sum(Id id)
+	{
+		if (auto hit = dist_sums_.find_existing(id)) return hit;
+		return dist_sums_.insert(std::make_shared<DistributionSummary>(std::move(id)));
+	}
 
-	auto insert_gauge(Id id, absl::Duration ttl) { return gauges_.insert(std::make_shared<Gauge>(std::move(id), ttl)); }
+	auto insert_gauge(Id id, absl::Duration ttl)
+	{
+		if (auto hit = gauges_.find_existing(id)) return hit;
+		return gauges_.insert(std::make_shared<Gauge>(std::move(id), ttl));
+	}
 
-	auto insert_max_gauge(Id id) { return max_gauges_.insert(std::make_shared<MaxGauge>(std::move(id))); }
+	auto insert_max_gauge(Id id)
+	{
+		if (auto hit = max_gauges_.find_existing(id)) return hit;
+		return max_gauges_.insert(std::make_shared<MaxGauge>(std::move(id)));
+	}
 
-	auto insert_mono_counter(Id id) { return mono_counters_.insert(std::make_shared<MonotonicCounter>(std::move(id))); }
+	auto insert_mono_counter(Id id)
+	{
+		if (auto hit = mono_counters_.find_existing(id)) return hit;
+		return mono_counters_.insert(std::make_shared<MonotonicCounter>(std::move(id)));
+	}
 
 	auto insert_mono_counter_uint(Id id)
 	{
+		if (auto hit = mono_counters_uint_.find_existing(id)) return hit;
 		return mono_counters_uint_.insert(std::make_shared<MonotonicCounterUint>(std::move(id)));
 	}
 
-	auto insert_mono_sampled(Id id) { return mono_sampled_.insert(std::make_shared<MonotonicSampled>(std::move(id))); }
+	auto insert_mono_sampled(Id id)
+	{
+		if (auto hit = mono_sampled_.find_existing(id)) return hit;
+		return mono_sampled_.insert(std::make_shared<MonotonicSampled>(std::move(id)));
+	}
 
-	auto insert_timer(Id id) { return timers_.insert(std::make_shared<Timer>(std::move(id))); }
+	auto insert_timer(Id id)
+	{
+		if (auto hit = timers_.find_existing(id)) return hit;
+		return timers_.insert(std::make_shared<Timer>(std::move(id)));
+	}
 };
 
 }  // namespace detail

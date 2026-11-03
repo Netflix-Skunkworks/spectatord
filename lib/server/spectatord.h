@@ -1,6 +1,7 @@
 #pragma once
 
 #include "expiring_cache.h"
+#include "id_cache.h"
 #include "server/transport/handler.h"
 #include "spectator/registry/distinct_count_sketch.h"
 #include "spectator/registry/percentile_distribution_summary.h"
@@ -37,6 +38,8 @@ class Server
 	expiring_cache<spectator::PercentileTimer> perc_timers_;
 	expiring_cache<spectator::PercentileDistributionSummary> perc_ds_;
 	expiring_cache<spectator::DistinctCountSketch> sketches_;
+	// caches the parsed Id for each (line type, id text) seen by parse_line
+	id_cache id_cache_;
 
 	std::atomic_bool should_stop_{false};
 	std::thread upkeep_thread_;  // some janitorial tasks, like expiration of
@@ -52,6 +55,9 @@ class Server
 	void ensure_not_stuck();
 
    protected:
+	// for tests
+	auto id_cache_stats() const -> id_cache::stats { return id_cache_.get_stats(); }
+
 	std::optional<std::string> parse(char* buffer);
 	std::optional<std::string> parse_statsd(char* buffer);
 };
@@ -71,6 +77,10 @@ struct measurement
 	std::string_view str_value{};
 };
 
-std::optional<measurement> get_measurement(char type, std::string_view measurement_str, std::string* err_msg);
+// Parses one measurement. When id_len is given it receives the length of the
+// identity portion, which is not always the offset of the first ':': a tag key
+// is located with find('='), so it may span a colon.
+std::optional<measurement> get_measurement(char type, std::string_view measurement_str, std::string* err_msg,
+                                          size_t* id_len = nullptr);
 
 }  // namespace spectatord

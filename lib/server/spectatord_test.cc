@@ -2,6 +2,7 @@
 #include "gtest/gtest.h"
 #include "server/transport/local.h"
 #include "spectatord.h"
+#include "spectator/strings/string_pool.h"
 
 #include <fmt/ostream.h>
 
@@ -48,6 +49,7 @@ class test_server : public spectatord::Server
 	{
 	}
 	std::optional<std::string> parse_msg(char* msg) { return parse(msg); }
+	spectatord::id_cache::stats cache_stats() const { return id_cache_stats(); }
 	std::optional<std::string> test_parse_statsd(char* buffer) { return parse_statsd(buffer); }
 
 	std::map<std::string, double> measurements()
@@ -422,6 +424,222 @@ TEST(Spectatord, ParseGaugeTtl)
 	EXPECT_EQ(registry.GetGauge("gauge.name")->GetTtl(), absl::Seconds(15));
 }
 
+TEST(Spectatord, ParseCacheHit)
+{
+	// the second and third lines for the same id resolve through the meter
+	// cache, skipping tag parsing and the registry lookup
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	char_ptr line1{strdup("c:counter.name,id=1,foo=bar:10")};
+	char_ptr line2{strdup("c:counter.name,id=1,foo=bar:5")};
+	char_ptr line3{strdup("t:timer.name,id=1,foo=bar:0.5")};
+	EXPECT_FALSE(server.parse_msg(line1.get()).has_value());
+	EXPECT_FALSE(server.parse_msg(line2.get()).has_value());
+	// same id string, different line type: a different meter
+	EXPECT_FALSE(server.parse_msg(line3.get()).has_value());
+
+	// without this the cache could discard every hit and still pass
+	const auto stats = server.cache_stats();
+	EXPECT_GT(stats.hits, 0u) << "no line was served from the cache";
+	EXPECT_EQ(stats.size, 2u) << "expected one entry per (type, id)";
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["spectatord.parsedCount|statistic=count"], 3);
+	EXPECT_DOUBLE_EQ(map["counter.name|foo=bar|id=1|statistic=count"], 15);
+	EXPECT_DOUBLE_EQ(map["timer.name|foo=bar|id=1|statistic=count"], 1);
+}
+TEST(Spectatord, ParseCacheIgnoresLinesWithoutValueSeparator)
+{
+	// "S:a,z" has no value separator at all, yet it parses: a distinct count
+	// sketch accepts an empty value. Its id must not end up cached under an
+	// empty key, because a later line whose id is empty ("S::...") would then
+	// resolve to that meter and silently record into the wrong metric.
+	auto logger = Logger();
+	spectator::Registry clean_registry{GetConfiguration(), logger};
+	spectator::Registry poked_registry{GetConfiguration(), logger};
+	test_server clean{&clean_registry};
+	test_server poked{&poked_registry};
+
+	char_ptr a1{strdup("S:a,z")};
+	char_ptr a2{strdup("S:a,z")};
+	EXPECT_FALSE(clean.parse_msg(a1.get()).has_value());
+	EXPECT_FALSE(poked.parse_msg(a2.get()).has_value());
+
+	// an empty id must be rejected, exactly as it is without the cache
+	char_ptr empty_id{strdup("S::YWJj")};
+	auto err = poked.parse_msg(empty_id.get());
+	ASSERT_TRUE(err.has_value()) << "an empty id was accepted";
+	EXPECT_EQ(*err, "Missing name");
+
+	// measurements() resets the meters, so each registry is read exactly once
+	auto expected = clean.measurements();
+	auto actual = poked.measurements();
+	expected.erase("spectatord.parseErrors|statistic=count");
+	actual.erase("spectatord.parseErrors|statistic=count");
+	EXPECT_EQ(actual, expected) << "the rejected line still changed a meter";
+}
+
+TEST(Spectatord, ParseCacheHandlesColonInTagKey)
+{
+	// A tag key is located with find('='), which does not stop at a colon, so a
+	// tag key may contain ':' and the first ':' in a line is then not the end of
+	// the id. Caching keyed on "text up to the first ':'" would let a shorter
+	// line sharing that prefix resolve to the wrong meter.
+	auto logger = Logger();
+	auto plain_cfg = GetConfiguration();
+	plain_cfg->meter_cache_size = 0;  // the comparison is meaningless otherwise
+	spectator::Registry cached_registry{GetConfiguration(), logger};
+	spectator::Registry plain_registry{std::move(plain_cfg), logger};
+	test_server cached{&cached_registry};
+	test_server plain{&plain_registry};
+
+	// the real id here is "m,a:b=1"; only "m,a" precedes the first ':'
+	for (const auto* line : {"c:m,a:b=1:5", "c:m,a:9"})
+	{
+		char_ptr a{strdup(line)};
+		char_ptr b{strdup(line)};
+		auto err_cached = cached.parse_msg(a.get());
+		auto err_plain = plain.parse_msg(b.get());
+		EXPECT_EQ(err_cached, err_plain) << "divergent result for '" << line << "'";
+	}
+
+	EXPECT_EQ(cached.measurements(), plain.measurements()) << "a line was recorded against the wrong meter";
+}
+
+TEST(Spectatord, ParseCacheCapacityLimit)
+{
+	// Once the cache is full, further ids still parse correctly through the
+	// uncached path; this is what bounds memory when cardinality is unbounded.
+	auto logger = Logger();
+	auto cfg = GetConfiguration();
+	cfg->meter_cache_size = 1;
+	spectator::Registry registry{std::move(cfg), logger};
+	test_server server{&registry};
+
+	for (auto i = 0; i < 3; ++i)
+	{
+		char_ptr first{strdup(fmt::format("c:counter{}:10", i).c_str())};
+		char_ptr second{strdup(fmt::format("c:counter{}:5", i).c_str())};
+		EXPECT_FALSE(server.parse_msg(first.get()).has_value());
+		EXPECT_FALSE(server.parse_msg(second.get()).has_value());
+	}
+
+	auto map = server.measurements();
+	for (auto i = 0; i < 3; ++i)
+	{
+		EXPECT_DOUBLE_EQ(map[fmt::format("counter{}|statistic=count", i)], 15) << "wrong value for counter" << i;
+	}
+
+	// the bound itself, otherwise this test passes with no limit at all
+	const auto stats = server.cache_stats();
+	EXPECT_EQ(stats.size, 1u) << "the cache grew past its capacity";
+	EXPECT_GT(stats.rejected, 0u) << "nothing was rejected, so the limit never engaged";
+}
+
+TEST(Spectatord, ParseCacheRejectsOversizedIds)
+{
+	// Nothing bounds the length of a name or tag value, so a few very long ids
+	// must not be able to consume the whole cache budget. They still parse.
+	auto logger = Logger();
+	auto cfg = GetConfiguration();
+	cfg->meter_cache_size = 4;  // budget is 4 * 512 bytes of key data
+	spectator::Registry registry{std::move(cfg), logger};
+	test_server server{&registry};
+
+	const auto huge_name = std::string(4096, 'x');
+	for (auto i = 0; i < 2; ++i)
+	{
+		char_ptr line{strdup(fmt::format("c:{}:7", huge_name).c_str())};
+		EXPECT_FALSE(server.parse_msg(line.get()).has_value());
+	}
+
+	// a normal id still fits and still works alongside it
+	char_ptr small1{strdup("c:small.counter:3")};
+	char_ptr small2{strdup("c:small.counter:4")};
+	EXPECT_FALSE(server.parse_msg(small1.get()).has_value());
+	EXPECT_FALSE(server.parse_msg(small2.get()).has_value());
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map[fmt::format("{}|statistic=count", huge_name)], 14);
+	EXPECT_DOUBLE_EQ(map["small.counter|statistic=count"], 7);
+
+	// ids that each fit the budget must still be rejected once their sum
+	// exceeds it, otherwise the limit is per entry rather than cumulative
+	for (auto i = 0; i < 4; ++i)
+	{
+		char_ptr medium{strdup(fmt::format("c:{}{}:1", std::string(400, 'm'), i).c_str())};
+		EXPECT_FALSE(server.parse_msg(medium.get()).has_value());
+	}
+
+	// a 4096 byte id must not fit a 4 * 512 byte budget
+	const auto stats = server.cache_stats();
+	EXPECT_LE(stats.bytes, stats.capacity * spectatord::id_cache::kBytesPerEntry)
+	    << "the byte budget is not cumulative";
+	EXPECT_GT(stats.rejected, 0u) << "the oversized id was cached anyway";
+}
+
+TEST(Spectatord, ParseCacheDisabled)
+{
+	// meter_cache_size = 0 turns the cache off completely
+	auto logger = Logger();
+	auto cfg = GetConfiguration();
+	cfg->meter_cache_size = 0;
+	spectator::Registry registry{std::move(cfg), logger};
+	test_server server{&registry};
+
+	char_ptr line1{strdup("c:counter.name,app=foo:10")};
+	char_ptr line2{strdup("c:counter.name,app=foo:5")};
+	char_ptr line3{strdup("g,5:gauge.name:1.5")};
+	EXPECT_FALSE(server.parse_msg(line1.get()).has_value());
+	EXPECT_FALSE(server.parse_msg(line2.get()).has_value());
+	EXPECT_FALSE(server.parse_msg(line3.get()).has_value());
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["counter.name|app=foo|statistic=count"], 15);
+	EXPECT_DOUBLE_EQ(map["gauge.name|statistic=gauge"], 1.5);
+	EXPECT_EQ(registry.GetGauge("gauge.name")->GetTtl(), absl::Seconds(5));
+}
+
+TEST(Spectatord, ParseCacheInvalidatedByMeterDeletion)
+{
+	// deleting a meter from the registry bumps the expiration epoch and
+	// invalidates the cache, so the next line re-resolves through the
+	// registry instead of writing to the orphaned meter
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	char_ptr line1{strdup("g:gauge.name:1.0")};
+	EXPECT_FALSE(server.parse_msg(line1.get()).has_value());
+	EXPECT_TRUE(registry.DeleteMeter("g", spectator::Id::Of("gauge.name")));
+
+	char_ptr line2{strdup("g:gauge.name:2.0")};
+	EXPECT_FALSE(server.parse_msg(line2.get()).has_value());
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["gauge.name|statistic=gauge"], 2.0);
+}
+
+TEST(Spectatord, ParseCacheHitInvalidValue)
+{
+	// a bad value for a cached id is still rejected, and the cached meter is
+	// not updated
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	char_ptr line1{strdup("c:counter.name:10")};
+	char_ptr line2{strdup("c:counter.name:garbage")};
+	EXPECT_FALSE(server.parse_msg(line1.get()).has_value());
+	EXPECT_TRUE(server.parse_msg(line2.get()).has_value());
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["counter.name|statistic=count"], 10);
+	EXPECT_DOUBLE_EQ(map["spectatord.parseErrors|statistic=count"], 1);
+}
+
 TEST(Spectatord, ParseMonoCounter)
 {
 	auto logger = Logger();
@@ -578,3 +796,161 @@ TEST(Spectatord, ParseMultilineWithErrors)
 
 
 }  // namespace
+
+TEST(Spectatord, ParseMalformedTagSectionDoesNotThrow)
+{
+	// A tag section that ends the line (no '=' and no value separator) used to
+	// walk `pos` past the end of the view. Must report an error, never throw.
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	for (const auto* bad : {"c:name,", "c:name,,", "t:name,k", "g:name,k=", "d:name,k=v", "c:a,"})
+	{
+		char_ptr line{strdup(bad)};
+		std::optional<std::string> err;
+		EXPECT_NO_THROW(err = server.parse_msg(line.get())) << "threw on '" << bad << "'";
+		EXPECT_TRUE(err.has_value()) << "expected a parse error for '" << bad << "'";
+	}
+}
+
+namespace
+{
+auto an_id(std::string_view name) -> spectator::Id { return spectator::Id::Of(name); }
+}  // namespace
+
+TEST(IdCache, HitMissAndTypeIsPartOfTheKey)
+{
+	spectatord::id_cache cache{10};
+	EXPECT_NE(cache.put('c', "a,b=1", an_id("a")), nullptr);
+	auto hit = cache.get('c', "a,b=1");
+	ASSERT_NE(hit, nullptr);
+	EXPECT_EQ(*hit, an_id("a"));
+	EXPECT_EQ(cache.get('t', "a,b=1"), nullptr) << "the line type must be part of the key";
+
+	// inserting must not be counted as a hit, or the hit rate is meaningless
+
+	const auto stats = cache.get_stats();
+	EXPECT_EQ(stats.size, 1u);
+	EXPECT_EQ(stats.hits, 1u);
+	EXPECT_EQ(stats.bytes, 5u + spectatord::id_cache::kEntryOverhead);
+}
+
+TEST(IdCache, EntryLimitAndCumulativeByteBudget)
+{
+	spectatord::id_cache cache{2};
+	cache.put('c', "one", an_id("one"));
+	cache.put('c', "two", an_id("two"));
+	cache.put('c', "three", an_id("three"));
+	EXPECT_EQ(cache.get_stats().size, 2u) << "entry limit not applied";
+	EXPECT_EQ(cache.get_stats().rejected, 1u);
+
+	spectatord::id_cache by_bytes{8};
+	for (auto i = 0; i < 8; ++i)
+	{
+		by_bytes.put('c', std::string(500, 'x') + std::to_string(i), an_id("x"));
+	}
+	const auto stats = by_bytes.get_stats();
+	EXPECT_LE(stats.bytes, 8 * spectatord::id_cache::kBytesPerEntry) << "byte budget is not cumulative";
+	EXPECT_LT(stats.size, 8u);
+	EXPECT_GT(stats.rejected, 0u);
+}
+
+TEST(IdCache, AdmissionIsFirstCome)
+{
+	spectatord::id_cache cache{1};
+	cache.put('c', "first", an_id("first"));
+	cache.put('c', "second", an_id("second"));
+	ASSERT_NE(cache.get('c', "first"), nullptr) << "the incumbent was evicted";
+	EXPECT_EQ(cache.get('c', "second"), nullptr) << "a second id was admitted past the limit";
+}
+
+TEST(IdCache, CapacityZeroDisablesEverything)
+{
+	spectatord::id_cache cache{0};
+	cache.put('c', "a", an_id("a"));
+	EXPECT_EQ(cache.get('c', "a"), nullptr);
+	EXPECT_EQ(cache.get_stats().size, 0u);
+}
+
+TEST(IdCache, KeyIsBytesSoAnyTypeCharIsSafe)
+{
+	// The type indexes an array of 256 maps, so it has to be treated as
+	// unsigned: a high byte arrives as a negative char on this platform.
+	spectatord::id_cache cache{4};
+	const char high = static_cast<char>(0x80);
+	EXPECT_EQ(cache.get(high, "x"), nullptr);
+	EXPECT_NE(cache.put(high, "x", an_id("x")), nullptr);
+	ASSERT_NE(cache.get(high, "x"), nullptr);
+	EXPECT_EQ(cache.get('c', "x"), nullptr) << "0x80 and 'c' must not share a map";
+}
+
+TEST(IdCache, ByteBudgetBoundary)
+{
+	// capacity 1 allows 512 key bytes, of which kEntryOverhead is accounted
+	// per entry, so 448 bytes fit exactly and 449 do not
+	const auto room = spectatord::id_cache::kBytesPerEntry - spectatord::id_cache::kEntryOverhead;
+	{
+		spectatord::id_cache cache{1};
+		EXPECT_NE(cache.put('c', std::string(room, 'x'), an_id("fits")), nullptr) << "an exactly fitting id was refused";
+		EXPECT_EQ(cache.get_stats().rejected, 0u);
+	}
+	{
+		spectatord::id_cache cache{1};
+		EXPECT_EQ(cache.put('c', std::string(room + 1, 'x'), an_id("too big")), nullptr) << "one byte over was accepted";
+		EXPECT_EQ(cache.get_stats().size, 0u);
+		EXPECT_EQ(cache.get_stats().rejected, 1u);
+	}
+}
+TEST(Registry, LookupFastPathKeepsGaugeTtlSemantics)
+{
+	auto logger = Logger();
+	auto cfg = GetConfiguration();
+	cfg->meter_ttl = absl::Minutes(15);
+	spectator::Registry registry{std::move(cfg), logger};
+	const auto id = spectator::Id::Of("fastpath.gauge");
+
+	registry.GetGauge(id, absl::Seconds(5));
+	EXPECT_EQ(registry.GetGauge(id)->GetTtl(), absl::Seconds(5)) << "an implicit ttl overwrote the explicit one";
+
+	// an explicit ttl refreshes it even when the gauge already exists
+	registry.GetGauge(id, absl::Seconds(30));
+	EXPECT_EQ(registry.GetGauge(id)->GetTtl(), absl::Seconds(30)) << "the ttl was not refreshed";
+	auto named = 0;
+	for (const auto* g : registry.Gauges())
+	{
+		if (std::string{g->MeterId().Name().Get()} == "fastpath.gauge") ++named;
+	}
+	EXPECT_EQ(named, 1) << "a second gauge was created for the same id";
+}
+
+TEST(Spectatord, ParseCacheHitSkipsInterning)
+{
+	// The point of the cache is that a repeated line does no identity work at
+	// all. Counting cache hits cannot show that, because the counter rises even
+	// if the caller ignores the lookup; the string pool can, because a hit must
+	// not intern anything.
+	auto logger = Logger();
+	spectator::Registry registry{GetConfiguration(), logger};
+	test_server server{&registry};
+
+	auto pool_accesses = []
+	{
+		auto s = spectator::string_pool_stats();
+		return s.hits + s.misses;
+	};
+
+	char_ptr first{strdup("c:interning.probe,app=a,zone=b:1")};
+	const auto before_miss = pool_accesses();
+	EXPECT_FALSE(server.parse_msg(first.get()).has_value());
+	const auto miss_cost = pool_accesses() - before_miss;
+	EXPECT_GT(miss_cost, 0u) << "the first sighting should have interned the name and tags";
+
+	char_ptr repeat{strdup("c:interning.probe,app=a,zone=b:2")};
+	const auto before_hit = pool_accesses();
+	EXPECT_FALSE(server.parse_msg(repeat.get()).has_value());
+	EXPECT_EQ(pool_accesses(), before_hit) << "a cached line still interned: the cache result is not being used";
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["interning.probe|app=a|statistic=count|zone=b"], 3);
+}

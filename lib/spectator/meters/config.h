@@ -41,6 +41,11 @@ class Config
 	absl::Duration expiration_frequency;
 	absl::Duration meter_ttl;
 	size_t age_gauge_limit{};
+	// Maximum number of (line type, id) entries spectatord caches to skip
+	// repeated id resolution; 0 disables the cache. Metric traffic is heavily
+	// skewed towards a small set of hot ids, so a modest limit captures nearly
+	// all of the benefit while bounding what runaway cardinality can cost.
+	size_t meter_cache_size = 50000;
 	std::string uri;
 	std::string external_uri;
 
