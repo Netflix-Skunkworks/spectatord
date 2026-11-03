@@ -47,7 +47,7 @@ class Server
 	void update_network_metrics();
 
 	std::optional<std::string> parse_lines(char* buffer, const handler_t& parser);
-	std::optional<std::string> parse_line(const char* buffer);
+	std::optional<std::string> parse_line(const char* buffer, const spectator::Tags& common_tags);
 	std::optional<std::string> parse_statsd_line(const char* buffer);
 	void ensure_not_stuck();
 
@@ -71,6 +71,7 @@ struct measurement
 	std::string_view str_value{};
 };
 
-std::optional<measurement> get_measurement(char type, std::string_view measurement_str, std::string* err_msg);
+std::optional<measurement> get_measurement(char type, std::string_view measurement_str, std::string* err_msg,
+                                           const spectator::Tags& common_tags = {});
 
 }  // namespace spectatord
