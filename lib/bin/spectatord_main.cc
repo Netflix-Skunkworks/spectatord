@@ -53,7 +53,8 @@ ABSL_FLAG(size_t, age_gauge_limit, 1000, "The maximum number of age gauges that 
 ABSL_FLAG(size_t, meter_cache_size, 50000,
           "Maximum number of metric ids to cache, to avoid re-parsing and re-resolving the id of every line. "
           "Ids beyond this limit are resolved the slower, uncached way, which bounds the memory the cache can "
-          "use when cardinality is very high. Set to 0 to disable the cache.");
+          "use when cardinality is very high. Set to 0 to turn the optimisation off entirely, which also "
+          "restores the registry's original lookup path.");
 ABSL_FLAG(std::string, common_tags, "",
           "Common tags: nf.app=app,nf.cluster=cluster. Override the default common "
           "tags. If empty, then spectatord will use the default set. "

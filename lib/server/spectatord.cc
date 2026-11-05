@@ -612,6 +612,20 @@ void Server::upkeep()
 		std::tie(ds_size, ds_expired) = perc_ds_.expire();
 		std::tie(t_size, t_expired) = perc_timers_.expire();
 		std::tie(sketch_size, sketch_expired) = sketches_.expire();
+		// Checked on every pass, so the cache is never left full and refusing
+		// new ids for longer than one upkeep interval. The check itself is two
+		// comparisons; clearing only happens when it is actually full.
+		//
+		// This is deliberately not done inline when put() finds the cache
+		// full. Freeing the entries takes milliseconds, and on a host whose
+		// ids are nearly all distinct the cache refills immediately, so
+		// clearing on fill would stall the receive thread every fraction of a
+		// second, risking dropped datagrams, on precisely the traffic for
+		// which the cache is useless.
+		if (id_cache_.clear_if_saturated())
+		{
+			logger->debug("id cache was full and has been cleared");
+		}
 		if (cfg.status_metrics_enabled)
 		{
 			timers_size_gauge->Set(t_size);

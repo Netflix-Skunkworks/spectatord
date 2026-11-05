@@ -192,6 +192,12 @@ struct meter_map
 
 struct all_meters
 {
+	// When false, insert_* skips the lookup-first fast path and behaves exactly
+	// as it did before it existed: construct a meter, then emplace and discard
+	// it if the id is already registered. Turning the optimisation off has to
+	// turn all of it off, or the escape hatch does not actually escape.
+	bool lookup_fast_path = true;
+
 	meter_map<AgeGauge> age_gauges_;
 	meter_map<Counter> counters_;
 	meter_map<DistributionSummary> dist_sums_;
@@ -258,55 +264,82 @@ struct all_meters
 
 	auto insert_age_gauge(Id id)
 	{
-		if (auto hit = age_gauges_.find_existing(id)) return hit;
+		if (lookup_fast_path)
+		{
+			if (auto hit = age_gauges_.find_existing(id)) return hit;
+		}
 		return age_gauges_.insert(std::make_shared<AgeGauge>(std::move(id)));
 	}
 
 	auto insert_counter(Id id)
 	{
-		if (auto hit = counters_.find_existing(id)) return hit;
+		if (lookup_fast_path)
+		{
+			if (auto hit = counters_.find_existing(id)) return hit;
+		}
 		return counters_.insert(std::make_shared<Counter>(std::move(id)));
 	}
 
 	auto insert_dist_sum(Id id)
 	{
-		if (auto hit = dist_sums_.find_existing(id)) return hit;
+		if (lookup_fast_path)
+		{
+			if (auto hit = dist_sums_.find_existing(id)) return hit;
+		}
 		return dist_sums_.insert(std::make_shared<DistributionSummary>(std::move(id)));
 	}
 
 	auto insert_gauge(Id id, absl::Duration ttl)
 	{
-		if (auto hit = gauges_.find_existing(id)) return hit;
+		if (lookup_fast_path)
+		{
+			if (auto hit = gauges_.find_existing(id)) return hit;
+		}
 		return gauges_.insert(std::make_shared<Gauge>(std::move(id), ttl));
 	}
 
 	auto insert_max_gauge(Id id)
 	{
-		if (auto hit = max_gauges_.find_existing(id)) return hit;
+		if (lookup_fast_path)
+		{
+			if (auto hit = max_gauges_.find_existing(id)) return hit;
+		}
 		return max_gauges_.insert(std::make_shared<MaxGauge>(std::move(id)));
 	}
 
 	auto insert_mono_counter(Id id)
 	{
-		if (auto hit = mono_counters_.find_existing(id)) return hit;
+		if (lookup_fast_path)
+		{
+			if (auto hit = mono_counters_.find_existing(id)) return hit;
+		}
 		return mono_counters_.insert(std::make_shared<MonotonicCounter>(std::move(id)));
 	}
 
 	auto insert_mono_counter_uint(Id id)
 	{
-		if (auto hit = mono_counters_uint_.find_existing(id)) return hit;
+		if (lookup_fast_path)
+		{
+			if (auto hit = mono_counters_uint_.find_existing(id)) return hit;
+		}
 		return mono_counters_uint_.insert(std::make_shared<MonotonicCounterUint>(std::move(id)));
 	}
 
 	auto insert_mono_sampled(Id id)
 	{
-		if (auto hit = mono_sampled_.find_existing(id)) return hit;
+		if (lookup_fast_path)
+		{
+			if (auto hit = mono_sampled_.find_existing(id)) return hit;
+		}
 		return mono_sampled_.insert(std::make_shared<MonotonicSampled>(std::move(id)));
 	}
 
 	auto insert_timer(Id id)
 	{
-		if (auto hit = timers_.find_existing(id)) return hit;
+		if (lookup_fast_path)
+		{
+			if (auto hit = timers_.find_existing(id)) return hit;
+		}
 		return timers_.insert(std::make_shared<Timer>(std::move(id)));
 	}
 };

@@ -19,6 +19,10 @@ Registry::Registry(std::unique_ptr<Config> config, logger_ptr logger) noexcept
 	{
 		meter_ttl_ = int64_t(15) * 60 * 1000 * 1000 * 1000;
 	}
+	// meter_cache_size is the single switch for the id cache and the registry
+	// lookup fast path that goes with it; 0 restores the previous behaviour
+	// of both.
+	all_meters_.lookup_fast_path = config_->meter_cache_size > 0;
 }
 
 auto Registry::GetConfig() const noexcept -> const Config& { return *config_; }

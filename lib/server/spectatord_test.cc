@@ -50,6 +50,7 @@ class test_server : public spectatord::Server
 	}
 	std::optional<std::string> parse_msg(char* msg) { return parse(msg); }
 	spectatord::id_cache::stats cache_stats() const { return id_cache_stats(); }
+	bool clear_cache_if_saturated() { return id_cache_clear_if_saturated(); }
 	std::optional<std::string> test_parse_statsd(char* buffer) { return parse_statsd(buffer); }
 
 	std::map<std::string, double> measurements()
@@ -953,4 +954,66 @@ TEST(Spectatord, ParseCacheHitSkipsInterning)
 
 	auto map = server.measurements();
 	EXPECT_DOUBLE_EQ(map["interning.probe|app=a|statistic=count|zone=b"], 3);
+}
+
+TEST(Spectatord, IdCacheClearsOnlyOnceSaturated)
+{
+	spectatord::id_cache cache{2};
+	cache.put('c', "a", spectator::Id{"a", spectator::Tags{}});
+	EXPECT_FALSE(cache.clear_if_saturated()) << "a cache with room must be left alone";
+	EXPECT_EQ(cache.get_stats().size, 1u);
+	EXPECT_NE(cache.get('c', "a"), nullptr);
+
+	cache.put('c', "b", spectator::Id{"b", spectator::Tags{}});
+	EXPECT_EQ(cache.get_stats().size, 2u);
+	EXPECT_TRUE(cache.clear_if_saturated()) << "a full cache must be dropped";
+
+	auto stats = cache.get_stats();
+	EXPECT_EQ(stats.size, 0u);
+	EXPECT_EQ(stats.bytes, 0u);
+	EXPECT_EQ(stats.clears, 1u);
+	EXPECT_EQ(cache.get('c', "a"), nullptr);
+}
+
+TEST(Spectatord, IdCacheClearingLetsNewIdsInAgain)
+{
+	// The decay this guards against: a cache that filled with ids which are no
+	// longer being reported must not refuse new ones for the life of the
+	// process.
+	spectatord::id_cache cache{2};
+	cache.put('c', "old1", spectator::Id{"old1", spectator::Tags{}});
+	cache.put('c', "old2", spectator::Id{"old2", spectator::Tags{}});
+	EXPECT_EQ(cache.put('c', "fresh", spectator::Id{"fresh", spectator::Tags{}}), nullptr)
+	    << "a full cache rejects new ids";
+
+	EXPECT_TRUE(cache.clear_if_saturated());
+	EXPECT_NE(cache.put('c', "fresh", spectator::Id{"fresh", spectator::Tags{}}), nullptr)
+	    << "after a clear, new ids are admitted again";
+	EXPECT_NE(cache.get('c', "fresh"), nullptr);
+}
+
+TEST(Spectatord, IdCacheClearIsHarmlessWhenDisabled)
+{
+	spectatord::id_cache cache{0};
+	EXPECT_FALSE(cache.clear_if_saturated());
+	EXPECT_EQ(cache.get_stats().clears, 0u);
+}
+
+TEST(Spectatord, IdCacheClearDoesNotChangeWhatIsRecorded)
+{
+	// A clear may only affect speed, never where a measurement lands.
+	spectator::Registry registry{GetConfiguration(), Logger()};
+	test_server server{&registry};
+
+	char_ptr first{strdup("c:clear.probe,tag=v:1")};
+	EXPECT_FALSE(server.parse_msg(first.get()).has_value());
+
+	server.clear_cache_if_saturated();
+
+	char_ptr second{strdup("c:clear.probe,tag=v:1")};
+	EXPECT_FALSE(server.parse_msg(second.get()).has_value());
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["clear.probe|statistic=count|tag=v"], 2)
+	    << "the same line must still reach the same meter after a clear";
 }
