@@ -23,7 +23,9 @@ namespace spectatord
 // consulted for every line, and remains the only owner of meter lifetimes.
 //
 // The cache holds at most `capacity` entries and at most `capacity` times
-// kBytesPerEntry of key data. Beyond either limit ids are parsed the usual
+// kBytesPerEntry of key text. That budget bounds the key data, not the total
+// footprint: an entry also carries an Id and a map slot, so the resident cost
+// is several times the accounted figure. Beyond either limit ids are parsed the usual
 // way, which bounds what runaway cardinality can cost: nothing in the protocol
 // limits the length of a name or tag value, so an entry limit alone would let
 // a client sending very long ids use far more memory than one sending ordinary
@@ -41,17 +43,23 @@ namespace spectatord
 // correctness: a cached Id is a value, so a stale entry is only a wasted
 // slot.
 //
-// Clearing is cheap because a cleared id costs one miss and is then cached
-// again on its next line. A host reporting 25,000 ids at 86,000 lines/s
-// re-resolves 25,000 of 26 million lines after a clear, under 0.1% of them.
-// Nothing is evicted while the cache still has room, which is the usual case.
+// Clearing is not free. An id that is still being reported costs a miss and a
+// re-insert, so clearing a cache whose entries are all live is pure loss; on a
+// capture whose working set exceeded the capacity it measured around 15%
+// slower than simply refusing new ids. It only pays when the entries are dead,
+// which is why it is gated on saturation rather than run on a timer: a cache
+// with room is never touched, and that is the usual case.
 class id_cache
 {
    public:
 	// Average key bytes allowed per cached entry. Ids of a few hundred bytes
 	// are ordinary, so normal traffic is limited by the entry count.
 	static constexpr size_t kBytesPerEntry = 512;
-	// Accounts for the map slot, the std::string header and the Id.
+	// Charged on top of the key text to cover the map slot and the std::string
+	// header. It does not cover the Id itself, which embeds an inline array of
+	// eight tags and so costs well over a hundred bytes more; the budget bounds
+	// the key data an entry may hold, not an entry's total footprint, which
+	// measures around three times the accounted figure.
 	static constexpr size_t kEntryOverhead = 64;
 
 	struct stats
@@ -130,6 +138,11 @@ class id_cache
 	// another entry right now". Clearing on the rejection counter having moved
 	// instead would throw the cache away because one oversized id was refused
 	// by the byte budget, while the cache was nearly empty.
+	//
+	// "Room" means room for the smallest entry put() could admit, so that the
+	// two agree: the cache is declared full only when put() would refuse
+	// everything. Reserving a flat kBytesPerEntry instead would clear a cache
+	// of long ids while put() was still accepting shorter ones.
 	auto clear_if_saturated() -> bool
 	{
 		if (capacity_ == 0)
@@ -142,7 +155,7 @@ class id_cache
 		decltype(maps_) discarded;
 		{
 			absl::MutexLock lock{&mutex_};
-			if (size_ < capacity_ && bytes_ + kBytesPerEntry <= max_bytes_)
+			if (size_ < capacity_ && bytes_ + kEntryOverhead <= max_bytes_)
 			{
 				return false;
 			}
@@ -152,6 +165,16 @@ class id_cache
 			++clears_;
 		}
 		return true;
+	}
+
+	// Unconditional clear, so a test can exercise the path without having to
+	// fill the cache first.
+	void clear_for_test()
+	{
+		absl::MutexLock lock{&mutex_};
+		for (auto& m : maps_) m.clear();
+		size_ = 0;
+		bytes_ = 0;
 	}
 
 	// Exposed for tests; a future change can report these as status metrics.

@@ -12,6 +12,11 @@ Registry::Registry(std::unique_ptr<Config> config, logger_ptr logger) noexcept
       meter_ttl_{absl::ToInt64Nanoseconds(config->meter_ttl)},
       config_{std::move(config)},
       logger_{std::move(logger)},
+      // meter_cache_size is the single switch for the id cache and the
+      // registry lookup fast path that goes with it; 0 restores the previous
+      // behaviour of both. Set here, before registry_size_ below creates the
+      // first meter.
+      all_meters_{config_->meter_cache_size > 0},
       registry_size_{GetDistributionSummary("spectator.registrySize", Tags{{"nf.process", config_->process_name}})},
       publisher_(this)
 {
@@ -19,10 +24,6 @@ Registry::Registry(std::unique_ptr<Config> config, logger_ptr logger) noexcept
 	{
 		meter_ttl_ = int64_t(15) * 60 * 1000 * 1000 * 1000;
 	}
-	// meter_cache_size is the single switch for the id cache and the registry
-	// lookup fast path that goes with it; 0 restores the previous behaviour
-	// of both.
-	all_meters_.lookup_fast_path = config_->meter_cache_size > 0;
 }
 
 auto Registry::GetConfig() const noexcept -> const Config& { return *config_; }

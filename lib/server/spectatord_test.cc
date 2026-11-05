@@ -51,6 +51,7 @@ class test_server : public spectatord::Server
 	std::optional<std::string> parse_msg(char* msg) { return parse(msg); }
 	spectatord::id_cache::stats cache_stats() const { return id_cache_stats(); }
 	bool clear_cache_if_saturated() { return id_cache_clear_if_saturated(); }
+	void clear_cache_for_test() { id_cache_clear_for_test(); }
 	std::optional<std::string> test_parse_statsd(char* buffer) { return parse_statsd(buffer); }
 
 	std::map<std::string, double> measurements()
@@ -1008,7 +1009,10 @@ TEST(Spectatord, IdCacheClearDoesNotChangeWhatIsRecorded)
 	char_ptr first{strdup("c:clear.probe,tag=v:1")};
 	EXPECT_FALSE(server.parse_msg(first.get()).has_value());
 
-	server.clear_cache_if_saturated();
+	// The server's cache is far from full, so clear_if_saturated() would do
+	// nothing here; clear unconditionally so the line below really does run
+	// against an emptied cache.
+	server.clear_cache_for_test();
 
 	char_ptr second{strdup("c:clear.probe,tag=v:1")};
 	EXPECT_FALSE(server.parse_msg(second.get()).has_value());
@@ -1016,4 +1020,48 @@ TEST(Spectatord, IdCacheClearDoesNotChangeWhatIsRecorded)
 	auto map = server.measurements();
 	EXPECT_DOUBLE_EQ(map["clear.probe|statistic=count|tag=v"], 2)
 	    << "the same line must still reach the same meter after a clear";
+}
+
+TEST(Spectatord, IdCacheDoesNotClearWhileItStillHasRoom)
+{
+	// clear_if_saturated() and put() must agree on what "full" means. They
+	// used to disagree: the clear reserved a fixed 512 bytes of headroom while
+	// put() charged the id's actual length, so a cache holding long ids was
+	// thrown away while it was still admitting new ones.
+	// capacity 2 -> 1024 accounted bytes. One 600-byte id charges 664, leaving
+	// room for a short entry, but less than the flat 512 the clear reserves.
+	spectatord::id_cache cache{2};
+	const std::string long_name(600, 'x');
+	ASSERT_NE(cache.put('c', long_name, spectator::Id{long_name, spectator::Tags{}}), nullptr);
+	ASSERT_EQ(cache.get_stats().size, 1u);
+
+	EXPECT_FALSE(cache.clear_if_saturated())
+	    << "the cache is neither at its entry limit nor out of bytes";
+	EXPECT_EQ(cache.get_stats().size, 1u) << "a cache with room was thrown away";
+	EXPECT_NE(cache.put('c', "short", spectator::Id{"short", spectator::Tags{}}), nullptr)
+	    << "and put() proves there was room all along";
+}
+
+TEST(Spectatord, MeterCacheSizeZeroDisablesTheRegistryFastPath)
+{
+	// meter_cache_size is documented as a complete off switch, so it must also
+	// turn off the registry's lookup-first path. Nothing else asserted this.
+	auto cfg = GetConfiguration();
+	cfg->meter_cache_size = 0;
+	spectator::Registry off{std::move(cfg), Logger()};
+	EXPECT_FALSE(off.MetersForTest().lookup_fast_path);
+
+	auto on_cfg = GetConfiguration();
+	on_cfg->meter_cache_size = 10;
+	spectator::Registry on{std::move(on_cfg), Logger()};
+	EXPECT_TRUE(on.MetersForTest().lookup_fast_path);
+
+	// and the daemon still records correctly with it off
+	auto zero = GetConfiguration();
+	zero->meter_cache_size = 0;
+	spectator::Registry registry{std::move(zero), Logger()};
+	test_server server{&registry};
+	char_ptr line{strdup("c:off.switch,k=v:4")};
+	EXPECT_FALSE(server.parse_msg(line.get()).has_value());
+	EXPECT_DOUBLE_EQ(server.measurements()["off.switch|k=v|statistic=count"], 4);
 }

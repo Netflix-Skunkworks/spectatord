@@ -58,6 +58,7 @@ class Server
 	// for tests
 	auto id_cache_stats() const -> id_cache::stats { return id_cache_.get_stats(); }
 	auto id_cache_clear_if_saturated() -> bool { return id_cache_.clear_if_saturated(); }
+	void id_cache_clear_for_test() { id_cache_.clear_for_test(); }
 
 	std::optional<std::string> parse(char* buffer);
 	std::optional<std::string> parse_statsd(char* buffer);

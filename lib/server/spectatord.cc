@@ -348,10 +348,15 @@ auto get_measurement(char type, std::string_view measurement_str, std::string* e
 	auto name = measurement_str.substr(0, pos);
 	spectator::Tags tags{};
 
-	// Whether the id is self-contained: every tag segment has its '=' and the id
-	// is terminated by ':'. If the loop below breaks out instead, the '=' it was
-	// looking for may sit after that ':', which makes the extent of the id depend
-	// on what follows it, so such an id must not be cached by its prefix.
+	// Whether the id is self-contained: the tag loop below ran to the ':' that
+	// ends the id, with every tag segment carrying its '='. If it breaks out
+	// instead there is no '=' left in the line at all, so the text has no
+	// well-defined id extent and must not be cached.
+	//
+	// A tag key may itself contain a colon, because it is located with
+	// find('='): "m,a:b=1:5" has the id "m,a:b=1". Such an id is still
+	// self-contained; it is the length check in parse_line that stops it being
+	// cached under the shorter prefix "m,a".
 	auto self_contained = true;
 
 	// optionally get tags
@@ -741,14 +746,13 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string>
 	// Id is cached by (type, id text) and a hit skips tag parsing and interning.
 	const char* id_begin = p;
 	const char* id_end = std::strchr(id_begin, ':');
-	// A line is only cacheable when the id is both terminated by a value
-	// separator and non-empty. Neither can be assumed from a successful parse:
-	// a distinct count sketch accepts an empty value, so "S:a,z" parses even
-	// though it contains no second ':' at all. Caching such a line under the
-	// resulting empty key would make a later line with an empty id ("S::...")
-	// resolve to it and record against the wrong meter instead of being
-	// rejected.
-	auto cacheable = id_end != nullptr && id_end != id_begin;
+	// A line is only cacheable when its id is terminated by a value separator,
+	// which a successful parse does not imply: the sketch types accept an empty
+	// value, so "S:a,z" parses even though it contains no second ':' at all and
+	// the extent of its id is never established. An empty id needs no check
+	// here, because get_measurement rejects it as "Missing name" before this
+	// key could be used to cache anything.
+	auto cacheable = id_end != nullptr;
 	std::string_view id_key;
 	std::shared_ptr<const spectator::Id> cached_id;
 	if (cacheable)
@@ -759,8 +763,8 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string>
 
 	// On a hit the id was already validated when it was first cached, so only
 	// the value is parsed. On a miss the whole measurement is parsed and
-	// validated exactly as before, which also reports a malformed id (including
-	// a missing value separator, which leaves id_end null).
+	// validated exactly as before. A line with no value separator never reaches
+	// the hit path, since it is not cacheable, so it is always parsed in full.
 	std::string err_msg;
 	valueT value{};
 	std::string_view str_value{};
@@ -800,9 +804,11 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string>
 		Logger()->info("While parsing {}: {}", p, err_msg);
 	}
 
-	// The registry is still consulted for every line; only the parsing and
-	// interning that produced the Id is skipped. A cached Id is a value, so it
-	// can never refer to a meter the registry has removed.
+	// The meter is still looked up for every line; only the parsing and
+	// interning that produced the Id is skipped. A cached Id is a value, never a
+	// meter, so it cannot refer to a meter the registry has removed. The
+	// percentile and sketch types resolve through expiring_cache rather than the
+	// registry, which is unchanged by this: they are keyed by the same Id.
 	if (cached_id == nullptr && cacheable)
 	{
 		cached_id = id_cache_.put(type, id_key, parsed->id);

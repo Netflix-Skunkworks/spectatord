@@ -196,7 +196,13 @@ struct all_meters
 	// as it did before it existed: construct a meter, then emplace and discard
 	// it if the id is already registered. Turning the optimisation off has to
 	// turn all of it off, or the escape hatch does not actually escape.
-	bool lookup_fast_path = true;
+	//
+	// Set from the constructor's initialiser list rather than its body, so
+	// that the registry's own size meter, which is created in that list, is
+	// not resolved through the fast path after it has been disabled.
+	const bool lookup_fast_path;
+
+	explicit all_meters(bool fast_path = true) : lookup_fast_path{fast_path} {}
 
 	meter_map<AgeGauge> age_gauges_;
 	meter_map<Counter> counters_;
@@ -359,6 +365,8 @@ class Registry
 	auto operator=(Registry&&) -> Registry& = delete;
 	~Registry() noexcept { Stop(); }
 	auto GetConfig() const noexcept -> const Config&;
+	// for tests
+	auto MetersForTest() const -> const detail::all_meters& { return all_meters_; }
 	auto GetLogger() const noexcept -> logger_ptr;
 
 	void OnMeasurements(measurements_callback fn) noexcept;
