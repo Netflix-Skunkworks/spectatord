@@ -335,6 +335,30 @@ static auto parse_value(char type, std::string_view value_str, std::string* err_
 	return result;
 }
 
+// The line types the switch at the end of parse_line accepts. Kept next to
+// nothing else so that it is obvious it has to be updated alongside that
+// switch; a type missing from here is merely not cached, never rejected.
+auto is_known_type(char type) -> bool
+{
+	switch (type)
+	{
+		case 'A':
+		case 'c':
+		case 'C':
+		case 'd':
+		case 'D':
+		case 'g':
+		case 'm':
+		case 'S':
+		case 's':
+		case 't':
+		case 'T':
+		case 'U':
+		case 'X': return true;
+		default: return false;
+	}
+}
+
 auto get_measurement(char type, std::string_view measurement_str, std::string* err_msg, size_t* id_len)
     -> std::optional<measurement>
 {
@@ -745,20 +769,31 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string>
 	// Repeated measurements for the same id are the common case, so the parsed
 	// Id is cached by (type, id text) and a hit skips tag parsing and interning.
 	const char* id_begin = p;
-	const char* id_end = std::strchr(id_begin, ':');
+	const char* id_end = nullptr;
+	auto cacheable = false;
+	std::string_view id_key;
+	std::shared_ptr<const spectator::Id> cached_id;
+	// Deriving the key means scanning the id text, which get_measurement is
+	// about to walk again, so none of this runs when the cache is switched off.
+	if (id_cache_.enabled())
+	{
+		id_end = std::strchr(id_begin, ':');
 	// A line is only cacheable when its id is terminated by a value separator,
 	// which a successful parse does not imply: the sketch types accept an empty
 	// value, so "S:a,z" parses even though it contains no second ':' at all and
 	// the extent of its id is never established. An empty id needs no check
 	// here, because get_measurement rejects it as "Missing name" before this
 	// key could be used to cache anything.
-	auto cacheable = id_end != nullptr;
-	std::string_view id_key;
-	std::shared_ptr<const spectator::Id> cached_id;
-	if (cacheable)
-	{
-		id_key = std::string_view{id_begin, static_cast<size_t>(id_end - id_begin)};
-		cached_id = id_cache_.get(type, id_key);
+	//
+	// The type is only validated by the switch at the end of this function, so
+	// without the is_known_type test a client could fill the cache with entries
+	// for lines that are rejected anyway and can never be used.
+		cacheable = id_end != nullptr && is_known_type(type);
+		if (cacheable)
+		{
+			id_key = std::string_view{id_begin, static_cast<size_t>(id_end - id_begin)};
+			cached_id = id_cache_.get(id_key);
+		}
 	}
 
 	// On a hit the id was already validated when it was first cached, so only
@@ -768,7 +803,13 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string>
 	std::string err_msg;
 	valueT value{};
 	std::string_view str_value{};
-	std::optional<measurement> parsed;
+	auto parsed_id_len = std::numeric_limits<size_t>::max();
+	// Initialised directly rather than assigned into a default-constructed
+	// optional: moving a measurement moves its Id, and moving Tags copies every
+	// tag for the small sets that ordinary ids have.
+	auto parsed = cached_id != nullptr
+	                  ? std::optional<measurement>{}
+	                  : get_measurement(type, id_begin, &err_msg, cacheable ? &parsed_id_len : nullptr);
 	if (cached_id != nullptr)
 	{
 		auto v = parse_value(type, std::string_view{id_end + 1}, &err_msg);
@@ -781,8 +822,6 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string>
 	}
 	else
 	{
-		auto parsed_id_len = std::numeric_limits<size_t>::max();
-		parsed = get_measurement(type, id_begin, &err_msg, &parsed_id_len);
 		if (!parsed)
 		{
 			return fail(err_msg);
@@ -811,7 +850,7 @@ auto Server::parse_line(const char* buffer) -> std::optional<std::string>
 	// registry, which is unchanged by this: they are keyed by the same Id.
 	if (cached_id == nullptr && cacheable)
 	{
-		cached_id = id_cache_.put(type, id_key, parsed->id);
+		cached_id = id_cache_.put(id_key, parsed->id);
 	}
 	const spectator::Id& rid = cached_id != nullptr ? *cached_id : parsed->id;
 

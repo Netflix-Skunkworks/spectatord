@@ -821,36 +821,56 @@ namespace
 auto an_id(std::string_view name) -> spectator::Id { return spectator::Id::Of(name); }
 }  // namespace
 
-TEST(IdCache, HitMissAndTypeIsPartOfTheKey)
+TEST(IdCache, HitAndMiss)
 {
 	spectatord::id_cache cache{10};
-	EXPECT_NE(cache.put('c', "a,b=1", an_id("a")), nullptr);
-	auto hit = cache.get('c', "a,b=1");
+	EXPECT_NE(cache.put("a,b=1", an_id("a")), nullptr);
+	auto hit = cache.get("a,b=1");
 	ASSERT_NE(hit, nullptr);
-	EXPECT_EQ(*hit, an_id("a"));
-	EXPECT_EQ(cache.get('t', "a,b=1"), nullptr) << "the line type must be part of the key";
+	EXPECT_EQ(hit->Name().Get(), std::string{"a"});
+	EXPECT_EQ(cache.get("a,b=2"), nullptr) << "a different id must miss";
+}
 
-	// inserting must not be counted as a hit, or the hit rate is meaningless
+TEST(IdCache, TypeIsNotPartOfTheKey)
+{
+	// get_measurement parses the name and tags without consulting the line
+	// type, so the same text yields the same Id for every type and one entry
+	// serves them all. The caller still resolves its own kind of meter.
+	spectator::Registry registry{GetConfiguration(), Logger()};
+	test_server server{&registry};
 
-	const auto stats = cache.get_stats();
-	EXPECT_EQ(stats.size, 1u);
-	EXPECT_EQ(stats.hits, 1u);
-	EXPECT_EQ(stats.bytes, 5u + spectatord::id_cache::kEntryOverhead);
+	char_ptr counter{strdup("c:shared.id,k=v:1")};
+	EXPECT_FALSE(server.parse_msg(counter.get()).has_value());
+	const auto after_counter = server.cache_stats();
+
+	char_ptr gauge{strdup("g:shared.id,k=v:7")};
+	EXPECT_FALSE(server.parse_msg(gauge.get()).has_value());
+	const auto after_gauge = server.cache_stats();
+
+	EXPECT_EQ(after_gauge.size, after_counter.size) << "the second type added an entry";
+	EXPECT_EQ(after_gauge.hits, after_counter.hits + 1) << "the second type did not reuse the entry";
+
+	auto map = server.measurements();
+	EXPECT_DOUBLE_EQ(map["shared.id|k=v|statistic=count"], 1);
+	EXPECT_DOUBLE_EQ(map["shared.id|k=v|statistic=gauge"], 7);
 }
 
 TEST(IdCache, EntryLimitAndCumulativeByteBudget)
 {
 	spectatord::id_cache cache{2};
-	cache.put('c', "one", an_id("one"));
-	cache.put('c', "two", an_id("two"));
-	cache.put('c', "three", an_id("three"));
+	cache.put("one", an_id("one"));
+	cache.put("two", an_id("two"));
+	cache.put("three", an_id("three"));
 	EXPECT_EQ(cache.get_stats().size, 2u) << "entry limit not applied";
 	EXPECT_EQ(cache.get_stats().rejected, 1u);
 
+	// Keys long enough that the byte budget binds before the entry count,
+	// derived from the constants so this does not rot if they are retuned.
 	spectatord::id_cache by_bytes{8};
+	const auto over_budget = spectatord::id_cache::kBytesPerEntry + 1;
 	for (auto i = 0; i < 8; ++i)
 	{
-		by_bytes.put('c', std::string(500, 'x') + std::to_string(i), an_id("x"));
+		by_bytes.put(std::string(over_budget, 'x') + std::to_string(i), an_id("x"));
 	}
 	const auto stats = by_bytes.get_stats();
 	EXPECT_LE(stats.bytes, 8 * spectatord::id_cache::kBytesPerEntry) << "byte budget is not cumulative";
@@ -861,30 +881,36 @@ TEST(IdCache, EntryLimitAndCumulativeByteBudget)
 TEST(IdCache, AdmissionIsFirstCome)
 {
 	spectatord::id_cache cache{1};
-	cache.put('c', "first", an_id("first"));
-	cache.put('c', "second", an_id("second"));
-	ASSERT_NE(cache.get('c', "first"), nullptr) << "the incumbent was evicted";
-	EXPECT_EQ(cache.get('c', "second"), nullptr) << "a second id was admitted past the limit";
+	cache.put("first", an_id("first"));
+	cache.put("second", an_id("second"));
+	ASSERT_NE(cache.get("first"), nullptr) << "the incumbent was evicted";
+	EXPECT_EQ(cache.get("second"), nullptr) << "a second id was admitted past the limit";
 }
 
 TEST(IdCache, CapacityZeroDisablesEverything)
 {
 	spectatord::id_cache cache{0};
-	cache.put('c', "a", an_id("a"));
-	EXPECT_EQ(cache.get('c', "a"), nullptr);
+	cache.put("a", an_id("a"));
+	EXPECT_EQ(cache.get("a"), nullptr);
 	EXPECT_EQ(cache.get_stats().size, 0u);
 }
 
-TEST(IdCache, KeyIsBytesSoAnyTypeCharIsSafe)
+TEST(Spectatord, UnknownLineTypeIsNotCached)
 {
-	// The type indexes an array of 256 maps, so it has to be treated as
-	// unsigned: a high byte arrives as a negative char on this platform.
-	spectatord::id_cache cache{4};
-	const char high = static_cast<char>(0x80);
-	EXPECT_EQ(cache.get(high, "x"), nullptr);
-	EXPECT_NE(cache.put(high, "x", an_id("x")), nullptr);
-	ASSERT_NE(cache.get(high, "x"), nullptr);
-	EXPECT_EQ(cache.get('c', "x"), nullptr) << "0x80 and 'c' must not share a map";
+	// The type is only validated by the switch at the end of parse_line, so
+	// a line with an unknown type used to be cached and then rejected. A
+	// client could fill the cache with entries that can never be used.
+	spectator::Registry registry{GetConfiguration(), Logger()};
+	test_server server{&registry};
+
+	const auto before = server.cache_stats();
+	for (const auto* bad : {"\x80:high.byte,k=v:1", "?:question,k=v:1", "z:letter,k=v:1"})
+	{
+		char_ptr line{strdup(bad)};
+		EXPECT_TRUE(server.parse_msg(line.get()).has_value()) << "'" << bad << "' should be rejected";
+	}
+	const auto after = server.cache_stats();
+	EXPECT_EQ(after.size, before.size) << "a rejected line left an entry in the cache";
 }
 
 TEST(IdCache, ByteBudgetBoundary)
@@ -894,12 +920,12 @@ TEST(IdCache, ByteBudgetBoundary)
 	const auto room = spectatord::id_cache::kBytesPerEntry - spectatord::id_cache::kEntryOverhead;
 	{
 		spectatord::id_cache cache{1};
-		EXPECT_NE(cache.put('c', std::string(room, 'x'), an_id("fits")), nullptr) << "an exactly fitting id was refused";
+		EXPECT_NE(cache.put(std::string(room, 'x'), an_id("fits")), nullptr) << "an exactly fitting id was refused";
 		EXPECT_EQ(cache.get_stats().rejected, 0u);
 	}
 	{
 		spectatord::id_cache cache{1};
-		EXPECT_EQ(cache.put('c', std::string(room + 1, 'x'), an_id("too big")), nullptr) << "one byte over was accepted";
+		EXPECT_EQ(cache.put(std::string(room + 1, 'x'), an_id("too big")), nullptr) << "one byte over was accepted";
 		EXPECT_EQ(cache.get_stats().size, 0u);
 		EXPECT_EQ(cache.get_stats().rejected, 1u);
 	}
@@ -960,12 +986,12 @@ TEST(Spectatord, ParseCacheHitSkipsInterning)
 TEST(Spectatord, IdCacheClearsOnlyOnceSaturated)
 {
 	spectatord::id_cache cache{2};
-	cache.put('c', "a", spectator::Id{"a", spectator::Tags{}});
+	cache.put("a", spectator::Id{"a", spectator::Tags{}});
 	EXPECT_FALSE(cache.clear_if_saturated()) << "a cache with room must be left alone";
 	EXPECT_EQ(cache.get_stats().size, 1u);
-	EXPECT_NE(cache.get('c', "a"), nullptr);
+	EXPECT_NE(cache.get("a"), nullptr);
 
-	cache.put('c', "b", spectator::Id{"b", spectator::Tags{}});
+	cache.put("b", spectator::Id{"b", spectator::Tags{}});
 	EXPECT_EQ(cache.get_stats().size, 2u);
 	EXPECT_TRUE(cache.clear_if_saturated()) << "a full cache must be dropped";
 
@@ -973,7 +999,7 @@ TEST(Spectatord, IdCacheClearsOnlyOnceSaturated)
 	EXPECT_EQ(stats.size, 0u);
 	EXPECT_EQ(stats.bytes, 0u);
 	EXPECT_EQ(stats.clears, 1u);
-	EXPECT_EQ(cache.get('c', "a"), nullptr);
+	EXPECT_EQ(cache.get("a"), nullptr);
 }
 
 TEST(Spectatord, IdCacheClearingLetsNewIdsInAgain)
@@ -982,15 +1008,15 @@ TEST(Spectatord, IdCacheClearingLetsNewIdsInAgain)
 	// longer being reported must not refuse new ones for the life of the
 	// process.
 	spectatord::id_cache cache{2};
-	cache.put('c', "old1", spectator::Id{"old1", spectator::Tags{}});
-	cache.put('c', "old2", spectator::Id{"old2", spectator::Tags{}});
-	EXPECT_EQ(cache.put('c', "fresh", spectator::Id{"fresh", spectator::Tags{}}), nullptr)
+	cache.put("old1", spectator::Id{"old1", spectator::Tags{}});
+	cache.put("old2", spectator::Id{"old2", spectator::Tags{}});
+	EXPECT_EQ(cache.put("fresh", spectator::Id{"fresh", spectator::Tags{}}), nullptr)
 	    << "a full cache rejects new ids";
 
 	EXPECT_TRUE(cache.clear_if_saturated());
-	EXPECT_NE(cache.put('c', "fresh", spectator::Id{"fresh", spectator::Tags{}}), nullptr)
+	EXPECT_NE(cache.put("fresh", spectator::Id{"fresh", spectator::Tags{}}), nullptr)
 	    << "after a clear, new ids are admitted again";
-	EXPECT_NE(cache.get('c', "fresh"), nullptr);
+	EXPECT_NE(cache.get("fresh"), nullptr);
 }
 
 TEST(Spectatord, IdCacheClearIsHarmlessWhenDisabled)
@@ -1032,13 +1058,13 @@ TEST(Spectatord, IdCacheDoesNotClearWhileItStillHasRoom)
 	// room for a short entry, but less than the flat 512 the clear reserves.
 	spectatord::id_cache cache{2};
 	const std::string long_name(600, 'x');
-	ASSERT_NE(cache.put('c', long_name, spectator::Id{long_name, spectator::Tags{}}), nullptr);
+	ASSERT_NE(cache.put(long_name, spectator::Id{long_name, spectator::Tags{}}), nullptr);
 	ASSERT_EQ(cache.get_stats().size, 1u);
 
 	EXPECT_FALSE(cache.clear_if_saturated())
 	    << "the cache is neither at its entry limit nor out of bytes";
 	EXPECT_EQ(cache.get_stats().size, 1u) << "a cache with room was thrown away";
-	EXPECT_NE(cache.put('c', "short", spectator::Id{"short", spectator::Tags{}}), nullptr)
+	EXPECT_NE(cache.put("short", spectator::Id{"short", spectator::Tags{}}), nullptr)
 	    << "and put() proves there was room all along";
 }
 
@@ -1064,4 +1090,37 @@ TEST(Spectatord, MeterCacheSizeZeroDisablesTheRegistryFastPath)
 	char_ptr line{strdup("c:off.switch,k=v:4")};
 	EXPECT_FALSE(server.parse_msg(line.get()).has_value());
 	EXPECT_DOUBLE_EQ(server.measurements()["off.switch|k=v|statistic=count"], 4);
+}
+
+TEST(Spectatord, TagSectionWithNoEqualsIsNotCachedByItsPrefix)
+{
+	// Both lines share the text "name," before their first ':', but they are
+	// different ids:
+	//   "c:name,:5"      -> no '=' anywhere, the tag loop breaks, id is "name"
+	//   "c:name,:5=x:1"  -> find('=') reaches past the ':', so ":5" is a tag key
+	// Only the first has a parsed id length equal to that shared prefix, so the
+	// length check alone would cache it and the second line would then hit it,
+	// recording 5 against the untagged meter instead of 1 against the tagged
+	// one. get_measurement's self_contained flag is what rejects it.
+	auto logger = Logger();
+	auto plain_cfg = GetConfiguration();
+	plain_cfg->meter_cache_size = 0;
+	spectator::Registry cached_registry{GetConfiguration(), logger};
+	spectator::Registry plain_registry{std::move(plain_cfg), logger};
+	test_server cached{&cached_registry};
+	test_server plain{&plain_registry};
+
+	for (const auto* line : {"c:name,:5", "c:name,:5=x:1"})
+	{
+		char_ptr a{strdup(line)};
+		char_ptr b{strdup(line)};
+		EXPECT_EQ(cached.parse_msg(a.get()), plain.parse_msg(b.get())) << "divergent result for '" << line << "'";
+	}
+
+	// measurements() drains the registry, so each side is read exactly once
+	auto from_cached = cached.measurements();
+	auto from_plain = plain.measurements();
+	EXPECT_DOUBLE_EQ(from_cached["name|statistic=count"], 5);
+	EXPECT_DOUBLE_EQ(from_cached["name|_5=x|statistic=count"], 1);
+	EXPECT_EQ(from_cached, from_plain) << "a line was recorded against the wrong meter";
 }
